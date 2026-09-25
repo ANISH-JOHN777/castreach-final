@@ -4,26 +4,48 @@ const verifyToken = require('../middleware/verifyToken');
 const { upload, verifyMimeBytes } = require('../middleware/upload');
 
 // Public projection — never expose email/PII when listing or viewing others (BLK-5).
-const PUBLIC_FIELDS = '-__v -email';
+const PUBLIC_FIELDS = '-__v -email -refreshToken -stripeAccountId';
 
-// ── GET /api/users?role=host&q=search ─────────────────────────────────────────
+// ── GET /api/users?role=host&q=search&expertise=AI&minRating=4&badge=top_rated&sort=rating ─────
 router.get('/', verifyToken, async (req, res) => {
   try {
-    const { role, q } = req.query;
+    const { role, q, expertise, minRating, badge, sort } = req.query;
     const page  = Math.max(1, parseInt(req.query.page, 10)  || 1);
-    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 12));
 
     const filter = { isBlocked: false };
     if (role) filter.role = role;
     if (q)    filter.$text = { $search: q };
+    if (expertise) filter.expertise = { $in: [expertise] };
+    if (badge)     filter.badges = badge;
+    if (minRating && !isNaN(parseFloat(minRating))) {
+      filter.avgRating = { $gte: parseFloat(minRating) };
+    }
 
-    const users = await User.find(filter)
-      .select(PUBLIC_FIELDS)
-      .sort({ avgRating: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit);
+    let sortOption = { avgRating: -1, totalReviews: -1 };
+    if (sort === 'newest')     sortOption = { createdAt: -1 };
+    if (sort === 'price_asc')  sortOption = { sessionRateCents: 1 };
+    if (sort === 'price_desc') sortOption = { sessionRateCents: -1 };
+    if (sort === 'rating')     sortOption = { avgRating: -1, totalReviews: -1 };
 
-    res.json({ users });
+    const [users, total] = await Promise.all([
+      User.find(filter)
+        .select(PUBLIC_FIELDS)
+        .sort(sortOption)
+        .skip((page - 1) * limit)
+        .limit(limit),
+      User.countDocuments(filter),
+    ]);
+
+    res.json({
+      users,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit) || 1,
+      },
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

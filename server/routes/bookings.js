@@ -127,6 +127,13 @@ router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
       amountCents: host.sessionRateCents || 0,
     }], { session });
 
+    // Mark matching availability slot as booked inside the transaction if present
+    await Availability.updateOne(
+      { user: hostId, start, end, isBooked: false },
+      { isBooked: true },
+      { session }
+    );
+
     await session.commitTransaction();
 
     // Audit — fire-and-forget after commit succeeds.
@@ -264,6 +271,12 @@ router.patch('/:id/cancel', verifyToken, async (req, res) => {
     // BUG-4: record response time when host declines a pending request.
     if (!booking.respondedAt) booking.respondedAt = new Date();
     await booking.save();
+
+    // Restore availability slot state if present
+    Availability.updateOne(
+      { user: booking.host, start: booking.slotStart, end: booking.slotEnd, isBooked: true },
+      { isBooked: false }
+    ).catch((err) => console.error('Availability unmark failed:', err.message));
 
     stitcher.audit.logReq(req, {
       collectionName: 'bookings',

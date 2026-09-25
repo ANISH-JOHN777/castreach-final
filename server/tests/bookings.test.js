@@ -273,3 +273,41 @@ describe('Booking list pagination (BUG-8)', () => {
     });
   });
 });
+
+describe('Availability Slot Synchronization (Phase 1)', () => {
+  test('marks availability slot as booked on creation and unmarks on cancellation', async () => {
+    const Availability = require('../models/Availability');
+    const host  = await makeHost();
+    const guest = await makeUser({ role: 'guest' });
+
+    const slotStart = future(48);
+    const slotEnd   = future(49);
+
+    // Create host availability slot
+    const slot = await Availability.create({
+      user:     host.user._id,
+      start:    new Date(slotStart),
+      end:      new Date(slotEnd),
+      isBooked: false,
+    });
+
+    // Book the slot
+    const resBook = await book(guest, host.user._id, { slotStart, slotEnd });
+    expect(resBook.status).toBe(201);
+
+    // Check slot is marked isBooked: true
+    const updatedSlot = await Availability.findById(slot._id);
+    expect(updatedSlot.isBooked).toBe(true);
+
+    // Cancel booking
+    const bookingId = resBook.body.booking._id;
+    const resCancel = await request(app)
+      .patch(`/api/bookings/${bookingId}/cancel`)
+      .set('Authorization', `Bearer ${guest.token}`);
+    expect(resCancel.status).toBe(200);
+
+    // Check slot is restored to isBooked: false
+    const restoredSlot = await Availability.findById(slot._id);
+    expect(restoredSlot.isBooked).toBe(false);
+  });
+});

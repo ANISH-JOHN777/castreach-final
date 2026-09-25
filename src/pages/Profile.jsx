@@ -24,7 +24,7 @@ export default function Profile() {
     setLoading(true);
     Promise.all([
       authFetch(`/users/${id}`).then((r) => r.json()),
-      fetch(`/api/availability/${id}`).then((r) => r.json()),
+      authFetch(`/availability/${id}`).then((r) => r.json()),
     ])
       .then(([uData, aData]) => {
         if (uData.error) throw new Error(uData.error);
