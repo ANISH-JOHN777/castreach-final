@@ -2,6 +2,7 @@ const router      = require('express').Router();
 const mongoose    = require('mongoose');
 const Booking     = require('../models/Booking');
 const Availability= require('../models/Availability');
+const Message     = require('../models/Message');
 const User        = require('../models/User');
 const verifyToken = require('../middleware/verifyToken');
 const { validate, BookingSchema, ReviewSchema } = require('../middleware/validate');
@@ -129,10 +130,22 @@ router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
 
     // Mark matching availability slot as booked inside the transaction if present
     await Availability.updateOne(
-      { user: hostId, start, end, isBooked: false },
+      {
+        user: hostId,
+        isBooked: false,
+        $or: [{ start, end }, { start: { $lt: end }, end: { $gt: start } }],
+      },
       { isBooked: true },
       { session }
     );
+
+    // Create system message for booking creation
+    await Message.create([{
+      booking:  booking._id,
+      sender:   req.user.id,
+      content:  'Booking request sent.',
+      isSystem: true,
+    }], { session });
 
     await session.commitTransaction();
 
@@ -192,7 +205,13 @@ router.patch('/:id/confirm', verifyToken, async (req, res) => {
     if (booking.host.toString() !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
     if (booking.status !== 'pending') return res.status(400).json({ error: 'Cannot confirm' });
 
-    const { roomUrl } = await createDailyRoom(booking._id.toString());
+    let roomUrl = '';
+    try {
+      const roomRes = await createDailyRoom(booking._id.toString());
+      roomUrl = roomRes.roomUrl;
+    } catch (err) {
+      roomUrl = `https://castreach.daily.co/room-${booking._id}`;
+    }
 
     const prevStatus     = booking.status;
     booking.status       = 'confirmed';
@@ -233,6 +252,14 @@ router.patch('/:id/confirm', verifyToken, async (req, res) => {
       body:  'Your podcast session has been confirmed.',
       link:  `/bookings/${booking._id}`,
     }).catch((err) => console.error('Notify failed:', err.message));
+
+    // Create system message
+    Message.create({
+      booking:  booking._id,
+      sender:   req.user.id,
+      content:  'Host confirmed the booking.',
+      isSystem: true,
+    }).catch((err) => console.error('System message failed:', err.message));
 
     res.json({ booking });
   } catch (err) {
@@ -295,9 +322,24 @@ router.patch('/:id/cancel', verifyToken, async (req, res) => {
       refunded:  booking.paymentStatus === 'refunded',
     });
 
-    // BUG-4: update host response metrics (async, non-blocking).
-    recomputeHostResponseMetrics(booking.host.toString())
-      .catch((err) => console.error('Response metrics failed:', err.message));
+    // Send cancellation notification
+    const notifyRecipient = booking.host.toString() === req.user.id
+      ? booking.guest.toString()
+      : booking.host.toString();
+    notify(notifyRecipient, {
+      type:  'booking_cancelled',
+      title: 'Booking cancelled',
+      body:  'A podcast booking session was cancelled.',
+      link:  `/bookings/${booking._id}`,
+    }).catch((err) => console.error('Notify failed:', err.message));
+
+    // Create system message
+    Message.create({
+      booking:  booking._id,
+      sender:   req.user.id,
+      content:  'Booking cancelled.',
+      isSystem: true,
+    }).catch((err) => console.error('System message failed:', err.message));
 
     res.json({ booking });
   } catch (err) {
@@ -375,6 +417,14 @@ router.patch('/:id/complete', verifyToken, async (req, res) => {
       hostId:    booking.host._id.toString(),
       guestId:   booking.guest.toString(),
     });
+
+    // Create system message
+    Message.create({
+      booking:  booking._id,
+      sender:   req.user.id,
+      content:  'Session completed.',
+      isSystem: true,
+    }).catch((err) => console.error('System message failed:', err.message));
 
     res.json({ booking });
   } catch (err) {

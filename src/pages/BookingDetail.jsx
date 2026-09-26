@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Elements } from '@stripe/react-stripe-js';
-import { Mic, CheckCircle, Star } from 'lucide-react';
+import { Mic, CheckCircle, Star, Play, Download, Film, Scissors } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useBooking } from '../hooks/useBooking';
 import { stripePromise, stripeConfigured } from '../lib/stripe';
 import BookingWorkspace from '../components/BookingWorkspace';
 import PaymentForm from '../components/PaymentForm';
+import RecordingEditorModal from '../components/RecordingEditorModal';
 
 const STATUS_COLOR = {
   pending:   { bg: 'var(--color-background-warning)', color: 'var(--color-text-warning)' },
@@ -17,17 +18,20 @@ const STATUS_COLOR = {
 
 export default function BookingDetail() {
   const { id }       = useParams();
-  const { user }     = useAuth();
+  const { user, authFetch } = useAuth();
   const navigate     = useNavigate();
   const { booking, loading, error, confirm, cancel, complete, review, createPaymentIntent, refetch } = useBooking(id);
 
-  const [confirmLoading,  setConfirmLoading]  = useState(false);
-  const [cancelLoading,   setCancelLoading]   = useState(false);
-  const [completeLoading, setCompleteLoading] = useState(false);
-  const [showReview,     setShowReview]     = useState(false);
-  const [rating,         setRating]         = useState(5);
-  const [comment,        setComment]        = useState('');
-  const [actionError,    setActionError]    = useState('');
+  const [confirmLoading,    setConfirmLoading]    = useState(false);
+  const [cancelLoading,     setCancelLoading]     = useState(false);
+  const [completeLoading,   setCompleteLoading]   = useState(false);
+  const [showReview,       setShowReview]       = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [showEditorModal,  setShowEditorModal]  = useState(false);
+  const [rating,           setRating]           = useState(5);
+  const [comment,          setComment]          = useState('');
+  const [actionError,      setActionError]      = useState('');
+  const [renderLoading,    setRenderLoading]    = useState(false);
 
   if (loading) return <Spinner />;
   if (error)   return <Error msg={error} />;
@@ -73,6 +77,23 @@ export default function BookingDetail() {
       setActionError(e.message);
     }
   };
+
+  const handleTriggerRender = async () => {
+    setRenderLoading(true);
+    setActionError('');
+    try {
+      const res = await authFetch(`/recordings/${booking._id}/render`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to trigger render');
+      if (refetch) await refetch();
+    } catch (err) {
+      setActionError(err.message || 'Render request failed');
+    } finally {
+      setRenderLoading(false);
+    }
+  };
+
+  const renderEditStatus = booking.recordingEdit?.renderStatus || 'NOT_REQUESTED';
 
   return (
     <div className="fade-in">
@@ -161,6 +182,121 @@ export default function BookingDetail() {
               )}
             </div>
           </div>
+      {/* Recording Lifecycle Status Card */}
+      <div style={card}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700 }}>
+            <Film size={18} color="var(--color-accent)" />
+            Recording Lifecycle
+          </div>
+          <span style={{
+            padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600,
+            background: (booking.recordingStatus === 'READY' || booking.recordingReady) ? 'rgba(16,185,129,0.15)' : booking.recordingStatus === 'RECORDING' ? 'rgba(239,68,68,0.15)' : 'var(--color-background-secondary)',
+            color: (booking.recordingStatus === 'READY' || booking.recordingReady) ? '#10b981' : booking.recordingStatus === 'RECORDING' ? '#ef4444' : 'var(--color-text-secondary)'
+          }}>
+            {booking.recordingStatus === 'RECORDING' && '● Recording in Progress'}
+            {booking.recordingStatus === 'PROCESSING' && '⏳ Processing Recording…'}
+            {(booking.recordingStatus === 'READY' || booking.recordingReady) && '✓ Recording Ready'}
+            {booking.recordingStatus === 'FAILED' && '⚠️ Recording Failed'}
+            {(!booking.recordingStatus || booking.recordingStatus === 'NOT_STARTED') && !booking.recordingReady && 'Not Started'}
+          </span>
+        </div>
+
+        {(booking.recordingReady || booking.recordingUrl) ? (
+          <div style={{ marginTop: 10, padding: 12, background: 'var(--color-background-secondary)', borderRadius: 8 }}>
+            <p style={{ fontSize: 13, color: 'var(--color-text-primary)', marginBottom: 12, lineHeight: 1.4 }}>
+              The cloud recording for this session is ready. You can preview, trim non-destructively, or trigger an asynchronous FFmpeg render.
+            </p>
+
+            {booking.recordingEdit && (
+              <div style={{ padding: '8px 12px', background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 6, fontSize: 12, color: '#a78bfa', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Scissors size={14} />
+                  <span>
+                    Saved Edit (EDL): Trim {booking.recordingEdit.trimStartSeconds}s – {booking.recordingEdit.trimEndSeconds}s ({booking.recordingEdit.editedDurationSeconds}s active)
+                  </span>
+                </div>
+                <span style={{ fontWeight: 600, color: renderEditStatus === 'READY' ? '#10b981' : renderEditStatus === 'FAILED' ? '#ef4444' : '#f59e0b' }}>
+                  Render: {renderEditStatus}
+                </span>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => setShowPreviewModal(true)}
+                style={{ ...btn, background: 'var(--color-accent)', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                <Play size={14} /> Preview Original
+              </button>
+
+              <button
+                onClick={() => setShowEditorModal(true)}
+                style={{ ...btn, background: '#8b5cf6', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                <Scissors size={14} /> Edit EDL
+              </button>
+
+              {booking.recordingEdit && renderEditStatus !== 'READY' && renderEditStatus !== 'QUEUED' && renderEditStatus !== 'PROCESSING' && (
+                <button
+                  onClick={handleTriggerRender}
+                  disabled={renderLoading}
+                  style={{ ...btn, background: '#10b981', opacity: renderLoading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                >
+                  <Film size={14} /> {renderLoading ? 'Queuing Render…' : renderEditStatus === 'FAILED' ? 'Retry Render' : 'Render Edited Video (FFmpeg)'}
+                </button>
+              )}
+
+              {(renderEditStatus === 'QUEUED' || renderEditStatus === 'PROCESSING') && (
+                <button
+                  disabled
+                  style={{ ...btn, background: 'rgba(245,158,11,0.2)', color: '#f59e0b', cursor: 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                >
+                  ⏳ FFmpeg Rendering ({renderEditStatus})…
+                </button>
+              )}
+
+              <a
+                href={booking.recordingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ ...btn, background: 'transparent', color: 'var(--color-accent)', border: '1px solid var(--color-accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                <Download size={14} /> Download Original
+              </a>
+            </div>
+          </div>
+        ) : (
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4 }}>
+            {booking.recordingStatus === 'RECORDING' ? 'Cloud recording is actively capturing this session.' :
+             booking.recordingStatus === 'PROCESSING' ? 'Recording has stopped and is currently being rendered.' :
+             booking.recordingStatus === 'FAILED' ? 'Cloud recording encountered an issue during capture.' :
+             'Recording will automatically begin when participants join the studio.'}
+          </p>
+        )}
+      </div>
+
+          {/* Video Preview Modal */}
+          {showPreviewModal && booking.recordingUrl && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+              <div style={{ background: '#18181b', borderRadius: 12, maxWidth: 720, width: '100%', padding: 20, color: '#fff', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Recording Preview</h3>
+                  <button onClick={() => setShowPreviewModal(false)} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: 24, cursor: 'pointer', lineHeight: 1 }}>×</button>
+                </div>
+                <video src={booking.recordingUrl} controls autoPlay style={{ width: '100%', borderRadius: 8, maxHeight: 400, background: '#000' }} />
+              </div>
+            </div>
+          )}
+
+          {/* Phase C3.1 Recording Editor Modal */}
+          {showEditorModal && booking.recordingUrl && (
+            <RecordingEditorModal
+              booking={booking}
+              onClose={() => setShowEditorModal(false)}
+              onSaveSuccess={() => { refetch(); }}
+            />
+          )}
 
           {/* Review form */}
           {showReview && (

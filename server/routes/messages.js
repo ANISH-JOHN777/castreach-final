@@ -12,7 +12,7 @@ router.get('/:bookingId', verifyToken, async (req, res) => {
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
 
     const isParticipant = [booking.host, booking.guest]
-      .some((id) => id.toString() === req.user.id);
+      .some((id) => id.toString() === req.user.id) || req.user.role === 'admin';
     if (!isParticipant) return res.status(403).json({ error: 'Forbidden' });
 
     const messages = await Message.find({ booking: req.params.bookingId })
@@ -39,7 +39,7 @@ router.post('/', verifyToken, validate(MessageSchema), async (req, res) => {
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
 
     const isParticipant = [booking.host, booking.guest]
-      .some((id) => id.toString() === req.user.id);
+      .some((id) => id.toString() === req.user.id) || req.user.role === 'admin';
     if (!isParticipant) return res.status(403).json({ error: 'Forbidden' });
 
     const message = await Message.create({

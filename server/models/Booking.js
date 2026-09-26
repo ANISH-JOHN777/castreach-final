@@ -23,9 +23,51 @@ const bookingSchema = new mongoose.Schema(
       default: 'unpaid',
     },
     // Recording
-    dailyRoomUrl:   { type: String },
-    recordingUrl:   { type: String },
-    recordingReady: { type: Boolean, default: false },
+    dailyRoomUrl:       { type: String },
+    recordingUrl:       { type: String },
+    recordingReady:     { type: Boolean, default: false },
+    recordingStatus:    {
+      type: String,
+      enum: ['NOT_STARTED', 'RECORDING', 'PROCESSING', 'READY', 'FAILED'],
+      default: 'NOT_STARTED',
+    },
+    recordingStartedAt: { type: Date },
+    recordingStoppedAt: { type: Date },
+    recordingReadyAt:   { type: Date },
+    recordingDuration:  { type: Number },
+    // Phase C3.1 Non-Destructive Recording Edit (EDL Metadata)
+    recordingEdit: {
+      trimStartSeconds:      { type: Number, default: 0 },
+      trimEndSeconds:        { type: Number },
+      editedDurationSeconds: { type: Number },
+      updatedAt:             { type: Date },
+      updatedBy:             { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      // Phase C3.3 FFmpeg Render Job Metadata
+      renderStatus: {
+        type: String,
+        enum: ['NOT_REQUESTED', 'QUEUED', 'PROCESSING', 'READY', 'FAILED'],
+        default: 'NOT_REQUESTED',
+      },
+      renderJobId:       { type: String },
+      renderRequestedAt: { type: Date },
+      renderStartedAt:   { type: Date },
+      renderCompletedAt: { type: Date },
+      renderFailedAt:    { type: Date },
+      renderError:       { type: String },
+      outputObjectKey:   { type: String },
+      outputSizeBytes:   { type: Number },
+      outputFingerprint: { type: String },
+    },
+    // Phase C3.2 Persistent Recording Storage Metadata
+    recordingStorage: {
+      provider:    { type: String, default: 'r2' },
+      objectKey:   { type: String },
+      status:      { type: String, enum: ['NOT_STORED', 'STORING', 'READY', 'FAILED'], default: 'NOT_STORED' },
+      contentType: { type: String, default: 'video/mp4' },
+      sizeBytes:   { type: Number },
+      storedAt:    { type: Date },
+      error:       { type: String },
+    },
     // BUG-4: timestamp set when host first responds (confirm or cancel).
     // Used to compute avgResponseTime and responseRate on User.
     respondedAt: { type: Date },

@@ -20,10 +20,28 @@ router.get('/:userId', async (req, res) => {
 // ── POST /api/availability — set my availability slots ────────────────────────
 router.post('/', verifyToken, validate(AvailabilitySchema), async (req, res) => {
   try {
+    if (req.user.role !== 'host' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Only hosts can publish availability' });
+    }
     const { slots } = req.body;
+    const now = new Date();
+
+    for (const s of slots) {
+      const start = new Date(s.start);
+      const end   = new Date(s.end);
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        return res.status(400).json({ error: 'Invalid date format' });
+      }
+      if (end <= start) {
+        return res.status(400).json({ error: 'End time must be after start time' });
+      }
+      if (start < now) {
+        return res.status(400).json({ error: 'Availability slot must be in the future' });
+      }
+    }
 
     // Remove future unbooked slots and replace with new ones
-    await Availability.deleteMany({ user: req.user.id, isBooked: false, start: { $gte: new Date() } });
+    await Availability.deleteMany({ user: req.user.id, isBooked: false, start: { $gte: now } });
 
     const docs = slots.map(({ start, end }) => ({
       user:  req.user.id,

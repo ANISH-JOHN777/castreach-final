@@ -26,7 +26,7 @@ export default function Layout() {
     const role = user?.role || 'guest';
     if (role === 'admin') {
       return [
-        { to: '/admin', label: 'Admin Control Center', Icon: Shield },
+        { to: '/control-center', label: 'Admin Control Center', Icon: Shield },
         { to: '/discover', label: 'Discover Creators', Icon: Search },
         { to: '/bookings', label: 'Bookings Audit', Icon: Calendar },
         { to: '/insights', label: 'Platform Insights', Icon: BarChart2 },

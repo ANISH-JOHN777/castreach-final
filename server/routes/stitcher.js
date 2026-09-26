@@ -112,4 +112,24 @@ router.get('/analytics/disputes', verifyToken, requireAdmin, async (req, res) =>
   }
 });
 
+// GET /api/stitcher/audit-logs — list audit trail records (admin only)
+const AuditLog = require('../models/AuditLog');
+router.get('/audit-logs', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const page  = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const [logs, total] = await Promise.all([
+      AuditLog.find({})
+        .populate('actor', 'name email role')
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      AuditLog.countDocuments({}),
+    ]);
+    res.json({ success: true, logs, pagination: { total, page, limit, pages: Math.ceil(total / limit) || 1 } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

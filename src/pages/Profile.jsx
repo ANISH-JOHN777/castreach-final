@@ -167,28 +167,42 @@ export default function Profile() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {!isOwnProfile && profile.role === 'host' && (
             <div style={card}>
-              <h3 style={{ fontWeight: 600, fontSize: 14, marginBottom: 14 }}>Available Slots</h3>
+              <h3 style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Available Sessions</h3>
+              <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginBottom: 14 }}>
+                Rate: <strong>{profile.sessionRateCents > 0 ? `$${(profile.sessionRateCents / 100).toFixed(2)}` : 'Free'}</strong> &nbsp;•&nbsp; Timezone: <strong>{Intl.DateTimeFormat().resolvedOptions().timeZone}</strong>
+              </div>
               {slots.length === 0 ? (
-                <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>No open slots right now.</p>
+                <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', padding: '12px 0' }}>No available sessions yet.</p>
               ) : (
                 <>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
-                    {slots.slice(0, 5).map((s) => (
-                      <button
-                        key={s._id}
-                        onClick={() => setBooking((b) => ({ ...b, slotId: s._id }))}
-                        style={{
-                          padding: '8px 12px', borderRadius: 8, cursor: 'pointer', textAlign: 'left', fontSize: 12,
-                          border: `1.5px solid ${booking.slotId === s._id ? 'var(--color-accent)' : 'var(--color-border-tertiary)'}`,
-                          background: booking.slotId === s._id ? 'var(--color-background-info)' : 'transparent',
-                          color: 'var(--color-text-primary)',
-                        }}
-                      >
-                        {new Date(s.start).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </button>
-                    ))}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+                    {slots.map((s) => {
+                      const st = new Date(s.start);
+                      const et = new Date(s.end);
+                      const dur = Math.round((et - st) / (1000 * 60));
+                      const selected = booking.slotId === s._id;
+                      return (
+                        <button
+                          key={s._id}
+                          onClick={() => setBooking((b) => ({ ...b, slotId: s._id }))}
+                          style={{
+                            padding: '10px 12px', borderRadius: 8, cursor: 'pointer', textAlign: 'left', fontSize: 12,
+                            border: `1.5px solid ${selected ? 'var(--plum-primary)' : 'var(--color-border-tertiary)'}`,
+                            background: selected ? 'var(--lavender-mist)' : 'transparent',
+                            color: 'var(--color-text-primary)',
+                          }}
+                        >
+                          <div style={{ fontWeight: 600, color: 'var(--plum-deep)' }}>
+                            {st.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>
+                            {st.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – {et.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({dur} mins)
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
-                  <button onClick={() => setShowBook(true)} style={bookBtn}>
+                  <button onClick={() => setShowBook(true)} disabled={!booking.slotId} style={{ ...bookBtn, opacity: booking.slotId ? 1 : 0.6 }}>
                     Request Booking
                   </button>
                 </>

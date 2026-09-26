@@ -16,6 +16,7 @@ const Register = lazy(() => import('./pages/auth/Register'));
 const GuestDashboard = lazy(() => import('./pages/guest/GuestDashboard'));
 const HostDashboard = lazy(() => import('./pages/host/HostDashboard'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'));
 
 const Discover = lazy(() => import('./pages/Discover'));
 const Bookings = lazy(() => import('./pages/Bookings'));
@@ -38,7 +39,7 @@ export default function App() {
 
   const getRoleDefault = () => {
     if (!user) return '/login';
-    if (user.role === 'admin') return '/admin';
+    if (user.role === 'admin') return '/control-center';
     if (user.role === 'host') return '/host';
     return '/guest';
   };
@@ -54,12 +55,35 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
+        {/* Private Hidden Admin Login Entry Point */}
+        <Route
+          path="/control-center"
+          element={
+            !user ? (
+              <AdminLogin />
+            ) : user.role === 'admin' ? (
+              <Layout><AdminDashboard /></Layout>
+            ) : (
+              <Navigate to={getRoleDefault()} replace />
+            )
+          }
+        />
+
         {/* Protected Experience Pages */}
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
             <Route path="/guest" element={<GuestDashboard />} />
             <Route path="/host" element={<HostDashboard />} />
-            <Route path="/admin" element={<AdminDashboard />} />
+            <Route
+              path="/admin"
+              element={
+                user?.role === 'admin' ? (
+                  <AdminDashboard />
+                ) : (
+                  <Navigate to={getRoleDefault()} replace />
+                )
+              }
+            />
 
             <Route path="/discover" element={<Discover />} />
             <Route path="/bookings" element={<Bookings />} />

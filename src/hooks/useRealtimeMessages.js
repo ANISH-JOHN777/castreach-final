@@ -9,19 +9,32 @@ import { useAuth } from '../context/AuthContext';
  */
 export function useRealtimeMessages(bookingId, pollIntervalMs = 5000) {
   const { authFetch } = useAuth();
-  const [messages,  setMessages]  = useState([]);
-  const [lastId,    setLastId]    = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState(null);
   const intervalRef = useRef(null);
 
   useEffect(() => {
-    if (!bookingId) return;
+    if (!bookingId) {
+      setLoading(false);
+      return;
+    }
 
     const poll = async () => {
       try {
         const res  = await authFetch(`/messages/${bookingId}`);
         const data = await res.json();
-        if (res.ok) setMessages(data.messages || []);
-      } catch { /* silent */ }
+        if (res.ok) {
+          setMessages(data.messages || []);
+          setError(null);
+        } else {
+          setError(data.error || 'Failed to fetch messages');
+        }
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
     };
 
     poll();
@@ -29,7 +42,7 @@ export function useRealtimeMessages(bookingId, pollIntervalMs = 5000) {
     return () => clearInterval(intervalRef.current);
   }, [bookingId, pollIntervalMs]);
 
-  return { messages };
+  return { messages, setMessages, loading, error };
 }
 
 /**

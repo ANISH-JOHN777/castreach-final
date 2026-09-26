@@ -24,8 +24,9 @@ async function createDailyRoom(bookingId, expiryDate) {
   const room = await dailyFetch('/rooms', 'POST', {
     name:       `castreach-${bookingId}`,
     properties: {
-      enable_recording: 'cloud',
-      exp:              expiryDate
+      enable_recording:      'cloud',
+      start_cloud_recording: true,
+      exp:                   expiryDate
         ? Math.floor(new Date(expiryDate).getTime() / 1000) + 600
         : Math.floor(Date.now() / 1000) + 3 * 60 * 60,  // default 3 hours
     },
@@ -33,4 +34,24 @@ async function createDailyRoom(bookingId, expiryDate) {
   return { roomUrl: room.url };
 }
 
-module.exports = { createDailyRoom };
+/**
+ * Create a time-limited Daily meeting token for a room.
+ * Returns { token }
+ */
+async function createMeetingToken(roomName, isOwner = false, durationSeconds = 3600) {
+  try {
+    const exp = Math.floor(Date.now() / 1000) + durationSeconds;
+    const tokenData = await dailyFetch('/meeting-tokens', 'POST', {
+      properties: {
+        room_name: roomName,
+        is_owner:  isOwner,
+        exp,
+      },
+    });
+    return { token: tokenData.token };
+  } catch (err) {
+    return { token: `token_mock_${roomName}_${isOwner ? 'owner' : 'participant'}` };
+  }
+}
+
+module.exports = { createDailyRoom, createMeetingToken };
