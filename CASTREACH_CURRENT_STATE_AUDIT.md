@@ -252,3 +252,24 @@ When a guest selects an open time slot and submits a booking request:
 - **WebSocket Chat**: In-app messaging polling (5s interval) deferred to future realtime phase.
 - **Distributed Caching**: Redis store for rate limiters deferred to production infrastructure phase.
 
+---
+
+# PHASE 1.5 IMPLEMENTATION REPORT
+
+### 1. Status
+`PASS` — Production safety and core workflow hardening complete, fully tested, and committed to git origin/main.
+
+### 2. Verified Fixes Implemented
+- **Payment Intent State Guard**: `POST /api/payments/intent` now strictly requires `booking.paymentStatus === 'unpaid'`. Any attempt to generate an intent for a booking that is `held`, `released`, or `refunded` is rejected with HTTP 400.
+- **Payment Intent Re-entrance**: If a booking is `unpaid` but already has a valid/usable `stripePaymentIntentId`, `POST /api/payments/intent` retrieves the existing Stripe PaymentIntent and returns its existing `clientSecret` without generating duplicate PaymentIntents.
+- **Booking Cancellation State Guard**: `PATCH /api/bookings/:id/cancel` now strictly restricts cancellations to `pending` and `confirmed` bookings. Any attempt to cancel a `disputed` or `completed` booking is rejected with HTTP 400.
+- **Daily Room Service Consolidation**: `server/routes/recordings.js` has been updated to delegate room creation to `createDailyRoom` in `server/services/daily.js`, removing duplicate direct `fetch` implementations.
+- **Payment Capture Idempotency**: Verified that `completeBooking()` and `releaseEscrow()` safely no-op on already completed sessions.
+- **Stripe Webhook Idempotency**: Verified that duplicate Stripe webhooks return HTTP 200 `{ received: true, duplicate: true }` without repeating business logic operations.
+
+### 3. Test & Build Verification
+- **Test Suites**: 16/16 passed (353/353 tests passed).
+- **Frontend Production Build**: `npm run build` passed (`✓ built in 1.19s`).
+- **Git Commit**: `3776bc8 fix: harden payment and booking lifecycle` pushed to `origin/main`.
+
+
