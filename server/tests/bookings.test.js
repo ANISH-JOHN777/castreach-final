@@ -7,6 +7,7 @@ jest.mock('../services/stripe', () => ({
   releaseEscrow:           jest.fn(async () => ({})),
   refundPayment:           jest.fn(async () => ({})),
   createConnectOnboarding: jest.fn(async () => ({ accountLink: 'https://connect.test' })),
+  retrievePaymentIntent:   jest.fn(async () => null),
 }));
 
 const { request, app, makeUser, makeHost } = require('./helpers');
@@ -309,5 +310,114 @@ describe('Availability Slot Synchronization (Phase 1)', () => {
     // Check slot is restored to isBooked: false
     const restoredSlot = await Availability.findById(slot._id);
     expect(restoredSlot.isBooked).toBe(false);
+  });
+});
+
+describe('Phase 1.5 Production Safety & Payment State Guards', () => {
+  test('rejects payment intent creation if paymentStatus is held, released, or refunded', async () => {
+    const host  = await makeHost(5000);
+    const guest = await makeUser({ role: 'guest' });
+    const created = await book(guest, host.user._id);
+    const id = created.body.booking._id;
+
+    await request(app).patch(`/api/bookings/${id}/confirm`).set('Authorization', `Bearer ${host.token}`);
+
+    // Set paymentStatus = 'held'
+    await Booking.findByIdAndUpdate(id, { paymentStatus: 'held', stripePaymentIntentId: 'pi_test_held' });
+
+    const resHeld = await request(app)
+      .post('/api/payments/intent')
+      .set('Authorization', `Bearer ${guest.token}`)
+      .send({ bookingId: id });
+    expect(resHeld.status).toBe(400);
+
+    // Set paymentStatus = 'released'
+    await Booking.findByIdAndUpdate(id, { paymentStatus: 'released' });
+    const resReleased = await request(app)
+      .post('/api/payments/intent')
+      .set('Authorization', `Bearer ${guest.token}`)
+      .send({ bookingId: id });
+    expect(resReleased.status).toBe(400);
+
+    // Set paymentStatus = 'refunded'
+    await Booking.findByIdAndUpdate(id, { paymentStatus: 'refunded' });
+    const resRefunded = await request(app)
+      .post('/api/payments/intent')
+      .set('Authorization', `Bearer ${guest.token}`)
+      .send({ bookingId: id });
+    expect(resRefunded.status).toBe(400);
+  });
+
+  test('rejects cancelling a disputed booking', async () => {
+    const host  = await makeHost();
+    const guest = await makeUser({ role: 'guest' });
+    const created = await book(guest, host.user._id);
+    const id = created.body.booking._id;
+
+    await Booking.findByIdAndUpdate(id, { status: 'disputed' });
+
+    const res = await request(app)
+      .patch(`/api/bookings/${id}/cancel`)
+      .set('Authorization', `Bearer ${guest.token}`);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Cannot cancel booking');
+  });
+
+  test('re-entrance: reuses existing active PaymentIntent clientSecret', async () => {
+    const stripeService = require('../services/stripe');
+    jest.spyOn(stripeService, 'retrievePaymentIntent').mockResolvedValueOnce({
+      status: 'requires_payment_method',
+      client_secret: 'cs_reused_secret',
+    });
+
+    const host  = await makeHost(5000);
+    const guest = await makeUser({ role: 'guest' });
+    const created = await book(guest, host.user._id);
+    const id = created.body.booking._id;
+
+    await request(app).patch(`/api/bookings/${id}/confirm`).set('Authorization', `Bearer ${host.token}`);
+    await Booking.findByIdAndUpdate(id, { stripePaymentIntentId: 'pi_existing_usable' });
+
+    const res = await request(app)
+      .post('/api/payments/intent')
+      .set('Authorization', `Bearer ${guest.token}`)
+      .send({ bookingId: id });
+
+    expect(res.status).toBe(200);
+    expect(res.body.clientSecret).toBe('cs_reused_secret');
+  });
+
+  test('recordings route delegates to createDailyRoom service', async () => {
+    const dailyService = require('../services/daily');
+    const createDailyRoomSpy = jest.spyOn(dailyService, 'createDailyRoom');
+
+    const host  = await makeHost();
+    const guest = await makeUser({ role: 'guest' });
+    const created = await book(guest, host.user._id);
+    const id = created.body.booking._id;
+
+    await request(app).patch(`/api/bookings/${id}/confirm`).set('Authorization', `Bearer ${host.token}`);
+
+    const res = await request(app)
+      .post('/api/recordings/room')
+      .set('Authorization', `Bearer ${guest.token}`)
+      .send({ bookingId: id });
+
+    expect(res.status).toBe(200);
+    expect(createDailyRoomSpy).toHaveBeenCalledWith(id.toString(), expect.anything());
+  });
+
+  test('idempotency: completing an already completed booking is a no-op', async () => {
+    const host  = await makeHost();
+    const guest = await makeUser({ role: 'guest' });
+    const created = await book(guest, host.user._id);
+    const id = created.body.booking._id;
+
+    await request(app).patch(`/api/bookings/${id}/confirm`).set('Authorization', `Bearer ${host.token}`);
+    const firstComplete = await request(app).patch(`/api/bookings/${id}/complete`).set('Authorization', `Bearer ${guest.token}`);
+    expect(firstComplete.status).toBe(200);
+
+    const secondComplete = await request(app).patch(`/api/bookings/${id}/complete`).set('Authorization', `Bearer ${guest.token}`);
+    expect(secondComplete.status).toBe(400); // cannot complete non-confirmed booking
   });
 });

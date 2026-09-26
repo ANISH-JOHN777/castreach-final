@@ -1,10 +1,7 @@
 const router      = require('express').Router();
 const Booking     = require('../models/Booking');
 const verifyToken = require('../middleware/verifyToken');
-const { requireFeatureEnv } = require('../config/validateEnv');
-
-const DAILY_API = 'https://api.daily.co/v1';
-const headers   = { Authorization: `Bearer ${process.env.DAILY_API_KEY}`, 'Content-Type': 'application/json' };
+const { createDailyRoom } = require('../services/daily');
 
 // ── POST /api/recordings/room — create Daily.co room ─────────────────────────
 router.post('/room', verifyToken, async (req, res) => {
@@ -25,26 +22,12 @@ router.post('/room', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'Booking must be confirmed first' });
     }
 
-    // Only now — when a room is actually being created — require Daily config.
-    requireFeatureEnv('daily');
+    const { roomUrl } = await createDailyRoom(booking._id.toString(), booking.slotEnd);
 
-    const resp = await fetch(`${DAILY_API}/rooms`, {
-      method:  'POST',
-      headers,
-      body: JSON.stringify({
-        name:       `castreach-${bookingId}`,
-        properties: {
-          enable_recording: 'cloud',
-          exp:              Math.floor(booking.slotEnd.getTime() / 1000) + 600, // +10 min buffer
-        },
-      }),
-    });
-    const room = await resp.json();
-
-    booking.dailyRoomUrl = room.url;
+    booking.dailyRoomUrl = roomUrl;
     await booking.save();
 
-    res.json({ url: room.url });
+    res.json({ url: roomUrl });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
   }

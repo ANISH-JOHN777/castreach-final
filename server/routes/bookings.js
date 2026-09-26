@@ -252,8 +252,8 @@ router.patch('/:id/cancel', verifyToken, async (req, res) => {
       .some((id) => id.toString() === req.user.id);
     if (!isParticipant) return res.status(403).json({ error: 'Forbidden' });
 
-    if (['completed', 'cancelled'].includes(booking.status)) {
-      return res.status(400).json({ error: 'Cannot cancel' });
+    if (!['pending', 'confirmed'].includes(booking.status)) {
+      return res.status(400).json({ error: 'Cannot cancel booking in current state' });
     }
 
     // BUG-6: refund held payment before cancelling.

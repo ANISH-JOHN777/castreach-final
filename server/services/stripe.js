@@ -81,4 +81,12 @@ async function createConnectOnboarding(userId, returnUrl, refreshUrl) {
   return { accountLink: link.url };
 }
 
-module.exports = { createEscrowIntent, releaseEscrow, refundPayment, createConnectOnboarding };
+/**
+ * Retrieve an existing PaymentIntent from Stripe.
+ */
+async function retrievePaymentIntent(paymentIntentId) {
+  if (!paymentIntentId) return null;
+  return await getStripe().paymentIntents.retrieve(paymentIntentId);
+}
+
+module.exports = { createEscrowIntent, releaseEscrow, refundPayment, createConnectOnboarding, retrievePaymentIntent };
