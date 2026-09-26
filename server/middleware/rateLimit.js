@@ -1,7 +1,7 @@
 const rateLimit = require('express-rate-limit');
 
-// Disable rate limiting in the test environment so the suite isn't throttled.
-const skip = () => process.env.NODE_ENV === 'test';
+// Disable rate limiting in test and development environments so local dev & test suite aren't throttled.
+const skip = () => process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development';
 
 /** Global limiter — 100 requests per 15 minutes */
 const globalLimiter = rateLimit({

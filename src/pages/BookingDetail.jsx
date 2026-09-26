@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Elements } from '@stripe/react-stripe-js';
+import { Mic, CheckCircle, Star } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useBooking } from '../hooks/useBooking';
 import { stripePromise, stripeConfigured } from '../lib/stripe';
@@ -134,23 +135,23 @@ export default function BookingDetail() {
             {/* Action buttons */}
             <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
               {booking.status === 'confirmed' && booking.dailyRoomUrl && (
-                <button onClick={() => navigate(`/bookings/${id}/record`)} style={{ ...btn, background: '#22c55e' }}>
-                  🎙️ Join Recording Room
+                <button onClick={() => navigate(`/bookings/${id}/record`)} style={{ ...btn, background: '#22c55e', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <Mic size={16} /> Join Recording Room
                 </button>
               )}
               {booking.status === 'confirmed' && (
-                <button onClick={handleComplete} disabled={completeLoading} style={{ ...btn, background: 'var(--color-accent)', opacity: completeLoading ? 0.7 : 1 }}>
-                  {completeLoading ? 'Completing…' : '✓ Mark Session Complete'}
+                <button onClick={handleComplete} disabled={completeLoading} style={{ ...btn, background: 'var(--color-accent)', opacity: completeLoading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <CheckCircle size={16} /> {completeLoading ? 'Completing…' : 'Mark Session Complete'}
                 </button>
               )}
               {isHost && booking.status === 'pending' && (
-                <button onClick={handleConfirm} disabled={confirmLoading} style={{ ...btn, background: 'var(--color-accent)', opacity: confirmLoading ? 0.7 : 1 }}>
-                  {confirmLoading ? 'Confirming…' : '✓ Confirm Booking'}
+                <button onClick={handleConfirm} disabled={confirmLoading} style={{ ...btn, background: 'var(--color-accent)', opacity: confirmLoading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <CheckCircle size={16} /> {confirmLoading ? 'Confirming…' : 'Confirm Booking'}
                 </button>
               )}
               {booking.status === 'completed' && (
-                <button onClick={() => setShowReview(true)} style={{ ...btn, background: 'var(--color-accent-purple)' }}>
-                  ⭐ Leave Review
+                <button onClick={() => setShowReview(true)} style={{ ...btn, background: 'var(--color-accent-purple)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <Star size={16} /> Leave Review
                 </button>
               )}
               {['pending', 'confirmed'].includes(booking.status) && (
@@ -170,8 +171,10 @@ export default function BookingDetail() {
                   {[1, 2, 3, 4, 5].map((n) => (
                     <button
                       key={n} type="button" onClick={() => setRating(n)}
-                      style={{ fontSize: 24, background: 'none', border: 'none', cursor: 'pointer', opacity: n <= rating ? 1 : 0.3 }}
-                    >★</button>
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}
+                    >
+                      <Star size={24} fill={n <= rating ? '#f59e0b' : 'none'} color={n <= rating ? '#f59e0b' : '#9ca3af'} />
+                    </button>
                   ))}
                 </div>
                 <textarea

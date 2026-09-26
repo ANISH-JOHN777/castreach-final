@@ -1,11 +1,23 @@
 import { useEffect, useState } from 'react';
+import { 
+  Calendar, 
+  CheckCircle, 
+  BarChart2, 
+  Target, 
+  Star, 
+  MessageSquare, 
+  Award, 
+  Zap, 
+  Flame, 
+  ShieldCheck 
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const BADGE_META = {
-  top_rated:      { label: 'Top Rated',     icon: '⭐', color: '#f59e0b' },
-  fast_responder: { label: 'Fast Responder', icon: '⚡', color: '#3b82f6' },
-  most_booked:    { label: 'Most Booked',    icon: '🔥', color: '#ef4444' },
-  verified_host:  { label: 'Verified Host',  icon: '✅', color: '#22c55e' },
+  top_rated:      { label: 'Top Rated',      Icon: Star, color: '#f59e0b' },
+  fast_responder: { label: 'Fast Responder', Icon: Zap, color: '#3b82f6' },
+  most_booked:    { label: 'Most Booked',    Icon: Flame, color: '#ef4444' },
+  verified_host:  { label: 'Verified Host',  Icon: ShieldCheck, color: '#22c55e' },
 };
 
 export default function Insights() {
@@ -36,15 +48,17 @@ export default function Insights() {
       {/* KPI cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 24 }}>
         {[
-          { label: 'Total bookings',    value: data.totalBookings,    icon: '📅' },
-          { label: 'Completed',         value: data.completedBookings,icon: '✅' },
-          { label: 'This month',        value: data.thisMonthBookings, icon: '📊' },
-          { label: 'Completion rate',   value: `${completionRate}%`,  icon: '🎯' },
-          { label: 'Avg rating',        value: data.avgRating?.toFixed(1) || '—', icon: '⭐' },
-          { label: 'Response rate',     value: `${Math.round((data.responseRate || 0) * 100)}%`, icon: '💬' },
-        ].map(({ label, value, icon }) => (
+          { label: 'Total bookings',    value: data.totalBookings,    Icon: Calendar, color: 'var(--plum-primary)' },
+          { label: 'Completed',         value: data.completedBookings,Icon: CheckCircle, color: 'var(--color-success)' },
+          { label: 'This month',        value: data.thisMonthBookings, Icon: BarChart2, color: 'var(--purple-castreach)' },
+          { label: 'Completion rate',   value: `${completionRate}%`,  Icon: Target, color: 'var(--plum-deep)' },
+          { label: 'Avg rating',        value: data.avgRating?.toFixed(1) || '—', Icon: Star, color: 'var(--color-warning)' },
+          { label: 'Response rate',     value: `${Math.round((data.responseRate || 0) * 100)}%`, Icon: MessageSquare, color: 'var(--plum-primary)' },
+        ].map(({ label, value, Icon, color }) => (
           <div key={label} style={cardStyle}>
-            <div style={{ fontSize: 22 }}>{icon}</div>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <Icon size={22} color={color} />
+            </div>
             <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>{value}</div>
             <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>{label}</div>
           </div>
@@ -57,7 +71,8 @@ export default function Insights() {
           <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 10 }}>Your badges</h2>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {data.badges.map((b) => {
-              const meta = BADGE_META[b] || { label: b, icon: '🏅', color: '#6b7280' };
+              const meta = BADGE_META[b] || { label: b, Icon: Award, color: '#6b7280' };
+              const BadgeIcon = meta.Icon;
               return (
                 <div key={b} style={{
                   display: 'flex', alignItems: 'center', gap: 6,
@@ -65,7 +80,7 @@ export default function Insights() {
                   background: `${meta.color}22`, border: `1.5px solid ${meta.color}`,
                   fontSize: 13, fontWeight: 500,
                 }}>
-                  {meta.icon} {meta.label}
+                  <BadgeIcon size={14} color={meta.color} /> {meta.label}
                 </div>
               );
             })}

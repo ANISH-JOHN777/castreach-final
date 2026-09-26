@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Star, Radio, CheckCircle2, ExternalLink } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AvailabilityPicker from '../components/AvailabilityPicker';
 import BadgeDisplay from '../components/BadgeDisplay';
@@ -91,14 +92,16 @@ export default function Profile() {
                   <h1 style={{ fontSize: 20, fontWeight: 700 }}>{profile.name}</h1>
                   {profile.avgRating > 0 && (
                     <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: 3 }}>
-                      <span style={{ color: '#f59e0b' }}>★</span>
+                      <Star size={14} fill="currentColor" color="var(--color-warning)" />
                       <strong style={{ color: 'var(--color-text-primary)' }}>{profile.avgRating.toFixed(1)}</strong>
                       <span>({profile.totalReviews})</span>
                     </span>
                   )}
                 </div>
                 {profile.podcastName && (
-                  <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 6 }}>🎧 {profile.podcastName}</div>
+                  <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Radio size={14} color="var(--plum-primary)" /> {profile.podcastName}
+                  </div>
                 )}
                 <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', textTransform: 'capitalize', background: 'var(--color-background-secondary)', display: 'inline-block', padding: '2px 10px', borderRadius: 12 }}>
                   {profile.role}
@@ -209,7 +212,7 @@ export default function Profile() {
             <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 16 }}>Request Booking</h2>
             {bookSuccess ? (
               <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                <div style={{ fontSize: 36, marginBottom: 8 }}>🎉</div>
+                <CheckCircle2 size={36} color="var(--color-success)" style={{ margin: '0 auto 8px' }} />
                 <div style={{ fontWeight: 600, fontSize: 15 }}>Booking sent! Redirecting…</div>
               </div>
             ) : (
@@ -265,8 +268,8 @@ export default function Profile() {
 
 function SocialLink({ href, label }) {
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, padding: '4px 10px', border: '1px solid var(--color-border-tertiary)', borderRadius: 8, color: 'var(--color-text-secondary)', display: 'inline-block' }}>
-      {label} ↗
+    <a href={href} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, padding: '4px 10px', border: '1px solid var(--color-border-tertiary)', borderRadius: 8, color: 'var(--color-text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      {label} <ExternalLink size={12} />
     </a>
   );
 }

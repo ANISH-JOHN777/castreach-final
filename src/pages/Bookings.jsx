@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Calendar, ChevronRight } from 'lucide-react';
 import { useBookings } from '../hooks/useBooking';
 
 const STATUS_TABS = [
@@ -119,7 +120,7 @@ function BookingRow({ booking, onClick }) {
         {booking.status}
       </span>
 
-      <span style={{ color: 'var(--color-text-secondary)', fontSize: 16 }}>›</span>
+      <ChevronRight size={16} color="var(--color-text-secondary)" />
     </div>
   );
 }
@@ -139,7 +140,9 @@ function SkeletonRow() {
 function Empty({ filter }) {
   return (
     <div style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--color-text-secondary)' }}>
-      <div style={{ fontSize: 40, marginBottom: 12 }}>📅</div>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+        <Calendar size={40} color="var(--plum-primary)" />
+      </div>
       <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 6, color: 'var(--color-text-primary)' }}>
         No {filter || ''} bookings
       </div>

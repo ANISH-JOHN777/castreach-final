@@ -1,8 +1,10 @@
+import { Star, Zap, Flame, ShieldCheck, Award } from 'lucide-react';
+
 const BADGE_META = {
-  top_rated:      { label: 'Top Rated',      icon: '⭐', color: '#f59e0b', desc: 'Avg rating ≥ 4.8 with 10+ reviews' },
-  fast_responder: { label: 'Fast Responder', icon: '⚡', color: '#3b82f6', desc: 'Responds within 2 hours on average' },
-  most_booked:    { label: 'Most Booked',    icon: '🔥', color: '#ef4444', desc: '5+ completed bookings this month' },
-  verified_host:  { label: 'Verified Host',  icon: '✅', color: '#22c55e', desc: 'Verified Stripe account + 5+ reviews' },
+  top_rated:      { label: 'Top Rated',      Icon: Star, color: '#f59e0b', desc: 'Avg rating ≥ 4.8 with 10+ reviews' },
+  fast_responder: { label: 'Fast Responder', Icon: Zap, color: '#3b82f6', desc: 'Responds within 2 hours on average' },
+  most_booked:    { label: 'Most Booked',    Icon: Flame, color: '#ef4444', desc: '5+ completed bookings this month' },
+  verified_host:  { label: 'Verified Host',  Icon: ShieldCheck, color: '#22c55e', desc: 'Verified Stripe account + 5+ reviews' },
 };
 
 /**
@@ -17,7 +19,8 @@ export default function BadgeDisplay({ badges = [], size = 'md' }) {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: isSmall ? 4 : 8 }}>
       {badges.map((b) => {
-        const meta = BADGE_META[b] || { label: b, icon: '🏅', color: '#6b7280', desc: '' };
+        const meta = BADGE_META[b] || { label: b, Icon: Award, color: '#6b7280', desc: '' };
+        const BadgeIcon = meta.Icon;
         return (
           <div
             key={b}
@@ -35,7 +38,7 @@ export default function BadgeDisplay({ badges = [], size = 'md' }) {
               cursor:     'help',
             }}
           >
-            <span style={{ fontSize: isSmall ? 12 : 14 }}>{meta.icon}</span>
+            <BadgeIcon size={isSmall ? 12 : 14} color={meta.color} />
             {meta.label}
           </div>
         );

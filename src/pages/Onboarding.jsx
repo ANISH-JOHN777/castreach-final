@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Mic, Headphones, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const EXPERTISE_OPTIONS = [
@@ -68,12 +69,14 @@ export default function Onboarding() {
         {/* Step 0 — Welcome */}
         {step === 0 && (
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>🎙️</div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+              <Mic size={44} color="var(--plum-primary)" />
+            </div>
             <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Welcome to CastReach</h2>
             <p style={{ color: 'var(--color-text-secondary)', marginBottom: 24, lineHeight: 1.6 }}>
               Connect with podcast hosts and guests. Let's set up your profile in 2 minutes.
             </p>
-            <button onClick={() => setStep(1)} style={btnStyle('#3b82f6')}>Get started →</button>
+            <button onClick={() => setStep(1)} style={btnStyle('#3b82f6')}>Get started</button>
           </div>
         )}
 
@@ -90,7 +93,9 @@ export default function Onboarding() {
                   background: role === r ? 'var(--color-background-info)' : 'transparent',
                   cursor: 'pointer', textAlign: 'center',
                 }}>
-                  <div style={{ fontSize: 28 }}>{r === 'host' ? '🎧' : '🎤'}</div>
+                  <div style={{ display: 'flex', justifyContent: 'center', fontSize: 28 }}>
+                    {r === 'host' ? <Headphones size={32} color="var(--plum-primary)" /> : <Mic size={32} color="var(--plum-primary)" />}
+                  </div>
                   <div style={{ fontWeight: 600, marginTop: 6, textTransform: 'capitalize' }}>{r}</div>
                   <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
                     {r === 'host' ? 'I run a podcast' : 'I want to be a guest'}
@@ -100,7 +105,7 @@ export default function Onboarding() {
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
               <button onClick={() => setStep(0)} style={btnStyle('#9ca3af')}>Back</button>
-              <button onClick={() => role && setStep(2)} disabled={!role} style={btnStyle(role ? '#3b82f6' : '#d1d5db')}>Continue →</button>
+              <button onClick={() => role && setStep(2)} disabled={!role} style={btnStyle(role ? '#3b82f6' : '#d1d5db')}>Continue</button>
             </div>
           </div>
         )}
@@ -119,7 +124,7 @@ export default function Onboarding() {
             <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} placeholder="Tell hosts/guests about you…" style={{ ...inputStyle, resize: 'vertical' }} />
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <button onClick={() => setStep(1)} style={btnStyle('#9ca3af')}>Back</button>
-              <button onClick={() => name.trim() && setStep(3)} disabled={!name.trim()} style={btnStyle(name.trim() ? '#3b82f6' : '#d1d5db')}>Continue →</button>
+              <button onClick={() => name.trim() && setStep(3)} disabled={!name.trim()} style={btnStyle(name.trim() ? '#3b82f6' : '#d1d5db')}>Continue</button>
             </div>
           </div>
         )}
@@ -145,8 +150,8 @@ export default function Onboarding() {
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => setStep(2)} style={btnStyle('#9ca3af')}>Back</button>
-              <button onClick={finish} disabled={saving} style={btnStyle('#22c55e')}>
-                {saving ? 'Saving…' : 'Finish setup ✓'}
+              <button onClick={finish} disabled={saving} style={{ ...btnStyle('#22c55e'), display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                {saving ? 'Saving…' : <><Check size={16} /> Finish setup</>}
               </button>
             </div>
             {error && <p style={{ color: 'var(--color-text-danger)', fontSize: 12, marginTop: 8 }}>{error}</p>}

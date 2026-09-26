@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Sparkles, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 /**
@@ -41,7 +42,7 @@ export default function AIAssistPanel({ hostBio, guestBio, guestExpertise = [], 
     <div style={{ border: '1px solid var(--color-border-tertiary)', borderRadius: 12, padding: '1rem', background: 'var(--color-background-secondary)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 18 }}>✨</span>
+          <Sparkles size={18} color="#7c3aed" />
           <span style={{ fontWeight: 600, fontSize: 14 }}>AI Episode Assist</span>
         </div>
         <button
@@ -63,7 +64,7 @@ export default function AIAssistPanel({ hostBio, guestBio, guestExpertise = [], 
 
       {loading && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text-secondary)', fontSize: 13 }}>
-          <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⏳</span>
+          <Loader2 size={16} color="#7c3aed" style={{ animation: 'spin 1s linear infinite' }} />
           Thinking…
         </div>
       )}

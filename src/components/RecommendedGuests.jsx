@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Star } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import BadgeDisplay from './BadgeDisplay';
 
@@ -56,8 +57,8 @@ export default function RecommendedGuests() {
                 {Math.round(score * 100)}% match
               </div>
               {user.avgRating > 0 && (
-                <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>
-                  ⭐ {user.avgRating.toFixed(1)}
+                <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                  <Star size={12} fill="currentColor" color="var(--color-warning)" /> {user.avgRating.toFixed(1)}
                 </div>
               )}
             </div>

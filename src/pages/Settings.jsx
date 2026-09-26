@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { User, Lock, CreditCard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const EXPERTISE_OPTIONS = [
@@ -22,10 +23,10 @@ export default function Settings() {
         {/* Sidebar */}
         <div style={{ background: 'var(--color-background-primary)', border: '1px solid var(--color-border-tertiary)', borderRadius: 12, overflow: 'hidden' }}>
           {[
-            { id: 'profile',  label: '👤 Profile' },
-            { id: 'password', label: '🔒 Password' },
-            { id: 'stripe',   label: '💳 Payments' },
-          ].map(({ id, label }) => (
+            { id: 'profile',  label: 'Profile', Icon: User },
+            { id: 'password', label: 'Password', Icon: Lock },
+            { id: 'stripe',   label: 'Payments', Icon: CreditCard },
+          ].map(({ id, label, Icon }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
@@ -35,8 +36,12 @@ export default function Settings() {
                 color: tab === id ? 'var(--color-text-info)' : 'var(--color-text-primary)',
                 fontWeight: tab === id ? 600 : 400,
                 borderLeft: tab === id ? '3px solid var(--color-accent)' : '3px solid transparent',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
               }}
             >
+              <Icon size={16} />
               {label}
             </button>
           ))}
@@ -248,8 +253,8 @@ function StripeTab({ authFetch, user }) {
       {user?.role === 'host' && (
         <>
           {error && <div style={{ ...errBox, marginBottom: 12 }}>{error}</div>}
-          <button onClick={connect} disabled={loading} style={{ padding: '10px 24px', background: '#635bff', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', fontSize: 13, opacity: loading ? 0.7 : 1 }}>
-            {loading ? 'Redirecting…' : '💳 Connect with Stripe'}
+          <button onClick={connect} disabled={loading} style={{ padding: '10px 24px', background: '#635bff', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', fontSize: 13, opacity: loading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <CreditCard size={16} /> {loading ? 'Redirecting…' : 'Connect with Stripe'}
           </button>
         </>
       )}

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MessageSquare, FileText, Sparkles, CheckSquare } from 'lucide-react';
 import BookingChatThread from './BookingChatThread';
 import AIAssistPanel     from './AIAssistPanel';
 
@@ -19,10 +20,10 @@ export default function BookingWorkspace({ booking }) {
   ]);
 
   const TABS = [
-    { id: 'chat',     label: '💬 Chat' },
-    { id: 'notes',    label: '📝 Notes' },
-    { id: 'ai',       label: '✨ AI Assist' },
-    { id: 'checklist',label: '✅ Checklist' },
+    { id: 'chat',     label: 'Chat', Icon: MessageSquare },
+    { id: 'notes',    label: 'Notes', Icon: FileText },
+    { id: 'ai',       label: 'AI Assist', Icon: Sparkles },
+    { id: 'checklist',label: 'Checklist', Icon: CheckSquare },
   ];
 
   const toggleCheck = (id) =>
@@ -43,18 +44,22 @@ export default function BookingWorkspace({ booking }) {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--color-background-primary)', borderRadius: 12, overflow: 'hidden', border: '0.5px solid var(--color-border-tertiary)' }}>
       {/* Tab bar */}
       <div style={{ display: 'flex', borderBottom: '0.5px solid var(--color-border-tertiary)', padding: '0 12px' }}>
-        {TABS.map(({ id, label }) => (
+        {TABS.map(({ id, label, Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
             style={{
               padding: '10px 12px', border: 'none', background: 'transparent', cursor: 'pointer',
               fontSize: 13, fontWeight: tab === id ? 600 : 400,
-              color:    tab === id ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
-              borderBottom: tab === id ? '2px solid #3b82f6' : '2px solid transparent',
+              color:    tab === id ? 'var(--plum-deep)' : 'var(--color-text-secondary)',
+              borderBottom: tab === id ? '2px solid var(--plum-primary)' : '2px solid transparent',
               marginBottom: -1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
             }}
           >
+            <Icon size={14} />
             {label}
           </button>
         ))}

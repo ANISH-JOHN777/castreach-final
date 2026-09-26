@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Star, Zap, Flame, ShieldCheck, X, ChevronLeft, ChevronRight, Headphones, Mic, Radio } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import RecommendedGuests from '../components/RecommendedGuests';
 
 const BADGE_LABELS = {
-  top_rated:     '⭐ Top Rated',
-  fast_responder:'⚡ Fast Responder',
-  most_booked:   '🔥 Most Booked',
-  verified_host: '✅ Verified Host',
+  top_rated:     'Top Rated',
+  fast_responder:'Fast Responder',
+  most_booked:   'Most Booked',
+  verified_host: 'Verified Host',
 };
 
 const CATEGORIES = [
@@ -147,7 +148,7 @@ export default function Discover() {
                 fontSize: 14,
               }}
             >
-              ✕
+              <X size={14} />
             </button>
           )}
         </div>
@@ -190,9 +191,9 @@ export default function Discover() {
           style={selectStyle}
         >
           <option value="">All Ratings</option>
-          <option value="4.5">★ 4.5 & Above</option>
-          <option value="4.0">★ 4.0 & Above</option>
-          <option value="3.0">★ 3.0 & Above</option>
+          <option value="4.5">4.5 & Above</option>
+          <option value="4.0">4.0 & Above</option>
+          <option value="3.0">3.0 & Above</option>
         </select>
 
         {/* Badge Filter */}
@@ -202,10 +203,10 @@ export default function Discover() {
           style={selectStyle}
         >
           <option value="">All Badges</option>
-          <option value="top_rated">⭐ Top Rated</option>
-          <option value="fast_responder">⚡ Fast Responder</option>
-          <option value="most_booked">🔥 Most Booked</option>
-          <option value="verified_host">✅ Verified Host</option>
+          <option value="top_rated">Top Rated</option>
+          <option value="fast_responder">Fast Responder</option>
+          <option value="most_booked">Most Booked</option>
+          <option value="verified_host">Verified Host</option>
         </select>
 
         {/* Sort Options */}
@@ -234,7 +235,7 @@ export default function Discover() {
               cursor: 'pointer',
             }}
           >
-            Clear Filters ✕
+            Clear Filters <X size={12} style={{ display: 'inline', marginLeft: 4 }} />
           </button>
         )}
       </div>
@@ -258,9 +259,9 @@ export default function Discover() {
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            style={{ ...pageBtnStyle, opacity: page === 1 ? 0.4 : 1 }}
+            style={{ ...pageBtnStyle, opacity: page === 1 ? 0.4 : 1, display: 'inline-flex', alignItems: 'center', gap: 4 }}
           >
-            ← Previous
+            <ChevronLeft size={14} /> Previous
           </button>
           <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontWeight: 500 }}>
             Page {pagination.page} of {pagination.pages} ({pagination.total} {oppositeRole}s)
@@ -268,9 +269,9 @@ export default function Discover() {
           <button
             onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))}
             disabled={page >= pagination.pages}
-            style={{ ...pageBtnStyle, opacity: page >= pagination.pages ? 0.4 : 1 }}
+            style={{ ...pageBtnStyle, opacity: page >= pagination.pages ? 0.4 : 1, display: 'inline-flex', alignItems: 'center', gap: 4 }}
           >
-            Next →
+            Next <ChevronRight size={14} />
           </button>
         </div>
       )}
@@ -336,8 +337,8 @@ function UserCard({ user, onView }) {
               {user.name}
             </div>
             {user.podcastName ? (
-              <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                🎧 {user.podcastName}
+              <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Radio size={12} color="var(--plum-primary)" /> {user.podcastName}
               </div>
             ) : (
               <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', textTransform: 'capitalize' }}>
@@ -351,7 +352,7 @@ function UserCard({ user, onView }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, marginBottom: 10 }}>
           {user.avgRating > 0 ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-secondary)' }}>
-              <span style={{ color: '#f59e0b' }}>★</span>
+              <Star size={12} fill="#f59e0b" color="#f59e0b" />
               <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{user.avgRating.toFixed(1)}</span>
               <span>({user.totalReviews})</span>
             </div>
@@ -452,7 +453,9 @@ function SkeletonCard() {
 function EmptyState({ role, onReset }) {
   return (
     <div style={{ textAlign: 'center', padding: '56px 24px', background: 'var(--color-background-primary)', borderRadius: 12, border: '1px dashed var(--color-border-tertiary)' }}>
-      <div style={{ fontSize: 44, marginBottom: 12 }}>{role === 'host' ? '🎧' : '🎤'}</div>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+        {role === 'host' ? <Headphones size={44} color="var(--plum-primary)" /> : <Mic size={44} color="var(--plum-primary)" />}
+      </div>
       <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 6, color: 'var(--color-text-primary)' }}>
         No {role}s match your criteria
       </div>
