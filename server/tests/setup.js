@@ -31,6 +31,11 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
-  await mongoose.disconnect();
-  if (mongo) await mongo.stop();
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.disconnect();
+  }
+  if (mongo) {
+    await mongo.stop({ doCleanup: true });
+  }
 });
+
