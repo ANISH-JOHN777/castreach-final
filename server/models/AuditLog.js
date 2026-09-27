@@ -16,7 +16,7 @@ const auditLogSchema = new mongoose.Schema(
   {
     collectionName: { type: String, required: true },
     documentId:     { type: mongoose.Schema.Types.ObjectId },
-    action:         { type: String, enum: ['create', 'update', 'delete'], required: true },
+    action:         { type: String, enum: ['create', 'update', 'delete', 'publish', 'unpublish', 'transcribe', 'retry', 'ai_generate', 'flag', 'review_created', 'review_updated', 'review_flagged', 'review_hidden', 'review_removed', 'moderation_update'], required: true },
     actor:          { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     actorRole:      { type: String },
     before:         { type: mongoose.Schema.Types.Mixed },

@@ -44,8 +44,25 @@ const bootSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['MONGODB_URI'],
-        message: 'Required',
+        message: 'Required in non-test environments',
       });
+    }
+
+    if (data.NODE_ENV === 'production') {
+      if (data.MONGODB_URI === 'memory') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['MONGODB_URI'],
+          message: 'In-memory MongoDB instance is forbidden in production',
+        });
+      }
+      if (data.JWT_SECRET === 'default_secret' || data.JWT_SECRET === 'change_me') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['JWT_SECRET'],
+          message: 'Insecure default JWT_SECRET is forbidden in production',
+        });
+      }
     }
   });
 
@@ -115,3 +132,4 @@ function validateEnv(env = process.env) {
 }
 
 module.exports = { validateEnv, requireFeatureEnv, missingFeatureVars, FEATURES, bootSchema };
+

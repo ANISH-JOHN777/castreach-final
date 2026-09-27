@@ -82,6 +82,35 @@ router.post('/room', verifyToken, async (req, res) => {
 });
 
 const storageService = require('../services/storage');
+const requireAdmin = require('../middleware/requireAdmin');
+
+// ── GET /api/recordings — admin: list operational recordings & render jobs ────
+router.get('/', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { recordingStatus, renderStatus, page = 1, limit = 20 } = req.query;
+    const filter = {};
+    if (recordingStatus) filter.recordingStatus = recordingStatus;
+    if (renderStatus) filter['recordingEdit.renderStatus'] = renderStatus;
+
+    const pg  = Math.max(1, parseInt(page,  10));
+    const lim = Math.min(100, Math.max(1, parseInt(limit, 10)));
+
+    const [recordings, total] = await Promise.all([
+      Booking.find(filter)
+        .select('recordingStatus recordingReady recordingDuration recordingStartedAt recordingStoppedAt recordingStorage recordingEdit host guest')
+        .populate('host', 'name avatar')
+        .populate('guest', 'name avatar')
+        .sort({ updatedAt: -1 })
+        .skip((pg - 1) * lim)
+        .limit(lim),
+      Booking.countDocuments(filter),
+    ]);
+
+    res.json({ success: true, recordings, total, page: pg, limit: lim });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
 
 // ── GET /api/recordings/:bookingId — get recording URL & storage ──────────────
 router.get('/:bookingId', verifyToken, async (req, res) => {
@@ -431,6 +460,79 @@ router.get('/:bookingId/render', verifyToken, async (req, res) => {
       renderStatus: edit.renderStatus,
       renderJobId: edit.renderJobId,
       error: edit.renderError || null,
+    });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/recordings/:bookingId/render-url — get signed URL for rendered recording ──
+router.get('/:bookingId/render-url', verifyToken, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.bookingId);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    const isParticipant = [booking.host, booking.guest]
+      .some((id) => id.toString() === req.user.id) || req.user.role === 'admin';
+    if (!isParticipant) return res.status(403).json({ error: 'Forbidden' });
+
+    const edit = booking.recordingEdit;
+    if (!edit || edit.renderStatus !== 'READY' || !edit.outputObjectKey) {
+      return res.status(400).json({ error: 'Rendered recording is not READY' });
+    }
+
+    const accessUrl = storageService.getSignedOutputUrl(booking, true);
+    res.json({
+      success: true,
+      bookingId: booking._id,
+      renderStatus: 'READY',
+      renderJobId: edit.renderJobId,
+      outputObjectKey: edit.outputObjectKey,
+      outputSizeBytes: edit.outputSizeBytes,
+      accessUrl,
+    });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/recordings/:bookingId/render/retry — retry a FAILED render job ─────
+router.post('/:bookingId/render/retry', verifyToken, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.bookingId);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    const isParticipant = [booking.host, booking.guest]
+      .some((id) => id.toString() === req.user.id) || req.user.role === 'admin';
+    if (!isParticipant) return res.status(403).json({ error: 'Forbidden' });
+
+    const edit = booking.recordingEdit;
+    if (!edit || edit.renderStatus !== 'FAILED') {
+      return res.status(400).json({ error: 'Only FAILED render jobs can be retried' });
+    }
+
+    const renderJobId = `job_${crypto.randomBytes(8).toString('hex')}`;
+    booking.recordingEdit.renderStatus = 'QUEUED';
+    booking.recordingEdit.renderJobId = renderJobId;
+    booking.recordingEdit.renderRequestedAt = new Date();
+    booking.recordingEdit.renderError = undefined;
+
+    await booking.save();
+
+    if (process.env.NODE_ENV !== 'test') {
+      setImmediate(() => {
+        renderWorker.processNextJob().catch((err) => {
+          console.error('Async renderWorker execution warning:', err.message);
+        });
+      });
+    }
+
+    res.status(202).json({
+      success: true,
+      bookingId: booking._id,
+      renderJobId,
+      renderStatus: 'QUEUED',
+      message: 'Render job retry queued successfully',
     });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });

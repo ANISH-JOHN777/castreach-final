@@ -321,4 +321,7 @@ router.get('/context', verifyToken, async (req, res) => {
   }
 });
 
+// Mount Phase E3 AI Podcast Intelligence sub-router
+router.use('/', require('./aiIntelligence'));
+
 module.exports = router;

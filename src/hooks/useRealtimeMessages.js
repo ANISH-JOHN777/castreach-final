@@ -1,48 +1,156 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { realtime } from '../services/realtime';
 
 /**
- * useRealtimeMessages — polls for new messages and notifications.
- * In production: replace polling with a WebSocket or Supabase Realtime subscription.
+ * useRealtimeMessages — manages real-time messaging, typing indicators, read receipts,
+ * and connection status for a specific booking channel, with REST fallback & recovery.
  *
- * Returns { messages, notifications, unreadCount, markRead }
+ * Returns { messages, setMessages, loading, error, connectionStatus, typingUser, startTyping, stopTyping, markRead }
  */
-export function useRealtimeMessages(bookingId, pollIntervalMs = 5000) {
-  const { authFetch } = useAuth();
+export function useRealtimeMessages(bookingId, pollIntervalMs = 10000) {
+  const { user, authFetch } = useAuth();
   const [messages, setMessages] = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState(null);
-  const intervalRef = useRef(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState(realtime.status);
+  const [typingUser, setTypingUser] = useState(null);
+  const typingTimerRef = useRef(null);
+  const isMountedRef = useRef(true);
 
+  // Fetch full history via REST
+  const fetchMessages = useCallback(async (isInitial = false) => {
+    if (!bookingId) return;
+    if (isInitial) setLoading(true);
+    try {
+      const res = await authFetch(`/messages/${bookingId}`);
+      const data = await res.json();
+      if (res.ok && isMountedRef.current) {
+        setMessages(data.messages || []);
+        setError(null);
+      } else if (isMountedRef.current) {
+        setError(data.error || 'Failed to fetch messages');
+      }
+    } catch (err) {
+      if (isMountedRef.current) setError(err.message);
+    } finally {
+      if (isMountedRef.current && isInitial) setLoading(false);
+    }
+  }, [bookingId, authFetch]);
+
+  // Connect & subscribe to realtime websocket
   useEffect(() => {
+    isMountedRef.current = true;
     if (!bookingId) {
       setLoading(false);
       return;
     }
 
-    const poll = async () => {
-      try {
-        const res  = await authFetch(`/messages/${bookingId}`);
-        const data = await res.json();
-        if (res.ok) {
-          setMessages(data.messages || []);
-          setError(null);
-        } else {
-          setError(data.error || 'Failed to fetch messages');
-        }
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+    const token = localStorage.getItem('token') || (user && user.token);
+    if (token) {
+      realtime.connect(token);
+    }
+    realtime.subscribe(bookingId);
+
+    // Track status
+    const unsubscribeStatus = realtime.onStatusChange((status) => {
+      if (isMountedRef.current) setConnectionStatus(status);
+    });
+
+    // Listen for new messages
+    const unsubscribeNew = realtime.on('message:new', (newMsg) => {
+      if (!isMountedRef.current || !newMsg || newMsg.booking !== bookingId) return;
+      setMessages((prev) => {
+        // Deduplicate by _id
+        if (prev.some((m) => m._id === newMsg._id)) return prev;
+        // Sort deterministically by createdAt / _id
+        const next = [...prev, newMsg];
+        return next.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      });
+    });
+
+    // Listen for read receipts
+    const unsubscribeRead = realtime.on('message:read', (data) => {
+      if (!isMountedRef.current || data.bookingId !== bookingId) return;
+      setMessages((prev) =>
+        prev.map((m) => (m._id === data.messageId ? { ...m, isRead: true } : m))
+      );
+    });
+
+    // Listen for typing events
+    const unsubscribeTypingStart = realtime.on('typing:start', (data) => {
+      if (!isMountedRef.current || data.bookingId !== bookingId) return;
+      if (data.userId !== user?._id) {
+        setTypingUser({ userId: data.userId, name: data.senderName || 'Participant' });
+        if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+        typingTimerRef.current = setTimeout(() => {
+          if (isMountedRef.current) setTypingUser(null);
+        }, 4000);
       }
+    });
+
+    const unsubscribeTypingStop = realtime.on('typing:stop', (data) => {
+      if (!isMountedRef.current || data.bookingId !== bookingId) return;
+      if (data.userId !== user?._id) {
+        setTypingUser(null);
+      }
+    });
+
+    // Listen for reconnect to recover missed messages
+    const unsubscribeReconnect = realtime.on('reconnect', () => {
+      fetchMessages(false);
+    });
+
+    // Initial fetch
+    fetchMessages(true);
+
+    // Fallback polling only when OFFLINE
+    const pollInterval = setInterval(() => {
+      if (realtime.status === 'OFFLINE') {
+        fetchMessages(false);
+      }
+    }, pollIntervalMs);
+
+    return () => {
+      isMountedRef.current = false;
+      realtime.unsubscribe(bookingId);
+      unsubscribeStatus();
+      unsubscribeNew();
+      unsubscribeRead();
+      unsubscribeTypingStart();
+      unsubscribeTypingStop();
+      unsubscribeReconnect();
+      clearInterval(pollInterval);
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     };
+  }, [bookingId, user, fetchMessages, pollIntervalMs]);
 
-    poll();
-    intervalRef.current = setInterval(poll, pollIntervalMs);
-    return () => clearInterval(intervalRef.current);
-  }, [bookingId, pollIntervalMs]);
+  const startTyping = useCallback(() => {
+    if (bookingId) realtime.startTyping(bookingId);
+  }, [bookingId]);
 
-  return { messages, setMessages, loading, error };
+  const stopTyping = useCallback(() => {
+    if (bookingId) realtime.stopTyping(bookingId);
+  }, [bookingId]);
+
+  const markRead = useCallback(async (messageId) => {
+    if (!messageId) return;
+    try {
+      await authFetch(`/messages/${messageId}/read`, { method: 'POST' });
+    } catch {}
+  }, [authFetch]);
+
+  return {
+    messages,
+    setMessages,
+    loading,
+    error,
+    connectionStatus,
+    typingUser,
+    startTyping,
+    stopTyping,
+    markRead,
+  };
 }
 
 /**
@@ -55,7 +163,7 @@ export function useNotifications(pollIntervalMs = 15000) {
 
   const fetchNotifs = async () => {
     try {
-      const res  = await authFetch('/notifications');
+      const res = await authFetch('/notifications');
       const data = await res.json();
       if (res.ok) setNotifications(data.notifications || []);
     } catch { /* silent */ }
@@ -76,3 +184,4 @@ export function useNotifications(pollIntervalMs = 15000) {
 
   return { notifications, unreadCount, markAllRead };
 }
+

@@ -1,13 +1,14 @@
 const router       = require('express').Router();
 const User         = require('../models/User');
 const Report       = require('../models/Report');
+const Review       = require('../models/Review');
 const verifyToken  = require('../middleware/verifyToken');
 const requireAdmin = require('../middleware/requireAdmin');
 const { validate, ReportSchema } = require('../middleware/validate');
 const stitcher     = require('../stitcher');
+const { recomputeUserRating } = require('../services/reviews');
 
 // ── POST /api/moderation/report — report a user ───────────────────────────────
-// BUG-5: persist to the Report collection (was console.log() only — data lost on restart).
 router.post('/report', verifyToken, validate(ReportSchema), async (req, res) => {
   try {
     const { reportedId, reason } = req.body;
@@ -69,6 +70,73 @@ router.get('/reports', verifyToken, requireAdmin, async (req, res) => {
   }
 });
 
+// ── GET /api/moderation/reviews — admin: list/search reviews for moderation ─────
+router.get('/reviews', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { status, rating, q, page = 1, limit = 20 } = req.query;
+    const p = Math.max(1, parseInt(page, 10) || 1);
+    const l = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
+
+    const filter = {};
+    if (status && status !== 'all') filter.status = status;
+    if (rating) filter.rating = Number(rating);
+    if (q) {
+      filter.$or = [
+        { title: new RegExp(q.trim(), 'i') },
+        { comment: new RegExp(q.trim(), 'i') },
+      ];
+    }
+
+    const [reviews, total] = await Promise.all([
+      Review.find(filter)
+        .populate('reviewer', 'name displayName email')
+        .populate('reviewee', 'name displayName email')
+        .sort({ createdAt: -1 })
+        .skip((p - 1) * l)
+        .limit(l),
+      Review.countDocuments(filter),
+    ]);
+
+    res.json({ success: true, reviews, pagination: { total, page: p, limit: l, pages: Math.ceil(total / l) } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PATCH /api/moderation/reviews/:reviewId — admin: update review status ─────
+router.patch('/reviews/:reviewId', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!['PUBLISHED', 'HIDDEN', 'FLAGGED', 'REMOVED'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+
+    const review = await Review.findById(req.params.reviewId);
+    if (!review) return res.status(404).json({ error: 'Review not found' });
+
+    const oldStatus = review.status;
+    review.status = status;
+    await review.save();
+
+    // Recompute reviewee rating so hidden/removed reviews do not count towards reputation
+    await recomputeUserRating(review.reviewee);
+
+    stitcher.audit.logReq(req, {
+      collectionName: 'reviews',
+      documentId:     review._id,
+      action:         'moderation_update',
+      actor:          req.user.id,
+      actorRole:      req.user.role,
+      before: { status: oldStatus },
+      after:  { status },
+    });
+
+    res.json({ success: true, message: `Review status updated to ${status}`, review });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── POST /api/moderation/block/:userId — admin block ─────────────────────────
 router.post('/block/:userId', verifyToken, requireAdmin, async (req, res) => {
   try {
@@ -76,7 +144,7 @@ router.post('/block/:userId', verifyToken, requireAdmin, async (req, res) => {
       req.params.userId,
       { isBlocked: true },
       { new: true }
-    ).select('-email -password -refreshToken -stripeAccountId');  // SEC-5: no PII in response
+    ).select('-email -password -refreshToken -stripeAccountId');
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     stitcher.audit.logReq(req, {
@@ -107,7 +175,7 @@ router.post('/unblock/:userId', verifyToken, requireAdmin, async (req, res) => {
       req.params.userId,
       { isBlocked: false },
       { new: true }
-    ).select('-email -password -refreshToken -stripeAccountId');  // SEC-5: no PII in response
+    ).select('-email -password -refreshToken -stripeAccountId');
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     stitcher.audit.logReq(req, {

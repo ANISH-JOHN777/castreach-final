@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { spawn } = require('child_process');
 const Booking = require('../models/Booking');
 const storageService = require('../services/storage');
+const notificationService = require('../services/notifications');
 
 /**
  * Phase C3.3 Asynchronous FFmpeg Recording Render Worker
@@ -115,6 +116,29 @@ async function processNextJob() {
     booking.recordingEdit.renderError = undefined;
 
     await booking.save();
+
+    // Send notifications to host & guest
+    if (booking.host && booking.guest) {
+      const hostId = booking.host.toString();
+      const guestId = booking.guest.toString();
+      Promise.all([
+        notificationService.notify(hostId, {
+          type: 'message',
+          title: 'Edited Recording Ready',
+          body: 'Your edited CastReach recording is ready to view.',
+          link: `/bookings/${booking._id}`,
+        }),
+        notificationService.notify(guestId, {
+          type: 'message',
+          title: 'Edited Recording Ready',
+          body: 'Your edited CastReach recording is ready to view.',
+          link: `/bookings/${booking._id}`,
+        }),
+      ]).catch((notifyErr) => {
+        console.error('Render completion notification error:', notifyErr.message);
+      });
+    }
+
     return booking;
   } catch (err) {
     console.error(`Render job ${renderJobId} failed for booking ${bookingId}:`, err.message);
@@ -124,6 +148,28 @@ async function processNextJob() {
     booking.recordingEdit.renderError = err.message;
 
     await booking.save();
+
+    if (booking.host && booking.guest) {
+      const hostId = booking.host.toString();
+      const guestId = booking.guest.toString();
+      Promise.all([
+        notificationService.notify(hostId, {
+          type: 'message',
+          title: 'Edited Recording Failed',
+          body: 'The edited recording could not be generated.',
+          link: `/bookings/${booking._id}`,
+        }),
+        notificationService.notify(guestId, {
+          type: 'message',
+          title: 'Edited Recording Failed',
+          body: 'The edited recording could not be generated.',
+          link: `/bookings/${booking._id}`,
+        }),
+      ]).catch((notifyErr) => {
+        console.error('Render failure notification error:', notifyErr.message);
+      });
+    }
+
     return booking;
   } finally {
     // 8. Clean up temporary working directory

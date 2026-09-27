@@ -22,11 +22,32 @@ async function applyStripeEvent(event) {
       break;
     }
 
+    case 'payment_intent.succeeded': {
+      const pi = event.data.object;
+      await Booking.findOneAndUpdate(
+        { stripePaymentIntentId: pi.id },
+        { paymentStatus: 'released', paymentReleasedAt: new Date() }
+      );
+      break;
+    }
+
+    case 'charge.refunded': {
+      const charge = event.data.object;
+      const piId = charge.payment_intent;
+      if (piId) {
+        await Booking.findOneAndUpdate(
+          { stripePaymentIntentId: piId },
+          { paymentStatus: 'refunded', paymentRefundedAt: new Date() }
+        );
+      }
+      break;
+    }
+
     case 'payment_intent.payment_failed': {
       const pi = event.data.object;
       await Booking.findOneAndUpdate(
         { stripePaymentIntentId: pi.id },
-        { paymentStatus: 'unpaid', status: 'cancelled' }
+        { paymentStatus: 'failed' }
       );
       break;
     }

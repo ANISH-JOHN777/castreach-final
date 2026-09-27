@@ -25,6 +25,8 @@ const AnalyticsEvent   = require('../../models/AnalyticsEvent');
 const AuditLog         = require('../../models/AuditLog');
 const AiSession        = require('../../models/AiSession');
 const AiMemory         = require('../../models/AiMemory');
+const Podcast          = require('../../models/Podcast');
+const Episode          = require('../../models/Episode');
 
 /**
  * @param {CollectionRegistry}  registry
@@ -121,6 +123,20 @@ module.exports = function configure(registry, schema, relationships) {
     owner:       'ai',
     tags:        ['core', 'ai', 'pii'],
     piiFields:   ['value'],
+  });
+
+  registry.register('podcasts', Podcast, {
+    version:     1,
+    description: 'Podcast shows and metadata.',
+    owner:       'podcasts',
+    tags:        ['core'],
+  });
+
+  registry.register('episodes', Episode, {
+    version:     1,
+    description: 'Podcast episodes and media references.',
+    owner:       'podcasts',
+    tags:        ['core'],
   });
 
   // ── Schema introspection (derived from Mongoose models — no duplication) ──

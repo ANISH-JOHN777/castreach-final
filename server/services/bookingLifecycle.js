@@ -21,15 +21,6 @@ const idOf = (ref) =>
 async function completeBooking(booking) {
   if (!booking || booking.status === 'completed') return booking;
 
-  if (booking.paymentStatus === 'held' && booking.stripePaymentIntentId) {
-    try {
-      await releaseEscrow(booking.stripePaymentIntentId, booking.host?.stripeAccountId);
-      booking.paymentStatus = 'released';
-    } catch (err) {
-      console.error(`Escrow release failed for booking ${booking._id}:`, err.message);
-    }
-  }
-
   booking.status         = 'completed';
   booking.recordingReady = true;
   await booking.save();

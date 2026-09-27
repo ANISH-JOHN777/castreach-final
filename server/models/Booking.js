@@ -19,9 +19,19 @@ const bookingSchema = new mongoose.Schema(
     currency:              { type: String, default: 'usd' },
     paymentStatus: {
       type: String,
-      enum: ['unpaid', 'held', 'released', 'refunded'],
+      enum: ['unpaid', 'held', 'release_pending', 'released', 'refunded', 'disputed', 'failed'],
       default: 'unpaid',
     },
+    // Phase D1 Payment Confirmation & Escrow Completion
+    hostConfirmedCompletion:  { type: Boolean, default: false },
+    hostConfirmedAt:          { type: Date },
+    guestConfirmedCompletion: { type: Boolean, default: false },
+    guestConfirmedAt:         { type: Date },
+    paymentReleasedAt:        { type: Date },
+    paymentRefundedAt:        { type: Date },
+    paymentDisputedAt:        { type: Date },
+    stripeTransferId:         { type: String },
+    stripeRefundId:           { type: String },
     // Recording
     dailyRoomUrl:       { type: String },
     recordingUrl:       { type: String },
@@ -57,16 +67,18 @@ const bookingSchema = new mongoose.Schema(
       outputObjectKey:   { type: String },
       outputSizeBytes:   { type: Number },
       outputFingerprint: { type: String },
+      renderDurationSeconds: { type: Number },
     },
     // Phase C3.2 Persistent Recording Storage Metadata
     recordingStorage: {
-      provider:    { type: String, default: 'r2' },
-      objectKey:   { type: String },
-      status:      { type: String, enum: ['NOT_STORED', 'STORING', 'READY', 'FAILED'], default: 'NOT_STORED' },
-      contentType: { type: String, default: 'video/mp4' },
-      sizeBytes:   { type: Number },
-      storedAt:    { type: Date },
-      error:       { type: String },
+      provider:        { type: String, default: 'r2' },
+      objectKey:       { type: String },
+      status:          { type: String, enum: ['NOT_STORED', 'STORING', 'READY', 'FAILED'], default: 'NOT_STORED' },
+      contentType:     { type: String, default: 'video/mp4' },
+      sizeBytes:       { type: Number },
+      durationSeconds: { type: Number },
+      storedAt:        { type: Date },
+      error:           { type: String },
     },
     // BUG-4: timestamp set when host first responds (confirm or cancel).
     // Used to compute avgResponseTime and responseRate on User.
@@ -79,6 +91,49 @@ const bookingSchema = new mongoose.Schema(
     guestReview: {
       rating:  { type: Number, min: 1, max: 5 },
       comment: { type: String, maxlength: 500 },
+    },
+    // Phase E2 Podcast Transcription Metadata
+    transcription: {
+      status: {
+        type: String,
+        enum: ['NOT_REQUESTED', 'QUEUED', 'PROCESSING', 'READY', 'FAILED'],
+        default: 'NOT_REQUESTED',
+        index: true,
+      },
+      jobId:               { type: String },
+      sourceType:          { type: String, enum: ['original', 'edited', 'episode'], default: 'original' },
+      sourceObjectKey:     { type: String },
+      language:            { type: String, default: 'en' },
+      durationSeconds:     { type: Number, default: 0 },
+      provider:            { type: String, default: 'whisper' },
+      transcriptObjectKey: { type: String },
+      segmentCount:        { type: Number, default: 0 },
+      requestedAt:         { type: Date },
+      startedAt:           { type: Date },
+      completedAt:         { type: Date },
+      failedAt:            { type: Date },
+      error:               { type: String },
+      attempt:             { type: Number, default: 0 },
+      fingerprint:         { type: String },
+    },
+    // Phase E3 AI Podcast Intelligence Metadata
+    aiContent: {
+      type: Map,
+      of: new mongoose.Schema(
+        {
+          status: {
+            type: String,
+            enum: ['NOT_REQUESTED', 'QUEUED', 'PROCESSING', 'READY', 'FAILED'],
+            default: 'NOT_REQUESTED',
+          },
+          jobId: { type: String },
+          artifactObjectKey: { type: String },
+          updatedAt: { type: Date },
+          error: { type: String },
+        },
+        { _id: false }
+      ),
+      default: {},
     },
   },
   { timestamps: true }

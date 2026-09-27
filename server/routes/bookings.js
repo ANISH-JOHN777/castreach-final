@@ -22,9 +22,9 @@ router.get('/', verifyToken, async (req, res) => {
     const page  = Math.max(1, parseInt(req.query.page, 10)  || 1);
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
 
-    const filter = {
-      $or: [{ host: req.user.id }, { guest: req.user.id }],
-    };
+    const filter = req.user.role === 'admin'
+      ? {}
+      : { $or: [{ host: req.user.id }, { guest: req.user.id }] };
     if (status) filter.status = status;
 
     const [bookings, total] = await Promise.all([
@@ -49,6 +49,17 @@ router.get('/', verifyToken, async (req, res) => {
 // ── GET /api/bookings/:id ─────────────────────────────────────────────────────
 router.get('/:id', verifyToken, async (req, res) => {
   try {
+    if (req.params.id === 'my') {
+      const filter = req.user.role === 'admin'
+        ? {}
+        : { $or: [{ host: req.user.id }, { guest: req.user.id }] };
+      const bookings = await Booking.find(filter)
+        .populate('host',  'name avatar podcastName avgRating')
+        .populate('guest', 'name avatar expertise avgRating')
+        .sort({ slotStart: -1 });
+      return res.json({ bookings });
+    }
+
     const booking = await Booking.findById(req.params.id)
       .populate('host',  'name avatar podcastName')
       .populate('guest', 'name avatar expertise');
@@ -70,27 +81,46 @@ router.get('/:id', verifyToken, async (req, res) => {
 // are atomic. Without this, two concurrent requests could both pass the conflict
 // check before either creates a document, resulting in double-bookings.
 router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
-  const session = await mongoose.startSession();
+  let session = null;
   try {
+    session = await mongoose.startSession();
     session.startTransaction();
+  } catch {
+    if (session) {
+      try { session.endSession(); } catch {}
+    }
+    session = null;
+  }
 
+  const cleanupSession = async (shouldAbort = false) => {
+    if (session) {
+      try {
+        if (shouldAbort && session.inTransaction()) {
+          await session.abortTransaction();
+        }
+      } catch {}
+      try { session.endSession(); } catch {}
+    }
+  };
+
+  try {
     const { hostId, slotStart, slotEnd, topics, message } = req.body;
 
     if (hostId === req.user.id) {
-      await session.abortTransaction();
+      await cleanupSession(true);
       return res.status(400).json({ error: 'You cannot book yourself' });
     }
 
-    const host = await User.findById(hostId)
-      .select('role isBlocked sessionRateCents')
-      .session(session);
+    let hostQuery = User.findById(hostId).select('role isBlocked sessionRateCents');
+    if (session?.inTransaction()) hostQuery = hostQuery.session(session);
+    const host = await hostQuery;
 
     if (!host || host.isBlocked) {
-      await session.abortTransaction();
+      await cleanupSession(true);
       return res.status(404).json({ error: 'Host not found' });
     }
     if (host.role !== 'host') {
-      await session.abortTransaction();
+      await cleanupSession(true);
       return res.status(400).json({ error: 'Selected user is not a host' });
     }
 
@@ -98,27 +128,28 @@ router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
     const end   = new Date(slotEnd);
 
     if (end <= start) {
-      await session.abortTransaction();
+      await cleanupSession(true);
       return res.status(400).json({ error: 'slotEnd must be after slotStart' });
     }
     if (start <= new Date()) {
-      await session.abortTransaction();
+      await cleanupSession(true);
       return res.status(400).json({ error: 'Cannot book a slot in the past' });
     }
 
-    const conflict = await Booking.findOne({
+    let conflictQuery = Booking.findOne({
       host:   hostId,
       status: { $in: ['pending', 'confirmed'] },
       $or:    [{ slotStart: { $lt: end }, slotEnd: { $gt: start } }],
-    }).session(session);
+    });
+    if (session?.inTransaction()) conflictQuery = conflictQuery.session(session);
+    const conflict = await conflictQuery;
 
     if (conflict) {
-      await session.abortTransaction();
+      await cleanupSession(true);
       return res.status(409).json({ error: 'Slot already booked' });
     }
 
-    // create() with a session must receive an array and returns an array.
-    const [booking] = await Booking.create([{
+    const bookingData = {
       host:        hostId,
       guest:       req.user.id,
       slotStart:   start,
@@ -126,7 +157,11 @@ router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
       topics,
       message,
       amountCents: host.sessionRateCents || 0,
-    }], { session });
+    };
+
+    const [booking] = session?.inTransaction()
+      ? await Booking.create([bookingData], { session })
+      : await Booking.create([bookingData]);
 
     // Mark matching availability slot as booked inside the transaction if present
     await Availability.updateOne(
@@ -136,18 +171,24 @@ router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
         $or: [{ start, end }, { start: { $lt: end }, end: { $gt: start } }],
       },
       { isBooked: true },
-      { session }
+      session?.inTransaction() ? { session } : {}
     );
 
     // Create system message for booking creation
-    await Message.create([{
-      booking:  booking._id,
-      sender:   req.user.id,
-      content:  'Booking request sent.',
-      isSystem: true,
-    }], { session });
+    await Message.create(
+      [{
+        booking:  booking._id,
+        sender:   req.user.id,
+        content:  'Booking request sent.',
+        isSystem: true,
+      }],
+      session?.inTransaction() ? { session } : {}
+    );
 
-    await session.commitTransaction();
+    if (session?.inTransaction()) {
+      await session.commitTransaction();
+    }
+    await cleanupSession(false);
 
     // Audit — fire-and-forget after commit succeeds.
     stitcher.audit.logReq(req, {
@@ -350,7 +391,8 @@ router.patch('/:id/cancel', verifyToken, async (req, res) => {
 // ── POST /api/bookings/:id/review ─────────────────────────────────────────────
 router.post('/:id/review', verifyToken, validate(ReviewSchema), async (req, res) => {
   try {
-    const { rating, comment } = req.body;
+    const { rating, comment, title } = req.body;
+    const Review = require('../models/Review');
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ error: 'Not found' });
     if (booking.status !== 'completed') return res.status(400).json({ error: 'Booking not completed' });
@@ -359,11 +401,38 @@ router.post('/:id/review', verifyToken, validate(ReviewSchema), async (req, res)
     const isGuest = booking.guest.toString() === req.user.id;
     if (!isHost && !isGuest) return res.status(403).json({ error: 'Forbidden' });
 
-    if (isGuest) booking.hostReview  = { rating, comment };
-    if (isHost)  booking.guestReview = { rating, comment };
-    await booking.save();
+    const numRating = Number(rating);
+    if (isNaN(numRating) || !Number.isInteger(numRating) || numRating < 1 || numRating > 5) {
+      return res.status(400).json({ error: 'Rating must be an integer between 1 and 5' });
+    }
 
+    const reviewerId = req.user.id;
     const reviewedUserId = isGuest ? booking.host.toString() : booking.guest.toString();
+
+    if (reviewerId === reviewedUserId) {
+      return res.status(400).json({ error: 'Self-reviews are not permitted' });
+    }
+
+    // Check duplicate
+    const existingReview = await Review.findOne({ booking: booking._id, reviewer: reviewerId });
+    if (existingReview) {
+      return res.status(409).json({ error: 'You have already submitted a review for this booking' });
+    }
+
+    await Review.create({
+      booking: booking._id,
+      reviewer: reviewerId,
+      reviewee: reviewedUserId,
+      rating: numRating,
+      title: title || '',
+      comment: comment || '',
+      status: 'PUBLISHED',
+      tenantId: req.headers['x-tenant-id'] || 'castreach',
+    });
+
+    if (isGuest) booking.hostReview  = { rating: numRating, comment: comment || '' };
+    if (isHost)  booking.guestReview = { rating: numRating, comment: comment || '' };
+    await booking.save();
 
     await recomputeUserRating(reviewedUserId);
     await triggerBadgeCheck(reviewedUserId);
@@ -372,11 +441,14 @@ router.post('/:id/review', verifyToken, validate(ReviewSchema), async (req, res)
       bookingId:   booking._id.toString(),
       reviewerId:  req.user.id,
       reviewedId:  reviewedUserId,
-      rating,
+      rating: numRating,
     });
 
     res.json({ booking });
   } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({ error: 'You have already submitted a review for this booking' });
+    }
     res.status(err.status || 500).json({ error: err.message });
   }
 });

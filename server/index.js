@@ -4,31 +4,77 @@ require('dotenv').config({ path: path.join(__dirname, '../.env') });
 require('dotenv').config();
 
 const mongoose = require('mongoose');
+const http = require('http');
 const app = require('./app');
+const realtimeServer = require('./services/realtimeServer');
+const logger = require('./utils/logger');
 
 // ── Database + server start ───────────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
+let server;
 
 async function startServer() {
   let uri = process.env.MONGODB_URI;
 
   if (uri === 'memory') {
-    const { MongoMemoryServer } = require('mongodb-memory-server');
-    const mongod = await MongoMemoryServer.create();
+    if (process.env.NODE_ENV === 'production') {
+      logger.error('In-memory MongoDB instance is forbidden in production environment.');
+      process.exit(1);
+    }
+    const { MongoMemoryReplSet } = require('mongodb-memory-server');
+    const mongod = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
     uri = mongod.getUri();
-    console.log('ℹ️ Using in-memory MongoDB instance');
+    logger.info('Using in-memory MongoDB Replica Set instance (rs0)');
   }
 
   try {
-    await mongoose.connect(uri);
-    console.log('✅ MongoDB connected');
-    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+    await mongoose.connect(uri, {
+      maxPoolSize: 20,
+      minPoolSize: 5,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    });
+    logger.info('MongoDB connected successfully', { poolSize: 20 });
+
+    server = http.createServer(app);
+    realtimeServer.init(server);
+
+    server.listen(PORT, () => {
+      logger.info(`Server running on port ${PORT}`, { env: process.env.NODE_ENV || 'development' });
+    });
   } catch (err) {
-    console.error('❌ MongoDB connection error:', err.message);
+    logger.error('MongoDB connection error', { error: err.message });
     process.exit(1);
   }
 }
 
+async function gracefulShutdown(signal) {
+  logger.info(`Received ${signal}. Initiating graceful shutdown...`);
+
+  if (server) {
+    server.close(() => {
+      logger.info('HTTP server closed.');
+    });
+  }
+
+  if (realtimeServer && typeof realtimeServer.close === 'function') {
+    realtimeServer.close();
+    logger.info('WebSocket connections closed.');
+  }
+
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.connection.close(false);
+    logger.info('MongoDB connection closed.');
+  }
+
+  logger.info('Graceful shutdown complete.');
+  process.exit(0);
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
 startServer();
 
 module.exports = app;
+

@@ -1,19 +1,31 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRealtimeMessages } from '../hooks/useRealtimeMessages';
-import { Send, AlertCircle } from 'lucide-react';
+import { Send, AlertCircle, Wifi, WifiOff } from 'lucide-react';
 
 /**
- * BookingChatThread — per-booking messaging UI with system messages, sending states, and header.
+ * BookingChatThread — per-booking messaging UI with system messages, real-time presence/typing,
+ * sending states, and connection status header.
  * Props: bookingId, booking (populated booking object)
  */
 export default function BookingChatThread({ bookingId, booking }) {
   const { user, authFetch } = useAuth();
-  const { messages, setMessages, loading, error } = useRealtimeMessages(bookingId);
-  const [input, setInput]       = useState('');
-  const [sending, setSending]   = useState(false);
+  const {
+    messages,
+    setMessages,
+    loading,
+    error,
+    connectionStatus,
+    typingUser,
+    startTyping,
+    stopTyping,
+  } = useRealtimeMessages(bookingId);
+
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
   const [failedMsg, setFailedMsg] = useState(null);
   const bottomRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
   const QUICK_MESSAGES = [
     'Looking forward to the session!',
@@ -24,10 +36,22 @@ export default function BookingChatThread({ bookingId, booking }) {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, typingUser]);
+
+  const handleInputChange = (e) => {
+    setInput(e.target.value);
+    startTyping();
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      stopTyping();
+    }, 2000);
+  };
 
   const send = async (contentStr = input.trim()) => {
     if (!contentStr || sending) return;
+    stopTyping();
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
     const tempId = `temp-${Date.now()}`;
     const optimisticMsg = {
       _id: tempId,
@@ -76,6 +100,14 @@ export default function BookingChatThread({ bookingId, booking }) {
 
   const slotDate = booking?.slotStart ? new Date(booking.slotStart) : null;
 
+  const statusColors = {
+    CONNECTED: { bg: '#e6f4ea', color: '#137333', text: 'Connected' },
+    CONNECTING: { bg: '#fef7e0', color: '#b06000', text: 'Connecting…' },
+    RECONNECTING: { bg: '#fef7e0', color: '#b06000', text: 'Reconnecting…' },
+    OFFLINE: { bg: '#fce8e6', color: '#c5221f', text: 'Offline' },
+  };
+  const currentStatus = statusColors[connectionStatus] || statusColors.OFFLINE;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: 'var(--color-background-primary)' }}>
       {/* Header */}
@@ -91,9 +123,19 @@ export default function BookingChatThread({ bookingId, booking }) {
               </div>
             )}
           </div>
-          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 12, textTransform: 'capitalize', background: 'var(--color-background-info)', color: 'var(--color-text-info)' }}>
-            {booking.status}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{
+              fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10,
+              background: currentStatus.bg, color: currentStatus.color,
+              display: 'flex', alignItems: 'center', gap: 4,
+            }}>
+              {connectionStatus === 'CONNECTED' ? <Wifi size={12} /> : <WifiOff size={12} />}
+              {currentStatus.text}
+            </span>
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 12, textTransform: 'capitalize', background: 'var(--color-background-info)', color: 'var(--color-text-info)' }}>
+              {booking.status}
+            </span>
+          </div>
         </div>
       )}
 
@@ -150,7 +192,9 @@ export default function BookingChatThread({ bookingId, booking }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3, fontSize: 10, color: 'var(--color-text-secondary)' }}>
                   <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   {me && msg.status === 'sending' && <span style={{ color: 'var(--color-text-secondary)' }}>• sending…</span>}
-                  {me && msg.status === 'sent' && <span style={{ color: 'var(--color-success)' }}>• sent</span>}
+                  {me && (msg.status === 'sent' || !msg.status) && (
+                    <span style={{ color: 'var(--color-success)' }}>{msg.isRead ? '• Read' : '• Delivered'}</span>
+                  )}
                   {me && msg.status === 'failed' && (
                     <span style={{ color: 'var(--color-danger)', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
                       <AlertCircle size={10} /> failed
@@ -161,6 +205,14 @@ export default function BookingChatThread({ bookingId, booking }) {
             </div>
           );
         })}
+
+        {/* Typing indicator */}
+        {typingUser && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--color-text-secondary)', fontStyle: 'italic', paddingLeft: 36 }}>
+            <span>{typingUser.name} is typing…</span>
+          </div>
+        )}
+
         <div ref={bottomRef} />
       </div>
 
@@ -187,7 +239,7 @@ export default function BookingChatThread({ bookingId, booking }) {
       <div style={{ display: 'flex', gap: 8, padding: '10px 12px', borderTop: '1px solid var(--color-border-tertiary)', marginTop: 6 }}>
         <textarea
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={handleInputChange}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
@@ -217,3 +269,4 @@ export default function BookingChatThread({ bookingId, booking }) {
     </div>
   );
 }
+

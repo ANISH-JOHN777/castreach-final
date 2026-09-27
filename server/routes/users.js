@@ -65,9 +65,10 @@ router.get('/recommendations', verifyToken, async (req, res) => {
 // ── GET /api/users/:id ────────────────────────────────────────────────────────
 router.get('/:id', verifyToken, async (req, res) => {
   try {
+    const targetId = req.params.id === 'me' ? req.user.id : req.params.id;
     // A user viewing their own profile keeps their email; others get the public view.
-    const projection = req.params.id === req.user.id ? '-__v' : PUBLIC_FIELDS;
-    const user = await User.findById(req.params.id).select(projection);
+    const projection = targetId === req.user.id ? '-__v' : PUBLIC_FIELDS;
+    const user = await User.findById(targetId).select(projection);
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ user });
   } catch (err) {

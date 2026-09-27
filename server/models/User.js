@@ -10,6 +10,14 @@ const userSchema = new mongoose.Schema(
     avatar:     { type: String, default: '' },
     bio:        { type: String, maxlength: 500, default: '' },
     expertise:  [{ type: String, trim: true }],           // e.g. ["AI", "Startups"]
+    interests:  [{ type: String, trim: true }],           // e.g. ["Podcasting", "Tech"]
+    languages:  [{ type: String, trim: true, default: ['en'] }], // E4 supported language codes
+    profileVisibility: {
+      type: String,
+      enum: ['public', 'private', 'PUBLIC', 'PRIVATE'],
+      default: 'public',
+      index: true,
+    },
     podcastName:{ type: String, default: '' },             // for hosts
     podcastUrl: { type: String, default: '' },
     sessionRateCents: { type: Number, default: 0, min: 0 }, // host's per-session price; 0 = free
@@ -20,13 +28,14 @@ const userSchema = new mongoose.Schema(
     },
     avgRating:      { type: Number, default: 0 },
     totalReviews:   { type: Number, default: 0 },
+    ratingDistribution: { type: Object, default: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } },
     responseRate:   { type: Number, default: 0 },          // 0–1
     avgResponseTime:{ type: Number, default: 0 },          // minutes
     badges:         [{ type: String }],
     stripeAccountId:{ type: String, select: false },       // Stripe Connect for hosts
     refreshToken:   { type: String, select: false },
     isOnboarded:    { type: Boolean, default: false },
-    isBlocked:      { type: Boolean, default: false },
+    isBlocked:      { type: Boolean, default: false, index: true },
     tenantId:       { type: String, default: 'castreach', index: true },
   },
   { timestamps: true }
@@ -60,5 +69,10 @@ userSchema.index(
   { name: 'text', bio: 'text', expertise: 'text' },
   { weights: { name: 10, expertise: 5, bio: 1 }, name: 'users_text_search' }
 );
+
+// Compound index for fast discovery filtering
+userSchema.index({ role: 1, profileVisibility: 1, isBlocked: 1 });
+userSchema.index({ languages: 1 });
+userSchema.index({ expertise: 1 });
 
 module.exports = mongoose.model('User', userSchema);

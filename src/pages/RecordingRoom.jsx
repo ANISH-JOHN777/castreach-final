@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import DailyIframe from '@daily-co/daily-js';
+import LiveCaptionOverlay from '../components/LiveCaptionOverlay';
 import {
   Mic,
   MicOff,
@@ -759,6 +760,11 @@ export default function RecordingRoom() {
         <div
           ref={dailyContainerRef}
           style={{ width: '100%', height: '100%', borderRadius: 12, overflow: 'hidden' }}
+        />
+        <LiveCaptionOverlay
+          bookingId={bId}
+          user={user}
+          dailyFrame={dailyFrameRef.current}
         />
       </main>
 

@@ -80,7 +80,11 @@ router.post('/', verifyToken, async (req, res) => {
       description,
     });
 
-    await Booking.findByIdAndUpdate(bookingId, { status: 'disputed' });
+    await Booking.findByIdAndUpdate(bookingId, {
+      status: 'disputed',
+      paymentStatus: 'disputed',
+      paymentDisputedAt: new Date(),
+    });
 
     stitcher.audit.logReq(req, {
       collectionName: 'disputes',
@@ -200,10 +204,10 @@ router.post('/:id/review', verifyToken, requireAdmin, async (req, res) => {
   }
 });
 
-// ── POST /api/disputes/:id/resolve — admin: resolve with resolution text ──────
+// ── POST /api/disputes/:id/resolve — admin: resolve with resolution text & action ──────
 router.post('/:id/resolve', verifyToken, requireAdmin, async (req, res) => {
   try {
-    const { resolution } = req.body;
+    const { resolution, action } = req.body;
     if (!resolution || resolution.trim().length < 10) {
       return res.status(400).json({ error: 'resolution text (min 10 chars) is required' });
     }
@@ -212,6 +216,37 @@ router.post('/:id/resolve', verifyToken, requireAdmin, async (req, res) => {
     if (!dispute) return res.status(404).json({ error: 'Dispute not found' });
     if (!['open', 'under_review'].includes(dispute.status)) {
       return res.status(400).json({ error: 'Dispute is already resolved or dismissed' });
+    }
+
+    const stripeService = require('../services/stripe');
+    const booking = await Booking.findById(dispute.booking)
+      .select('+stripePaymentIntentId')
+      .populate('host', 'stripeAccountId');
+
+    if (booking) {
+      if (action === 'refund') {
+        if (booking.stripePaymentIntentId) {
+          try {
+            await stripeService.refundPayment(booking.stripePaymentIntentId, `dispute_refund_${dispute._id}`);
+          } catch (err) {
+            console.error(`Dispute refund error for booking ${booking._id}:`, err.message);
+          }
+        }
+        booking.paymentStatus = 'refunded';
+        booking.paymentRefundedAt = new Date();
+        await booking.save();
+      } else if (action === 'release') {
+        if (booking.stripePaymentIntentId) {
+          try {
+            await stripeService.releaseEscrow(booking.stripePaymentIntentId, booking.host?.stripeAccountId, `dispute_release_${dispute._id}`);
+          } catch (err) {
+            console.error(`Dispute release error for booking ${booking._id}:`, err.message);
+          }
+        }
+        booking.paymentStatus = 'released';
+        booking.paymentReleasedAt = new Date();
+        await booking.save();
+      }
     }
 
     const before       = { status: dispute.status };

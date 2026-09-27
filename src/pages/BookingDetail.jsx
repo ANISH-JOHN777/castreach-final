@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Elements } from '@stripe/react-stripe-js';
-import { Mic, CheckCircle, Star, Play, Download, Film, Scissors } from 'lucide-react';
+import { Mic, CheckCircle, Star, Play, Download, Film, Scissors, RefreshCw, AlertCircle, Clock, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useBooking } from '../hooks/useBooking';
 import { stripePromise, stripeConfigured } from '../lib/stripe';
 import BookingWorkspace from '../components/BookingWorkspace';
 import PaymentForm from '../components/PaymentForm';
 import RecordingEditorModal from '../components/RecordingEditorModal';
+import VideoPreviewModal from '../components/VideoPreviewModal';
+import TranscriptViewer from '../components/TranscriptViewer';
+import AIIntelligencePanel from '../components/AIIntelligencePanel';
 
 const STATUS_COLOR = {
   pending:   { bg: 'var(--color-background-warning)', color: 'var(--color-text-warning)' },
@@ -16,22 +19,97 @@ const STATUS_COLOR = {
   cancelled: { bg: 'var(--color-background-danger)',  color: 'var(--color-text-danger)' },
 };
 
+function formatSeconds(sec) {
+  if (sec === undefined || sec === null || isNaN(sec)) return '00:00';
+  const total = Math.floor(sec);
+  const hrs = Math.floor(total / 3600);
+  const mins = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  if (hrs > 0) {
+    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
 export default function BookingDetail() {
   const { id }       = useParams();
   const { user, authFetch } = useAuth();
   const navigate     = useNavigate();
   const { booking, loading, error, confirm, cancel, complete, review, createPaymentIntent, refetch } = useBooking(id);
 
-  const [confirmLoading,    setConfirmLoading]    = useState(false);
+  const [paymentActionLoading, setPaymentActionLoading] = useState(false);
+
+  const handleConfirmCompletion = async () => {
+    setPaymentActionLoading(true);
+    setActionError('');
+    try {
+      const res = await authFetch(`/payments/${booking._id}/confirm-completion`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Completion confirmation failed');
+      if (refetch) await refetch();
+    } catch (err) {
+      setActionError(err.message || 'Failed to confirm session completion');
+    } finally {
+      setPaymentActionLoading(false);
+    }
+  };
+
+  const handleReleasePayment = async () => {
+    if (!window.confirm('Release escrow payment to host?')) return;
+    setPaymentActionLoading(true);
+    setActionError('');
+    try {
+      const res = await authFetch(`/payments/${booking._id}/release`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Payment release failed');
+      if (refetch) await refetch();
+    } catch (err) {
+      setActionError(err.message || 'Payment release failed');
+    } finally {
+      setPaymentActionLoading(false);
+    }
+  };
+
+  const handleRefundPayment = async () => {
+    if (!window.confirm('Issue full refund for this booking?')) return;
+    setPaymentActionLoading(true);
+    setActionError('');
+    try {
+      const res = await authFetch(`/payments/${booking._id}/refund`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Payment refund failed');
+      if (refetch) await refetch();
+    } catch (err) {
+      setActionError(err.message || 'Payment refund failed');
+    } finally {
+      setPaymentActionLoading(false);
+    }
+  };
   const [cancelLoading,     setCancelLoading]     = useState(false);
   const [completeLoading,   setCompleteLoading]   = useState(false);
   const [showReview,       setShowReview]       = useState(false);
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showEditorModal,  setShowEditorModal]  = useState(false);
+  const [previewConfig,    setPreviewConfig]    = useState({ isOpen: false, title: '', videoUrl: '' });
   const [rating,           setRating]           = useState(5);
   const [comment,          setComment]          = useState('');
   const [actionError,      setActionError]      = useState('');
   const [renderLoading,    setRenderLoading]    = useState(false);
+  const [storageLoading,   setStorageLoading]   = useState(false);
+  const [fetchingUrl,      setFetchingUrl]      = useState(false);
+
+  // Controlled polling when recording or rendering is active
+  const isOriginalProcessing = booking?.recordingStatus === 'PROCESSING';
+  const isRenderProcessing = ['QUEUED', 'PROCESSING'].includes(booking?.recordingEdit?.renderStatus);
+
+  useEffect(() => {
+    if (!isOriginalProcessing && !isRenderProcessing) return;
+
+    const interval = setInterval(() => {
+      if (refetch) refetch();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [isOriginalProcessing, isRenderProcessing, refetch]);
 
   if (loading) return <Spinner />;
   if (error)   return <Error msg={error} />;
@@ -39,6 +117,7 @@ export default function BookingDetail() {
 
   const isHost  = booking.host?._id  === user?._id || booking.host?.toString() === user?._id;
   const isGuest = booking.guest?._id === user?._id || booking.guest?.toString() === user?._id;
+  const isAdmin = user?.role === 'admin';
   const other   = isHost ? booking.guest : booking.host;
   const s       = STATUS_COLOR[booking.status] || {};
   const start   = new Date(booking.slotStart);
@@ -78,6 +157,63 @@ export default function BookingDetail() {
     }
   };
 
+  // Original Recording Actions
+  const handlePreviewOriginal = async () => {
+    setFetchingUrl(true);
+    setActionError('');
+    try {
+      const res = await authFetch(`/recordings/${booking._id}/storage-url`);
+      const data = await res.json();
+      const url = (res.ok && data.accessUrl) ? data.accessUrl : booking.recordingUrl;
+      if (!url) throw new Error('Original recording URL unavailable');
+      setPreviewConfig({ isOpen: true, title: 'Original Session Recording', videoUrl: url });
+    } catch (err) {
+      if (booking.recordingUrl) {
+        setPreviewConfig({ isOpen: true, title: 'Original Session Recording', videoUrl: booking.recordingUrl });
+      } else {
+        setActionError(err.message || 'Failed to obtain preview URL');
+      }
+    } finally {
+      setFetchingUrl(false);
+    }
+  };
+
+  const handleDownloadOriginal = async () => {
+    setFetchingUrl(true);
+    setActionError('');
+    try {
+      const res = await authFetch(`/recordings/${booking._id}/storage-url`);
+      const data = await res.json();
+      const url = (res.ok && data.accessUrl) ? data.accessUrl : booking.recordingUrl;
+      if (!url) throw new Error('Download URL unavailable');
+      window.open(url, '_blank');
+    } catch (err) {
+      if (booking.recordingUrl) {
+        window.open(booking.recordingUrl, '_blank');
+      } else {
+        setActionError(err.message || 'Failed to download original recording');
+      }
+    } finally {
+      setFetchingUrl(false);
+    }
+  };
+
+  const handleRetryStorage = async () => {
+    setStorageLoading(true);
+    setActionError('');
+    try {
+      const res = await authFetch(`/recordings/${booking._id}/retry-storage`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Storage retry failed');
+      if (refetch) await refetch();
+    } catch (err) {
+      setActionError(err.message || 'Storage copy retry failed');
+    } finally {
+      setStorageLoading(false);
+    }
+  };
+
+  // Rendered Recording Actions
   const handleTriggerRender = async () => {
     setRenderLoading(true);
     setActionError('');
@@ -93,7 +229,56 @@ export default function BookingDetail() {
     }
   };
 
+  const handleRetryRender = async () => {
+    setRenderLoading(true);
+    setActionError('');
+    try {
+      const res = await authFetch(`/recordings/${booking._id}/render/retry`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to retry render job');
+      if (refetch) await refetch();
+    } catch (err) {
+      setActionError(err.message || 'Retry render failed');
+    } finally {
+      setRenderLoading(false);
+    }
+  };
+
+  const handlePreviewEdited = async () => {
+    setFetchingUrl(true);
+    setActionError('');
+    try {
+      const res = await authFetch(`/recordings/${booking._id}/render-url`);
+      const data = await res.json();
+      if (!res.ok || !data.accessUrl) throw new Error(data.error || 'Rendered URL unavailable');
+      setPreviewConfig({ isOpen: true, title: 'Edited Podcast Video', videoUrl: data.accessUrl });
+    } catch (err) {
+      setActionError(err.message || 'Failed to obtain edited recording preview');
+    } finally {
+      setFetchingUrl(false);
+    }
+  };
+
+  const handleDownloadEdited = async () => {
+    setFetchingUrl(true);
+    setActionError('');
+    try {
+      const res = await authFetch(`/recordings/${booking._id}/render-url`);
+      const data = await res.json();
+      if (!res.ok || !data.accessUrl) throw new Error(data.error || 'Rendered URL unavailable');
+      window.open(data.accessUrl, '_blank');
+    } catch (err) {
+      setActionError(err.message || 'Failed to download edited recording');
+    } finally {
+      setFetchingUrl(false);
+    }
+  };
+
+  const isOriginalReady = booking.recordingStatus === 'READY' || booking.recordingReady === true;
+  const isStorageReady = booking.recordingStorage?.status === 'READY';
+  const isStorageFailed = booking.recordingStorage?.status === 'FAILED';
   const renderEditStatus = booking.recordingEdit?.renderStatus || 'NOT_REQUESTED';
+  const hasEdl = !!(booking.recordingEdit && booking.recordingEdit.updatedAt);
 
   return (
     <div className="fade-in">
@@ -106,9 +291,10 @@ export default function BookingDetail() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20, alignItems: 'start' }}>
 
-        {/* Left — workspace */}
+        {/* Left column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Info card */}
+          
+          {/* Main session Info card */}
           <div style={card}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div>
@@ -148,12 +334,13 @@ export default function BookingDetail() {
             )}
 
             {actionError && (
-              <div style={{ marginTop: 12, padding: '10px 14px', background: 'var(--color-background-danger)', borderRadius: 8, color: 'var(--color-text-danger)', fontSize: 13 }}>
+              <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#fca5a5', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <AlertCircle size={16} color="#ef4444" />
                 {actionError}
               </div>
             )}
 
-            {/* Action buttons */}
+            {/* Session Action buttons */}
             <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
               {booking.status === 'confirmed' && booking.dailyRoomUrl && (
                 <button onClick={() => navigate(`/bookings/${id}/record`)} style={{ ...btn, background: '#22c55e', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -182,119 +369,255 @@ export default function BookingDetail() {
               )}
             </div>
           </div>
-      {/* Recording Lifecycle Status Card */}
-      <div style={card}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700 }}>
-            <Film size={18} color="var(--color-accent)" />
-            Recording Lifecycle
-          </div>
-          <span style={{
-            padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600,
-            background: (booking.recordingStatus === 'READY' || booking.recordingReady) ? 'rgba(16,185,129,0.15)' : booking.recordingStatus === 'RECORDING' ? 'rgba(239,68,68,0.15)' : 'var(--color-background-secondary)',
-            color: (booking.recordingStatus === 'READY' || booking.recordingReady) ? '#10b981' : booking.recordingStatus === 'RECORDING' ? '#ef4444' : 'var(--color-text-secondary)'
-          }}>
-            {booking.recordingStatus === 'RECORDING' && '● Recording in Progress'}
-            {booking.recordingStatus === 'PROCESSING' && '⏳ Processing Recording…'}
-            {(booking.recordingStatus === 'READY' || booking.recordingReady) && '✓ Recording Ready'}
-            {booking.recordingStatus === 'FAILED' && '⚠️ Recording Failed'}
-            {(!booking.recordingStatus || booking.recordingStatus === 'NOT_STARTED') && !booking.recordingReady && 'Not Started'}
-          </span>
-        </div>
 
-        {(booking.recordingReady || booking.recordingUrl) ? (
-          <div style={{ marginTop: 10, padding: 12, background: 'var(--color-background-secondary)', borderRadius: 8 }}>
-            <p style={{ fontSize: 13, color: 'var(--color-text-primary)', marginBottom: 12, lineHeight: 1.4 }}>
-              The cloud recording for this session is ready. You can preview, trim non-destructively, or trigger an asynchronous FFmpeg render.
-            </p>
+          {/* ── PHASE C4: POST-MEETING RECORDING EXPERIENCE ────────────────── */}
 
-            {booking.recordingEdit && (
-              <div style={{ padding: '8px 12px', background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 6, fontSize: 12, color: '#a78bfa', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Scissors size={14} />
-                  <span>
-                    Saved Edit (EDL): Trim {booking.recordingEdit.trimStartSeconds}s – {booking.recordingEdit.trimEndSeconds}s ({booking.recordingEdit.editedDurationSeconds}s active)
-                  </span>
+          {/* CARD 1: ORIGINAL SESSION RECORDING */}
+          <div style={card}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700 }}>
+                <Film size={18} color="var(--color-accent)" />
+                SESSION RECORDING (ORIGINAL)
+              </div>
+              <span style={{
+                padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600,
+                background: isOriginalReady ? 'rgba(16,185,129,0.15)' : booking.recordingStatus === 'RECORDING' ? 'rgba(239,68,68,0.15)' : booking.recordingStatus === 'PROCESSING' ? 'rgba(245,158,11,0.15)' : 'var(--color-background-secondary)',
+                color: isOriginalReady ? '#10b981' : booking.recordingStatus === 'RECORDING' ? '#ef4444' : booking.recordingStatus === 'PROCESSING' ? '#f59e0b' : 'var(--color-text-secondary)'
+              }}>
+                {booking.recordingStatus === 'RECORDING' && '● Recording in Progress'}
+                {booking.recordingStatus === 'PROCESSING' && '⏳ Processing Recording…'}
+                {isOriginalReady && '✓ Ready'}
+                {booking.recordingStatus === 'FAILED' && '⚠️ Recording Failed'}
+                {(!booking.recordingStatus || booking.recordingStatus === 'NOT_STARTED') && !booking.recordingReady && 'Not Started'}
+              </span>
+            </div>
+
+            {isOriginalReady ? (
+              <div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 14, background: 'var(--color-background-secondary)', padding: 12, borderRadius: 8, fontSize: 13 }}>
+                  <div>
+                    <span style={{ color: 'var(--color-text-secondary)', fontSize: 11, display: 'block' }}>Duration</span>
+                    <strong style={{ fontFamily: 'monospace' }}>{formatSeconds(booking.recordingDuration)}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--color-text-secondary)', fontSize: 11, display: 'block' }}>Recorded At</span>
+                    <span>{booking.recordingStartedAt ? new Date(booking.recordingStartedAt).toLocaleTimeString() : 'Completed Session'}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--color-text-secondary)', fontSize: 11, display: 'block' }}>Storage Status</span>
+                    <span style={{ color: isStorageReady ? '#10b981' : isStorageFailed ? '#ef4444' : '#f59e0b', fontWeight: 600 }}>
+                      {booking.recordingStorage?.status || 'NOT_STORED'}
+                    </span>
+                  </div>
                 </div>
-                <span style={{ fontWeight: 600, color: renderEditStatus === 'READY' ? '#10b981' : renderEditStatus === 'FAILED' ? '#ef4444' : '#f59e0b' }}>
-                  Render: {renderEditStatus}
-                </span>
+
+                {isStorageFailed && (
+                  <div style={{ padding: '8px 12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, fontSize: 12, color: '#fca5a5', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>Persistent object storage copy failed: {booking.recordingStorage?.error || 'Network error'}</span>
+                    <button onClick={handleRetryStorage} disabled={storageLoading} style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>
+                      {storageLoading ? 'Retrying…' : 'Retry Copy'}
+                    </button>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <button
+                    onClick={handlePreviewOriginal}
+                    disabled={fetchingUrl}
+                    style={{ ...btn, background: 'var(--color-accent)', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <Play size={14} /> {fetchingUrl ? 'Loading…' : 'Preview Original'}
+                  </button>
+
+                  <button
+                    onClick={handleDownloadOriginal}
+                    disabled={fetchingUrl}
+                    style={{ ...btn, background: 'transparent', color: 'var(--color-accent)', border: '1px solid var(--color-accent)', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <Download size={14} /> Download Original
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                {booking.recordingStatus === 'RECORDING' ? 'Cloud recording is actively capturing this session.' :
+                 booking.recordingStatus === 'PROCESSING' ? 'Your recording is still being processed. This page will update automatically.' :
+                 booking.recordingStatus === 'FAILED' ? 'The recording could not be processed.' :
+                 'Recording will automatically begin when participants join the studio.'}
+              </p>
+            )}
+          </div>
+
+          {/* CARD 2: EDITED RECORDING (FFmpeg Rendered) */}
+          <div style={card}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700 }}>
+                <Scissors size={18} color="#8b5cf6" />
+                EDITED RECORDING (RENDERED)
+              </div>
+              <span style={{
+                padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600,
+                background: renderEditStatus === 'READY' ? 'rgba(16,185,129,0.15)' : renderEditStatus === 'FAILED' ? 'rgba(239,68,68,0.15)' : ['QUEUED', 'PROCESSING'].includes(renderEditStatus) ? 'rgba(245,158,11,0.15)' : 'var(--color-background-secondary)',
+                color: renderEditStatus === 'READY' ? '#10b981' : renderEditStatus === 'FAILED' ? '#ef4444' : ['QUEUED', 'PROCESSING'].includes(renderEditStatus) ? '#f59e0b' : 'var(--color-text-secondary)'
+              }}>
+                {renderEditStatus === 'NOT_REQUESTED' && 'Not Rendered'}
+                {renderEditStatus === 'QUEUED' && '⏳ Render Queued'}
+                {renderEditStatus === 'PROCESSING' && '⚙️ Rendering Video…'}
+                {renderEditStatus === 'READY' && '✓ Rendered Ready'}
+                {renderEditStatus === 'FAILED' && '⚠️ Rendering Failed'}
+              </span>
+            </div>
+
+            {!isOriginalReady ? (
+              <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: 0 }}>
+                Editing and rendering require a READY original session recording.
+              </p>
+            ) : (
+              <div>
+                {hasEdl ? (
+                  <div style={{ padding: 12, background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 8, marginBottom: 14, fontSize: 13 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ color: '#a78bfa', fontWeight: 600 }}>Active EDL Trimming:</span>
+                      <span style={{ fontFamily: 'monospace', color: '#fff' }}>
+                        {formatSeconds(booking.recordingEdit.trimStartSeconds)} → {formatSeconds(booking.recordingEdit.trimEndSeconds)}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-secondary)', fontSize: 12 }}>
+                      <span>Edited Duration: <strong style={{ color: '#fff' }}>{formatSeconds(booking.recordingEdit.editedDurationSeconds)}</strong></span>
+                      {booking.recordingEdit.renderCompletedAt && (
+                        <span>Completed: {new Date(booking.recordingEdit.renderCompletedAt).toLocaleTimeString()}</span>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 14 }}>
+                    No non-destructive EDL trim instructions saved yet. Click "Edit EDL" to set start/end points.
+                  </p>
+                )}
+
+                {renderEditStatus === 'FAILED' && (
+                  <div style={{ padding: '10px 14px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#fca5a5', fontSize: 13, marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>The edited recording could not be generated.</span>
+                    <button onClick={handleRetryRender} disabled={renderLoading} style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <RefreshCw size={13} /> {renderLoading ? 'Retrying…' : 'Retry'}
+                    </button>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => setShowEditorModal(true)}
+                    style={{ ...btn, background: '#8b5cf6', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <Scissors size={14} /> {hasEdl ? 'Edit EDL' : 'Set Trim Range'}
+                  </button>
+
+                  {hasEdl && renderEditStatus !== 'READY' && !['QUEUED', 'PROCESSING'].includes(renderEditStatus) && (
+                    <button
+                      onClick={handleTriggerRender}
+                      disabled={renderLoading}
+                      style={{ ...btn, background: '#10b981', opacity: renderLoading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                    >
+                      <Film size={14} /> {renderLoading ? 'Queuing Render…' : 'Render Recording'}
+                    </button>
+                  )}
+
+                  {['QUEUED', 'PROCESSING'].includes(renderEditStatus) && (
+                    <button
+                      disabled
+                      style={{ ...btn, background: 'rgba(245,158,11,0.2)', color: '#f59e0b', cursor: 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                    >
+                      ⏳ FFmpeg Rendering ({renderEditStatus})…
+                    </button>
+                  )}
+
+                  {renderEditStatus === 'READY' && (
+                    <>
+                      <button
+                        onClick={handlePreviewEdited}
+                        disabled={fetchingUrl}
+                        style={{ ...btn, background: '#10b981', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                      >
+                        <Play size={14} /> Preview Edited
+                      </button>
+
+                      <button
+                        onClick={handleDownloadEdited}
+                        disabled={fetchingUrl}
+                        style={{ ...btn, background: 'transparent', color: '#10b981', border: '1px solid #10b981', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                      >
+                        <Download size={14} /> Download Edited
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             )}
-
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <button
-                onClick={() => setShowPreviewModal(true)}
-                style={{ ...btn, background: 'var(--color-accent)', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-              >
-                <Play size={14} /> Preview Original
-              </button>
-
-              <button
-                onClick={() => setShowEditorModal(true)}
-                style={{ ...btn, background: '#8b5cf6', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-              >
-                <Scissors size={14} /> Edit EDL
-              </button>
-
-              {booking.recordingEdit && renderEditStatus !== 'READY' && renderEditStatus !== 'QUEUED' && renderEditStatus !== 'PROCESSING' && (
-                <button
-                  onClick={handleTriggerRender}
-                  disabled={renderLoading}
-                  style={{ ...btn, background: '#10b981', opacity: renderLoading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                >
-                  <Film size={14} /> {renderLoading ? 'Queuing Render…' : renderEditStatus === 'FAILED' ? 'Retry Render' : 'Render Edited Video (FFmpeg)'}
-                </button>
-              )}
-
-              {(renderEditStatus === 'QUEUED' || renderEditStatus === 'PROCESSING') && (
-                <button
-                  disabled
-                  style={{ ...btn, background: 'rgba(245,158,11,0.2)', color: '#f59e0b', cursor: 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                >
-                  ⏳ FFmpeg Rendering ({renderEditStatus})…
-                </button>
-              )}
-
-              <a
-                href={booking.recordingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ ...btn, background: 'transparent', color: 'var(--color-accent)', border: '1px solid var(--color-accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-              >
-                <Download size={14} /> Download Original
-              </a>
-            </div>
           </div>
-        ) : (
-          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4 }}>
-            {booking.recordingStatus === 'RECORDING' ? 'Cloud recording is actively capturing this session.' :
-             booking.recordingStatus === 'PROCESSING' ? 'Recording has stopped and is currently being rendered.' :
-             booking.recordingStatus === 'FAILED' ? 'Cloud recording encountered an issue during capture.' :
-             'Recording will automatically begin when participants join the studio.'}
-          </p>
-        )}
-      </div>
 
-          {/* Video Preview Modal */}
-          {showPreviewModal && booking.recordingUrl && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-              <div style={{ background: '#18181b', borderRadius: 12, maxWidth: 720, width: '100%', padding: 20, color: '#fff', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Recording Preview</h3>
-                  <button onClick={() => setShowPreviewModal(false)} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: 24, cursor: 'pointer', lineHeight: 1 }}>×</button>
-                </div>
-                <video src={booking.recordingUrl} controls autoPlay style={{ width: '100%', borderRadius: 8, maxHeight: 400, background: '#000' }} />
+          {/* TRANSCRIPTION VIEWER PANEL */}
+          {(booking.recordingStorage?.status === 'READY' || booking.recordingReady || booking.recordingEdit?.renderStatus === 'READY') && (
+            <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <TranscriptViewer
+                bookingId={booking._id}
+                token={user?.token || localStorage.getItem('token')}
+                onSeek={(secs) => {
+                  if (previewConfig.isOpen) {
+                    // Seek support when video player modal is open
+                  } else {
+                    handlePreviewEdited();
+                  }
+                }}
+              />
+
+              <AIIntelligencePanel
+                sourceType="booking"
+                sourceId={booking._id}
+                onSeek={(secs) => {
+                  if (!previewConfig.isOpen) {
+                    handlePreviewEdited();
+                  }
+                }}
+              />
+            </div>
+          )}
+
+          {/* ADMIN TECHNICAL METADATA INSPECTION PANEL */}
+          {isAdmin && (
+            <div style={{ ...card, background: 'var(--color-background-secondary)', border: '1px solid var(--color-border-tertiary)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 10 }}>
+                <ShieldAlert size={15} /> Admin Operational Inspector
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 11, fontFamily: 'monospace', color: 'var(--color-text-secondary)' }}>
+                <div>Provider: {booking.recordingStorage?.provider || 'local'}</div>
+                <div>Storage Key: {booking.recordingStorage?.objectKey || 'None'}</div>
+                <div>Storage Size: {booking.recordingStorage?.sizeBytes ? `${(booking.recordingStorage.sizeBytes / 1024 / 1024).toFixed(2)} MB` : 'N/A'}</div>
+                <div>Render JobId: {booking.recordingEdit?.renderJobId || 'None'}</div>
+                <div>Output Key: {booking.recordingEdit?.outputObjectKey || 'None'}</div>
+                <div>Output Size: {booking.recordingEdit?.outputSizeBytes ? `${(booking.recordingEdit.outputSizeBytes / 1024 / 1024).toFixed(2)} MB` : 'N/A'}</div>
+                <div>Tx Status: {booking.transcription?.status || 'NOT_REQUESTED'}</div>
+                <div>Tx JobId: {booking.transcription?.jobId || 'None'}</div>
+                <div>Tx Provider: {booking.transcription?.provider || 'whisper'}</div>
+                <div>Tx Segments: {booking.transcription?.segmentCount || 0}</div>
               </div>
             </div>
           )}
 
-          {/* Phase C3.1 Recording Editor Modal */}
-          {showEditorModal && booking.recordingUrl && (
+          {/* Video Preview Modal */}
+          {previewConfig.isOpen && (
+            <VideoPreviewModal
+              title={previewConfig.title}
+              videoUrl={previewConfig.videoUrl}
+              onClose={() => setPreviewConfig({ isOpen: false, title: '', videoUrl: '' })}
+            />
+          )}
+
+          {/* Recording Editor Modal */}
+          {showEditorModal && isOriginalReady && (
             <RecordingEditorModal
               booking={booking}
               onClose={() => setShowEditorModal(false)}
-              onSaveSuccess={() => { refetch(); }}
+              onSaveSuccess={() => { if (refetch) refetch(); }}
             />
           )}
 
@@ -328,18 +651,18 @@ export default function BookingDetail() {
             </div>
           )}
 
-          {/* Workspace tabs (chat, notes, AI, checklist) */}
+          {/* Workspace tabs */}
           <div style={{ height: 480 }}>
             <BookingWorkspace booking={{ ...booking, currentUserId: user?._id }} />
           </div>
         </div>
 
-        {/* Right — participant info */}
+        {/* Right column — participant info */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <ParticipantCard user={booking.host}  label="Host" />
           <ParticipantCard user={booking.guest} label="Guest" />
 
-          {/* Payment due — guest collects card once the host confirms */}
+          {/* Payment due */}
           {isGuest
             && booking.status === 'confirmed'
             && booking.amountCents > 0
@@ -368,17 +691,78 @@ export default function BookingDetail() {
             </div>
           )}
 
-          {/* Payment status */}
+          {/* Payment status & Escrow Completion */}
           {booking.paymentStatus !== 'unpaid' && (
             <div style={card}>
-              <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--color-text-secondary)', marginBottom: 8 }}>Payment</div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 15, fontWeight: 600 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--color-text-secondary)', marginBottom: 8 }}>
+                Escrow Payment & Settlement
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontSize: 16, fontWeight: 700 }}>
                   ${((booking.amountCents || 0) / 100).toFixed(2)} {booking.currency?.toUpperCase()}
                 </span>
-                <span style={{ fontSize: 12, textTransform: 'capitalize', padding: '3px 10px', borderRadius: 12, background: 'var(--color-background-success)', color: 'var(--color-text-success)' }}>
-                  {booking.paymentStatus}
+                <span style={{
+                  fontSize: 12, textTransform: 'capitalize', padding: '3px 10px', borderRadius: 12, fontWeight: 600,
+                  background: booking.paymentStatus === 'released' ? 'rgba(16,185,129,0.15)' : booking.paymentStatus === 'refunded' ? 'rgba(239,68,68,0.15)' : booking.paymentStatus === 'disputed' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.15)',
+                  color: booking.paymentStatus === 'released' ? '#10b981' : booking.paymentStatus === 'refunded' ? '#ef4444' : booking.paymentStatus === 'disputed' ? '#ef4444' : '#f59e0b',
+                }}>
+                  {booking.paymentStatus === 'held' ? '🔒 Held in Escrow' :
+                   booking.paymentStatus === 'release_pending' ? '⏳ Release Pending' :
+                   booking.paymentStatus === 'released' ? '✓ Released' :
+                   booking.paymentStatus === 'refunded' ? '↩ Refunded' :
+                   booking.paymentStatus === 'disputed' ? '⚠️ Disputed' :
+                   booking.paymentStatus}
                 </span>
+              </div>
+
+              {/* Completion Confirmation Badges */}
+              <div style={{ padding: 10, background: 'var(--color-background-secondary)', borderRadius: 8, fontSize: 12, marginBottom: 12 }}>
+                <div style={{ fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Completion Confirmations:</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span>Host:</span>
+                  <span style={{ fontWeight: 600, color: booking.hostConfirmedCompletion ? '#10b981' : 'var(--color-text-secondary)' }}>
+                    {booking.hostConfirmedCompletion ? '✓ Confirmed' : 'Pending'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Guest:</span>
+                  <span style={{ fontWeight: 600, color: booking.guestConfirmedCompletion ? '#10b981' : 'var(--color-text-secondary)' }}>
+                    {booking.guestConfirmedCompletion ? '✓ Confirmed' : 'Pending'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {['confirmed', 'completed'].includes(booking.status) && booking.paymentStatus === 'held' && (
+                  <button
+                    onClick={handleConfirmCompletion}
+                    disabled={paymentActionLoading || ((isHost && booking.hostConfirmedCompletion) || (isGuest && booking.guestConfirmedCompletion))}
+                    style={{ ...btn, width: '100%', background: 'var(--color-accent)', opacity: paymentActionLoading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                  >
+                    <CheckCircle size={15} />
+                    {paymentActionLoading ? 'Confirming…' : ((isHost && booking.hostConfirmedCompletion) || (isGuest && booking.guestConfirmedCompletion)) ? 'You Confirmed Completion' : 'Confirm Session Completed'}
+                  </button>
+                )}
+
+                {isAdmin && booking.paymentStatus === 'held' && (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                    <button
+                      onClick={handleReleasePayment}
+                      disabled={paymentActionLoading}
+                      style={{ ...btn, flex: 1, background: '#10b981', fontSize: 12, padding: '7px 10px' }}
+                    >
+                      Admin Release
+                    </button>
+                    <button
+                      onClick={handleRefundPayment}
+                      disabled={paymentActionLoading}
+                      style={{ ...btn, flex: 1, background: '#ef4444', fontSize: 12, padding: '7px 10px' }}
+                    >
+                      Admin Refund
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}

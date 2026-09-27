@@ -76,15 +76,48 @@ app.use('/api/reports',      require('./routes/reports'));
 app.use('/api/recordings',   require('./routes/recordings'));
 app.use('/api/stitcher',     require('./routes/stitcher'));
 app.use('/api/analytics',    require('./routes/analytics'));
+app.use('/api/podcasts',     require('./routes/podcasts'));
+app.use('/api/transcriptions',require('./routes/transcriptions'));
 app.use('/api/notifications',require('./routes/notifications'));
+app.use('/api/live-captions', require('./routes/liveCaptions'));
+app.use('/api/discovery',    require('./routes/discovery'));
+app.use('/api/reviews',      require('./routes/reviews'));
+app.use('/api/reputation',   require('./routes/reviews'));
+app.use('/api/demo',         require('./routes/demo'));
 
 // Webhooks — raw body needed for signature verification. The Daily.co route is
 // registered first so its more specific path matches before the Stripe mount.
 app.use('/api/webhooks/daily', express.raw({ type: 'application/json' }), require('./routes/webhooksDaily'));
 app.use('/api/webhooks',       express.raw({ type: 'application/json' }), require('./routes/webhooks'));
 
-// ── Health check ──────────────────────────────────────────────────────────────
-app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+// ── Health & Readiness checks ──────────────────────────────────────────────────
+app.get(['/health', '/api/health'], (_req, res) => {
+  res.json({
+    status: 'ok',
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get(['/ready', '/api/ready'], (_req, res) => {
+  const mongoose = require('mongoose');
+  const isDbConnected = mongoose.connection.readyState === 1;
+
+  if (isDbConnected) {
+    return res.status(200).json({
+      status: 'ready',
+      db: 'connected',
+      database: 'connected',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  return res.status(503).json({
+    status: 'unready',
+    db: 'disconnected',
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // ── 404 handler ───────────────────────────────────────────────────────────────
 app.use((req, res) => {

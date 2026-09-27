@@ -5,6 +5,8 @@ const verifyToken = require('../middleware/verifyToken');
 const { validate, MessageSchema } = require('../middleware/validate');
 const { notify } = require('../services/notifications');
 
+const realtimeServer = require('../services/realtimeServer');
+
 // ── GET /api/messages/:bookingId ──────────────────────────────────────────────
 router.get('/:bookingId', verifyToken, async (req, res) => {
   try {
@@ -20,10 +22,18 @@ router.get('/:bookingId', verifyToken, async (req, res) => {
       .sort({ createdAt: 1 });
 
     // Mark unread messages as read
-    await Message.updateMany(
+    const updateRes = await Message.updateMany(
       { booking: req.params.bookingId, sender: { $ne: req.user.id }, isRead: false },
       { isRead: true }
     );
+
+    if (updateRes.modifiedCount > 0) {
+      realtimeServer.broadcastToBooking(req.params.bookingId, 'message:read', {
+        bookingId: req.params.bookingId,
+        readBy: req.user.id,
+        count: updateRes.modifiedCount,
+      }, req.user.id);
+    }
 
     res.json({ messages });
   } catch (err) {
@@ -60,10 +70,53 @@ router.post('/', verifyToken, validate(MessageSchema), async (req, res) => {
     });
 
     const populated = await message.populate('sender', 'name avatar');
+    const msgObj = populated.toObject();
+
+    // Broadcast real-time message event to booking channel subscribers
+    realtimeServer.broadcastToBooking(bookingId, 'message:new', {
+      id: msgObj._id,
+      bookingId,
+      senderId: req.user.id,
+      senderName: msgObj.sender?.name || 'User',
+      senderAvatar: msgObj.sender?.avatar || '',
+      content: msgObj.content,
+      createdAt: msgObj.createdAt,
+      isRead: false,
+    });
+
     res.status(201).json({ message: populated });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+// ── POST /api/messages/:messageId/read — mark message as read ─────────────────
+router.post('/:messageId/read', verifyToken, async (req, res) => {
+  try {
+    const message = await Message.findById(req.params.messageId);
+    if (!message) return res.status(404).json({ error: 'Message not found' });
+
+    const booking = await Booking.findById(message.booking);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    const isParticipant = [booking.host, booking.guest]
+      .some((id) => id.toString() === req.user.id) || req.user.role === 'admin';
+    if (!isParticipant) return res.status(403).json({ error: 'Forbidden' });
+
+    message.isRead = true;
+    await message.save();
+
+    realtimeServer.broadcastToBooking(booking._id.toString(), 'message:read', {
+      bookingId: booking._id.toString(),
+      messageId: message._id.toString(),
+      readBy: req.user.id,
+    });
+
+    res.json({ message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
+

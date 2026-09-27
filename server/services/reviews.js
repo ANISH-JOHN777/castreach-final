@@ -1,56 +1,136 @@
 const mongoose = require('mongoose');
-const User    = require('../models/User');
+const User = require('../models/User');
 const Booking = require('../models/Booking');
+const Review = require('../models/Review');
 
 /**
- * Recompute a user's avgRating + totalReviews from every review they have RECEIVED.
+ * Recompute a user's avgRating, totalReviews, and ratingDistribution from every published review.
  *
- * Review storage (see routes/bookings.js):
- *   - When the guest reviews the host, it is stored on booking.hostReview.
- *   - When the host reviews the guest, it is stored on booking.guestReview.
- * So a user's received reviews are:
- *   - hostReview  on bookings where they are the host
- *   - guestReview on bookings where they are the guest
- *
- * Call after a review is submitted (BLK-4).
+ * Primary source: Review model (status: 'PUBLISHED')
+ * Secondary fallback: Legacy hostReview/guestReview fields on Booking
  */
 async function recomputeUserRating(userId) {
   const oid = new mongoose.Types.ObjectId(userId);
 
-  const [result] = await Booking.aggregate([
-    { $match: { $or: [{ host: oid }, { guest: oid }] } },
+  // 1. Check standalone Review collection
+  const [reviewResult] = await Review.aggregate([
+    { $match: { reviewee: oid, status: 'PUBLISHED' } },
     {
-      $project: {
-        rating: {
-          $cond: [
-            { $eq: ['$host', oid] },
-            '$hostReview.rating',
-            '$guestReview.rating',
-          ],
-        },
+      $group: {
+        _id: null,
+        avg: { $avg: '$rating' },
+        count: { $sum: 1 },
+        r1: { $sum: { $cond: [{ $eq: ['$rating', 1] }, 1, 0] } },
+        r2: { $sum: { $cond: [{ $eq: ['$rating', 2] }, 1, 0] } },
+        r3: { $sum: { $cond: [{ $eq: ['$rating', 3] }, 1, 0] } },
+        r4: { $sum: { $cond: [{ $eq: ['$rating', 4] }, 1, 0] } },
+        r5: { $sum: { $cond: [{ $eq: ['$rating', 5] }, 1, 0] } },
       },
     },
-    { $match: { rating: { $ne: null } } },
-    { $group: { _id: null, avg: { $avg: '$rating' }, count: { $sum: 1 } } },
   ]);
 
-  const avgRating    = result ? Math.round(result.avg * 100) / 100 : 0;
-  const totalReviews = result ? result.count : 0;
+  let avgRating = 0;
+  let totalReviews = 0;
+  let ratingDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
 
-  await User.findByIdAndUpdate(userId, { avgRating, totalReviews });
+  if (reviewResult && reviewResult.count > 0) {
+    avgRating = Math.round(reviewResult.avg * 100) / 100;
+    totalReviews = reviewResult.count;
+    ratingDistribution = {
+      1: reviewResult.r1 || 0,
+      2: reviewResult.r2 || 0,
+      3: reviewResult.r3 || 0,
+      4: reviewResult.r4 || 0,
+      5: reviewResult.r5 || 0,
+    };
+  } else {
+    // 2. Fallback to Booking model hostReview/guestReview
+    const [bookingResult] = await Booking.aggregate([
+      { $match: { $or: [{ host: oid }, { guest: oid }] } },
+      {
+        $project: {
+          rating: {
+            $cond: [
+              { $eq: ['$host', oid] },
+              '$hostReview.rating',
+              '$guestReview.rating',
+            ],
+          },
+        },
+      },
+      { $match: { rating: { $ne: null } } },
+      {
+        $group: {
+          _id: null,
+          avg: { $avg: '$rating' },
+          count: { $sum: 1 },
+          r1: { $sum: { $cond: [{ $eq: ['$rating', 1] }, 1, 0] } },
+          r2: { $sum: { $cond: [{ $eq: ['$rating', 2] }, 1, 0] } },
+          r3: { $sum: { $cond: [{ $eq: ['$rating', 3] }, 1, 0] } },
+          r4: { $sum: { $cond: [{ $eq: ['$rating', 4] }, 1, 0] } },
+          r5: { $sum: { $cond: [{ $eq: ['$rating', 5] }, 1, 0] } },
+        },
+      },
+    ]);
 
-  return { avgRating, totalReviews };
+    if (bookingResult && bookingResult.count > 0) {
+      avgRating = Math.round(bookingResult.avg * 100) / 100;
+      totalReviews = bookingResult.count;
+      ratingDistribution = {
+        1: bookingResult.r1 || 0,
+        2: bookingResult.r2 || 0,
+        3: bookingResult.r3 || 0,
+        4: bookingResult.r4 || 0,
+        5: bookingResult.r5 || 0,
+      };
+    }
+  }
+
+  await User.findByIdAndUpdate(userId, { avgRating, totalReviews, ratingDistribution });
+
+  return { avgRating, totalReviews, ratingDistribution };
 }
 
 /**
- * Recompute responseRate and avgResponseTime for a host (BUG-4).
- *
- * responseRate  = fraction of received booking requests where host responded
- *                 (confirmed or cancelled), expressed as 0–1.
- * avgResponseTime = mean minutes from booking.createdAt to booking.respondedAt,
- *                   across all bookings where the host responded.
- *
- * Call after a host confirms or cancels a booking.
+ * Fetch a user's complete reputation profile.
+ */
+async function getUserReputation(userId) {
+  const user = await User.findById(userId);
+  if (!user) return null;
+
+  const recentReviews = await Review.find({ reviewee: userId, status: 'PUBLISHED' })
+    .populate('reviewer', 'displayName avatar profilePicture role')
+    .sort({ createdAt: -1 })
+    .limit(10);
+
+  const sanitizedRecent = recentReviews.map((r) => ({
+    id: r._id,
+    rating: r.rating,
+    title: r.title,
+    comment: r.comment,
+    createdAt: r.createdAt,
+    reviewer: r.reviewer
+      ? {
+          id: r.reviewer._id,
+          displayName: r.reviewer.displayName || r.reviewer.name || 'Anonymous',
+          avatar: r.reviewer.profilePicture || r.reviewer.avatar || '',
+          role: r.reviewer.role,
+        }
+      : null,
+  }));
+
+  return {
+    userId: user._id,
+    displayName: user.displayName || user.name,
+    averageRating: user.avgRating || 0,
+    totalReviews: user.totalReviews || 0,
+    ratingDistribution: user.ratingDistribution || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    recentReviews: sanitizedRecent,
+  };
+}
+
+/**
+ * Recompute responseRate and avgResponseTime for a host.
  */
 async function recomputeHostResponseMetrics(hostId) {
   const oid = new mongoose.Types.ObjectId(hostId);
@@ -71,20 +151,24 @@ async function recomputeHostResponseMetrics(hostId) {
       },
       {
         $group: {
-          _id:          null,
-          avg:          { $avg: '$responseMinutes' },
+          _id: null,
+          avg: { $avg: '$responseMinutes' },
           respondedCount: { $sum: 1 },
         },
       },
     ]),
   ]);
 
-  const respondedCount  = result?.respondedCount ?? 0;
-  const responseRate    = totalReceived > 0 ? Math.round((respondedCount / totalReceived) * 100) / 100 : 0;
+  const respondedCount = result?.respondedCount ?? 0;
+  const responseRate = totalReceived > 0 ? Math.round((respondedCount / totalReceived) * 100) / 100 : 0;
   const avgResponseTime = result ? Math.round(result.avg) : 0;
 
   await User.findByIdAndUpdate(hostId, { responseRate, avgResponseTime });
   return { responseRate, avgResponseTime };
 }
 
-module.exports = { recomputeUserRating, recomputeHostResponseMetrics };
+module.exports = {
+  recomputeUserRating,
+  getUserReputation,
+  recomputeHostResponseMetrics,
+};
