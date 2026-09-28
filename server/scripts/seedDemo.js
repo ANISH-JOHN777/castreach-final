@@ -63,7 +63,7 @@ async function seedDemoData() {
 
   console.log('[Seed] Connected to MongoDB. Commencing idempotent seed...');
 
-  const passwordHash = await bcrypt.hash('DemoPassword123!', 10);
+  const passwordHash = await bcrypt.hash('password123', 10);
   const tenantId = 'castreach';
 
   // ── 1. DEMO USERS ─────────────────────────────────────────────────────────
