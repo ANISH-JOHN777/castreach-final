@@ -634,6 +634,15 @@ export default function RecordingRoom() {
               { urls: 'stun:stun3.l.google.com:19302' },
               { urls: 'stun:stun4.l.google.com:19302' },
               { urls: 'stun:stun.services.mozilla.com' },
+              {
+                urls: [
+                  'turn:openrelay.metered.ca:80',
+                  'turn:openrelay.metered.ca:443',
+                  'turn:openrelay.metered.ca:443?transport=tcp'
+                ],
+                username: 'openrelay',
+                credential: 'openrelay'
+              }
             ]
           });
           pcRef.current = pc;
@@ -675,12 +684,14 @@ export default function RecordingRoom() {
               event.streams[0].getTracks().forEach((t) => remoteMediaStream.addTrack(t));
             }
             const activeStream = new MediaStream(remoteMediaStream.getTracks());
-            setRemoteStream(activeStream);
-            setHasRemotePeer(true);
-            setParticipantCount(2);
-            if (remoteVideoRef.current) {
-              remoteVideoRef.current.srcObject = activeStream;
-              remoteVideoRef.current.play().catch(() => {});
+            if (activeStream.getTracks().length > 0) {
+              setRemoteStream(activeStream);
+              setHasRemotePeer(true);
+              setParticipantCount(2);
+              if (remoteVideoRef.current) {
+                remoteVideoRef.current.srcObject = activeStream;
+                remoteVideoRef.current.play().catch(() => {});
+              }
             }
           };
 
