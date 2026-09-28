@@ -8,7 +8,7 @@ import { realtime } from '../services/realtime';
  *
  * Returns { messages, setMessages, loading, error, connectionStatus, typingUser, startTyping, stopTyping, markRead }
  */
-export function useRealtimeMessages(bookingId, pollIntervalMs = 10000) {
+export function useRealtimeMessages(bookingId, pollIntervalMs = 3000) {
   const { user, authFetch } = useAuth();
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,27 +61,45 @@ export function useRealtimeMessages(bookingId, pollIntervalMs = 10000) {
 
     // Listen for new messages
     const unsubscribeNew = realtime.on('message:new', (newMsg) => {
-      if (!isMountedRef.current || !newMsg || newMsg.booking !== bookingId) return;
+      if (!isMountedRef.current || !newMsg) return;
+      const targetBooking = newMsg.booking || newMsg.bookingId;
+      if (targetBooking !== bookingId) return;
+
+      const messageId = newMsg._id || newMsg.id;
+      const formattedSender = typeof newMsg.sender === 'object' && newMsg.sender
+        ? newMsg.sender
+        : { _id: newMsg.senderId, name: newMsg.senderName || 'User', avatar: newMsg.senderAvatar || '' };
+
+      const formattedMsg = {
+        _id: messageId,
+        booking: targetBooking,
+        sender: formattedSender,
+        content: newMsg.content,
+        createdAt: newMsg.createdAt || new Date().toISOString(),
+        isRead: newMsg.isRead || false,
+      };
+
       setMessages((prev) => {
-        // Deduplicate by _id
-        if (prev.some((m) => m._id === newMsg._id)) return prev;
-        // Sort deterministically by createdAt / _id
-        const next = [...prev, newMsg];
+        const exists = prev.some((m) => (m._id || m.id) === messageId);
+        if (exists) {
+          return prev.map((m) => ((m._id || m.id) === messageId ? formattedMsg : m));
+        }
+        const next = [...prev, formattedMsg];
         return next.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
       });
     });
 
     // Listen for read receipts
     const unsubscribeRead = realtime.on('message:read', (data) => {
-      if (!isMountedRef.current || data.bookingId !== bookingId) return;
+      if (!isMountedRef.current || (data.bookingId !== bookingId && data.booking !== bookingId)) return;
       setMessages((prev) =>
-        prev.map((m) => (m._id === data.messageId ? { ...m, isRead: true } : m))
+        prev.map((m) => (m._id === data.messageId || m.id === data.messageId ? { ...m, isRead: true } : m))
       );
     });
 
     // Listen for typing events
     const unsubscribeTypingStart = realtime.on('typing:start', (data) => {
-      if (!isMountedRef.current || data.bookingId !== bookingId) return;
+      if (!isMountedRef.current || (data.bookingId !== bookingId && data.booking !== bookingId)) return;
       if (data.userId !== user?._id) {
         setTypingUser({ userId: data.userId, name: data.senderName || 'Participant' });
         if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
@@ -92,7 +110,7 @@ export function useRealtimeMessages(bookingId, pollIntervalMs = 10000) {
     });
 
     const unsubscribeTypingStop = realtime.on('typing:stop', (data) => {
-      if (!isMountedRef.current || data.bookingId !== bookingId) return;
+      if (!isMountedRef.current || (data.bookingId !== bookingId && data.booking !== bookingId)) return;
       if (data.userId !== user?._id) {
         setTypingUser(null);
       }
@@ -106,11 +124,9 @@ export function useRealtimeMessages(bookingId, pollIntervalMs = 10000) {
     // Initial fetch
     fetchMessages(true);
 
-    // Fallback polling only when OFFLINE
+    // Active polling as fallback
     const pollInterval = setInterval(() => {
-      if (realtime.status === 'OFFLINE') {
-        fetchMessages(false);
-      }
+      fetchMessages(false);
     }, pollIntervalMs);
 
     return () => {

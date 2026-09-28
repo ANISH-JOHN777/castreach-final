@@ -83,8 +83,11 @@ router.post('/', verifyToken, validate(MessageSchema), async (req, res) => {
 
     // Broadcast real-time message event to booking channel subscribers
     realtimeServer.broadcastToBooking(bookingId, 'message:new', {
+      _id: msgObj._id,
       id: msgObj._id,
+      booking: bookingId,
       bookingId,
+      sender: msgObj.sender,
       senderId: req.user.id,
       senderName: msgObj.sender?.name || 'User',
       senderAvatar: msgObj.sender?.avatar || '',
