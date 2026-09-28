@@ -6,7 +6,10 @@ const AuthContext = createContext(null);
 
 async function parseResponse(res) {
   const text = await res.text();
-  if (!text) throw new Error(`Server error ${res.status} — empty response`);
+  if (!text) {
+    if (res.ok) return {};
+    throw new Error(`Server error ${res.status}`);
+  }
   try {
     return JSON.parse(text);
   } catch {
@@ -135,7 +138,11 @@ export function AuthProvider({ children }) {
       credentials: 'include',
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then(async (r) => {
+        if (!r.ok) return Promise.reject();
+        const text = await r.text();
+        return text ? JSON.parse(text) : {};
+      })
       .then(({ user: serverUser }) => {
         saveAuth(token, serverUser);
       })
