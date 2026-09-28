@@ -638,17 +638,19 @@ export default function RecordingRoom() {
           });
           pcRef.current = pc;
 
-          const iceCandidatesQueue = [];
+          const remoteMediaStream = new MediaStream();
 
-          const processIceCandidate = async (candidate) => {
+          const createAndSendOffer = async () => {
             try {
-              if (pc.remoteDescription && pc.remoteDescription.type) {
-                await pc.addIceCandidate(new RTCIceCandidate(candidate));
-              } else {
-                iceCandidatesQueue.push(candidate);
-              }
-            } catch (e) {
-              console.warn('ICE candidate error:', e);
+              if (pc.signalingState !== 'stable') return;
+              const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+              await pc.setLocalDescription(offer);
+              realtime.send('webrtc:signal', {
+                bookingId: bId,
+                signal: { sdp: pc.localDescription }
+              });
+            } catch (err) {
+              console.warn('WebRTC offer creation warning:', err);
             }
           };
 
@@ -656,13 +658,28 @@ export default function RecordingRoom() {
             pc.addTrack(track, stream);
           });
 
+          pc.onnegotiationneeded = async () => {
+            const myId = user?._id || user?.id || '';
+            const hostId = booking?.host?._id || booking?.host || '';
+            const isHostUser = hostId === myId || user?.role === 'host';
+            if (isHostUser) {
+              await createAndSendOffer();
+            }
+          };
+
           pc.ontrack = (event) => {
-            const incomingStream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([event.track]);
-            setRemoteStream(incomingStream);
+            if (event.track) {
+              remoteMediaStream.addTrack(event.track);
+            }
+            if (event.streams && event.streams[0]) {
+              event.streams[0].getTracks().forEach((t) => remoteMediaStream.addTrack(t));
+            }
+            const activeStream = new MediaStream(remoteMediaStream.getTracks());
+            setRemoteStream(activeStream);
             setHasRemotePeer(true);
             setParticipantCount(2);
             if (remoteVideoRef.current) {
-              remoteVideoRef.current.srcObject = incomingStream;
+              remoteVideoRef.current.srcObject = activeStream;
               remoteVideoRef.current.play().catch(() => {});
             }
           };
@@ -708,18 +725,13 @@ export default function RecordingRoom() {
             setParticipantCount(2);
 
             const myId = user?._id || user?.id || '';
-            const isCaller = booking?.host?._id === myId || booking?.host === myId || myId < (data.peerId || '');
-            if (isCaller) {
-              try {
-                const offer = await pc.createOffer();
-                await pc.setLocalDescription(offer);
-                realtime.send('webrtc:signal', {
-                  bookingId: bId,
-                  signal: { sdp: pc.localDescription }
-                });
-              } catch (err) {
-                console.warn('WebRTC offer creation warning:', err);
-              }
+            const hostId = booking?.host?._id || booking?.host || '';
+            const isHostUser = hostId === myId || user?.role === 'host';
+            if (isHostUser) {
+              await createAndSendOffer();
+            } else {
+              // Guest notifies host of arrival
+              realtime.send('webrtc:join', { bookingId: bId });
             }
           });
 
