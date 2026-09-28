@@ -440,8 +440,6 @@ export default function BookingChatThread({ bookingId, booking, onBookingCreated
             <span>{typingUser.name} is typing…</span>
           </div>
         )}
-
-        <div ref={bottomRef} />
       </div>
 
       {/* Quick Replies */}
