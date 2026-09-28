@@ -629,24 +629,41 @@ export default function RecordingRoom() {
           const pc = new RTCPeerConnection({
             iceServers: [
               { urls: 'stun:stun.l.google.com:19302' },
-              { urls: 'stun:stun1.l.google.com:19302' }
+              { urls: 'stun:stun1.l.google.com:19302' },
+              { urls: 'stun:stun2.l.google.com:19302' },
+              { urls: 'stun:stun3.l.google.com:19302' },
+              { urls: 'stun:stun4.l.google.com:19302' },
+              { urls: 'stun:stun.services.mozilla.com' },
             ]
           });
           pcRef.current = pc;
+
+          const iceCandidatesQueue = [];
+
+          const processIceCandidate = async (candidate) => {
+            try {
+              if (pc.remoteDescription && pc.remoteDescription.type) {
+                await pc.addIceCandidate(new RTCIceCandidate(candidate));
+              } else {
+                iceCandidatesQueue.push(candidate);
+              }
+            } catch (e) {
+              console.warn('ICE candidate error:', e);
+            }
+          };
 
           stream.getTracks().forEach((track) => {
             pc.addTrack(track, stream);
           });
 
           pc.ontrack = (event) => {
-            if (event.streams && event.streams[0]) {
-              setRemoteStream(event.streams[0]);
-              setHasRemotePeer(true);
-              setParticipantCount(2);
-              if (remoteVideoRef.current) {
-                remoteVideoRef.current.srcObject = event.streams[0];
-                remoteVideoRef.current.play().catch(() => {});
-              }
+            const incomingStream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([event.track]);
+            setRemoteStream(incomingStream);
+            setHasRemotePeer(true);
+            setParticipantCount(2);
+            if (remoteVideoRef.current) {
+              remoteVideoRef.current.srcObject = incomingStream;
+              remoteVideoRef.current.play().catch(() => {});
             }
           };
 
@@ -665,6 +682,10 @@ export default function RecordingRoom() {
             try {
               if (signal.sdp) {
                 await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+                while (iceCandidatesQueue.length > 0) {
+                  const cand = iceCandidatesQueue.shift();
+                  try { await pc.addIceCandidate(new RTCIceCandidate(cand)); } catch (e) {}
+                }
                 if (signal.sdp.type === 'offer') {
                   const answer = await pc.createAnswer();
                   await pc.setLocalDescription(answer);
@@ -674,7 +695,7 @@ export default function RecordingRoom() {
                   });
                 }
               } else if (signal.candidate) {
-                await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+                await processIceCandidate(signal.candidate);
               }
             } catch (err) {
               console.warn('WebRTC signal processing warning:', err);
@@ -1335,7 +1356,13 @@ export default function RecordingRoom() {
             <div style={{ position: 'relative', background: '#18181b', borderRadius: 12, border: '1px solid #27272a', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {remoteStream ? (
                 <video
-                  ref={remoteVideoRef}
+                  ref={(el) => {
+                    remoteVideoRef.current = el;
+                    if (el && remoteStream && el.srcObject !== remoteStream) {
+                      el.srcObject = remoteStream;
+                      el.play().catch(() => {});
+                    }
+                  }}
                   autoPlay
                   playsInline
                   style={{
