@@ -26,12 +26,40 @@ app.use(helmet());
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
   process.env.CLIENT_URL,
 ].filter(Boolean);
 
+const isLocalOrAllowedOrigin = (origin) => {
+  if (!origin) return true;
+  if (allowedOrigins.some(o => origin.startsWith(o))) return true;
+  try {
+    const url = new URL(origin);
+    const host = url.hostname;
+    if (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      /^192\.168\.\d{1,3}\.\d{1,3}$/.test(host) ||
+      /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host) ||
+      /^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/.test(host) ||
+      host.endsWith('.lhr.life') ||
+      host.endsWith('.loca.lt') ||
+      host.endsWith('.ngrok-free.app') ||
+      host.endsWith('.serveo.net') ||
+      host.endsWith('.pinggy.link')
+    ) {
+      return true;
+    }
+  } catch {}
+  return false;
+};
+
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || process.env.NODE_ENV !== 'production' || allowedOrigins.some(o => origin.startsWith(o))) return cb(null, true);
+    if (isLocalOrAllowedOrigin(origin)) {
+      return cb(null, true);
+    }
     cb(new Error(`CORS: origin ${origin} not allowed`));
   },
   credentials: true,
