@@ -13,15 +13,18 @@ const mongoose = require('mongoose');
 // BUG-7 fix requires transactions → replica set mode.
 // MongoMemoryReplSet runs a single-member replica set in memory, which is
 // still Atlas-compatible and backward-compatible with all standalone operations.
-const { MongoMemoryReplSet } = require('mongodb-memory-server');
+const { MongoMemoryServer, MongoMemoryReplSet } = require('mongodb-memory-server');
 
 let mongo;
 
-// Replica set initialisation takes a few extra seconds — raise the hook timeout.
 beforeAll(async () => {
-  mongo = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
+  try {
+    mongo = await MongoMemoryServer.create();
+  } catch (err) {
+    mongo = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
+  }
   await mongoose.connect(mongo.getUri());
-}, 60000);
+}, 30000);
 
 afterEach(async () => {
   const { collections } = mongoose.connection;
