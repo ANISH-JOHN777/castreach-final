@@ -31,7 +31,7 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || allowedOrigins.some(o => origin.startsWith(o))) return cb(null, true);
+    if (!origin || process.env.NODE_ENV !== 'production' || allowedOrigins.some(o => origin.startsWith(o))) return cb(null, true);
     cb(new Error(`CORS: origin ${origin} not allowed`));
   },
   credentials: true,
