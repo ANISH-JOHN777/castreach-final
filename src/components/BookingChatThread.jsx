@@ -28,7 +28,7 @@ export default function BookingChatThread({ bookingId, booking, onBookingCreated
   const [failedMsg, setFailedMsg] = useState(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const bottomRef = useRef(null);
+  const chatFeedRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
   const [currentBooking, setCurrentBooking] = useState(booking);
@@ -133,7 +133,9 @@ export default function BookingChatThread({ bookingId, booking, onBookingCreated
   ];
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatFeedRef.current) {
+      chatFeedRef.current.scrollTop = chatFeedRef.current.scrollHeight;
+    }
   }, [messages, typingUser]);
 
   const handleInputChange = (e) => {
@@ -259,7 +261,7 @@ export default function BookingChatThread({ bookingId, booking, onBookingCreated
       )}
 
       {/* Messages Feed */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div ref={chatFeedRef} style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {loading && messages.length === 0 && (
           <div style={{ textAlign: 'center', padding: 20, color: 'var(--color-text-secondary)', fontSize: 13 }}>
             Loading conversation…
