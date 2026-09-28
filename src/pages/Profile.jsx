@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Star, Radio, CheckCircle2, ExternalLink } from 'lucide-react';
+import { Star, Radio, CheckCircle2, ExternalLink, MessageSquare } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AvailabilityPicker from '../components/AvailabilityPicker';
 import BadgeDisplay from '../components/BadgeDisplay';
@@ -20,6 +20,78 @@ export default function Profile() {
   const [bookLoading, setBookLoading] = useState(false);
   const [bookError,   setBookError]   = useState('');
   const [bookSuccess, setBookSuccess] = useState(false);
+  const [msgLoading,        setMsgLoading]        = useState(false);
+  const [msgNotice,         setMsgNotice]         = useState('');
+  const [showDirectMsg,     setShowDirectMsg]     = useState(false);
+  const [directMsgText,     setDirectMsgText]     = useState('');
+  const [directMsgSending,  setDirectMsgSending]  = useState(false);
+  const [directMsgErr,      setDirectMsgErr]      = useState('');
+
+  const handleMessageUser = async () => {
+    setMsgLoading(true);
+    setMsgNotice('');
+    try {
+      const res = await authFetch('/bookings');
+      const data = await res.json();
+      const allBookings = data.bookings || [];
+
+      const targetId = profile?._id || id;
+      const existingBooking = allBookings.find((b) => {
+        const hostId = b.host?._id || b.host;
+        const guestId = b.guest?._id || b.guest;
+        return (hostId === user?._id && guestId === targetId) || (guestId === user?._id && hostId === targetId);
+      });
+
+      if (existingBooking) {
+        navigate(`/messages/${existingBooking._id}`);
+      } else {
+        setShowDirectMsg(true);
+      }
+    } catch (err) {
+      console.error('Error opening conversation:', err);
+      setMsgNotice('Unable to locate messaging thread. Please try again.');
+    } finally {
+      setMsgLoading(false);
+    }
+  };
+
+  const handleSendDirectMsg = async (e) => {
+    e.preventDefault();
+    if (!directMsgText.trim()) return setDirectMsgErr('Please enter a message.');
+    setDirectMsgSending(true);
+    setDirectMsgErr('');
+    try {
+      const tomorrowStart = new Date(Date.now() + 86400000);
+      tomorrowStart.setHours(10, 0, 0, 0);
+      const tomorrowEnd = new Date(tomorrowStart.getTime() + 3600000);
+
+      const isCurrentUserHost = user?.role === 'host';
+      const targetHostId = isCurrentUserHost ? user?._id : (profile?.role === 'host' ? (profile?._id || id) : user?._id);
+      const targetGuestId = isCurrentUserHost ? (profile?._id || id) : user?._id;
+
+      const res = await authFetch('/bookings', {
+        method: 'POST',
+        body: JSON.stringify({
+          hostId: targetHostId,
+          guestId: targetGuestId,
+          slotStart: tomorrowStart.toISOString(),
+          slotEnd: tomorrowEnd.toISOString(),
+          topics: ['Direct Message'],
+          message: directMsgText.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to start conversation.');
+
+      setShowDirectMsg(false);
+      navigate(`/messages/${data.booking._id}`);
+    } catch (err) {
+      setDirectMsgErr(err.message);
+    } finally {
+      setDirectMsgSending(false);
+    }
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -107,12 +179,43 @@ export default function Profile() {
                   {profile.role}
                 </div>
               </div>
-              {isOwnProfile && (
+              {isOwnProfile ? (
                 <button onClick={() => navigate('/settings')} style={{ padding: '7px 14px', border: '1px solid var(--color-border-tertiary)', borderRadius: 8, background: 'transparent', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>
                   Edit profile
                 </button>
+              ) : (
+                <button
+                  onClick={handleMessageUser}
+                  disabled={msgLoading}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 16px',
+                    borderRadius: 8,
+                    background: 'var(--plum-primary, #6366f1)',
+                    color: '#fff',
+                    border: 'none',
+                    fontWeight: 600,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                    opacity: msgLoading ? 0.7 : 1,
+                    boxShadow: 'var(--shadow-xs)',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <MessageSquare size={15} />
+                  {msgLoading ? 'Opening...' : `Message ${profile.role === 'host' ? 'Host' : profile.role === 'guest' ? 'Guest' : 'User'}`}
+                </button>
               )}
             </div>
+
+            {msgNotice && (
+              <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'var(--lavender-mist)', border: '1px solid var(--border-subtle)', color: 'var(--plum-deep)', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>{msgNotice}</span>
+                <button onClick={() => setMsgNotice('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 14, padding: '0 4px' }}>✕</button>
+              </div>
+            )}
 
             {profile.badges?.length > 0 && (
               <div style={{ marginTop: 14 }}>
@@ -273,6 +376,73 @@ export default function Profile() {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Direct Message Modal */}
+      {showDirectMsg && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: '1rem' }}>
+          <div style={{ width: '100%', maxWidth: 440, background: 'var(--color-background-primary)', borderRadius: 16, padding: '1.5rem', boxShadow: 'var(--shadow-lg)' }}>
+            <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 6, color: 'var(--plum-deep)' }}>
+              Start Conversation with {profile?.name}
+            </h2>
+            <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 16 }}>
+              Send a direct message to open a real-time chat thread and session request.
+            </p>
+            <form onSubmit={handleSendDirectMsg}>
+              <div style={{ marginBottom: 16 }}>
+                <label style={lbl}>Your Initial Message</label>
+                <textarea
+                  value={directMsgText}
+                  onChange={(e) => setDirectMsgText(e.target.value)}
+                  rows={4}
+                  placeholder={`Hi ${profile?.name || ''}, I'd love to connect and discuss a podcast session...`}
+                  style={{ ...inp, resize: 'vertical' }}
+                  required
+                />
+              </div>
+
+              {directMsgErr && (
+                <div style={{ marginBottom: 12, padding: '10px', background: 'var(--color-background-danger)', borderRadius: 8, color: 'var(--color-text-danger)', fontSize: 13 }}>
+                  {directMsgErr}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="submit"
+                  disabled={directMsgSending}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    background: 'var(--plum-primary, #6366f1)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 8,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    opacity: directMsgSending ? 0.7 : 1,
+                  }}
+                >
+                  {directMsgSending ? 'Sending…' : 'Send Message & Start Chat'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDirectMsg(false)}
+                  style={{
+                    padding: '10px 16px',
+                    background: 'transparent',
+                    border: '1px solid var(--color-border-tertiary)',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -4,6 +4,7 @@ import {
   Mic, 
   Shield, 
   Search, 
+  MessageSquare,
   Calendar, 
   BarChart2, 
   Settings, 
@@ -15,7 +16,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../hooks/useRealtimeMessages';
 
-export default function Layout() {
+export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { unreadCount, notifications, markAllRead } = useNotifications();
@@ -28,6 +29,7 @@ export default function Layout() {
       return [
         { to: '/control-center', label: 'Admin Control Center', Icon: Shield },
         { to: '/discover', label: 'Discover Creators', Icon: Search },
+        { to: '/messages', label: 'Messages Audit', Icon: MessageSquare },
         { to: '/bookings', label: 'Bookings Audit', Icon: Calendar },
         { to: '/insights', label: 'Platform Insights', Icon: BarChart2 },
         { to: '/settings', label: 'System Settings', Icon: Settings },
@@ -37,6 +39,7 @@ export default function Layout() {
       return [
         { to: '/host', label: 'Host Dashboard', Icon: Headphones },
         { to: '/discover', label: 'Find Guests', Icon: Search },
+        { to: '/messages', label: 'Messages', Icon: MessageSquare },
         { to: '/bookings', label: 'Studio Bookings', Icon: Calendar },
         { to: '/insights', label: 'Analytics', Icon: BarChart2 },
         { to: '/settings', label: 'Host Settings', Icon: Settings },
@@ -45,6 +48,7 @@ export default function Layout() {
     return [
       { to: '/guest', label: 'Guest Dashboard', Icon: Mic },
       { to: '/discover', label: 'Discover Shows', Icon: Search },
+      { to: '/messages', label: 'Messages', Icon: MessageSquare },
       { to: '/bookings', label: 'My Bookings', Icon: Calendar },
       { to: '/insights', label: 'Profile Analytics', Icon: BarChart2 },
       { to: '/settings', label: 'Account Settings', Icon: Settings },
@@ -235,7 +239,7 @@ export default function Layout() {
             <NavLink
               key={to}
               to={to}
-              end={to === '/guest' || to === '/host' || to === '/admin'}
+              end={to === '/guest' || to === '/host' || to === '/admin' || to === '/control-center'}
               style={({ isActive }) => ({
                 display: 'flex',
                 alignItems: 'center',
@@ -257,9 +261,10 @@ export default function Layout() {
 
         {/* Content Body */}
         <main style={{ flex: 1, padding: 32, maxWidth: 1200, overflowX: 'hidden' }}>
-          <Outlet />
+          {children || <Outlet />}
         </main>
       </div>
     </div>
   );
 }
+

@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 3001;
 let server;
 
 async function startServer() {
-  let uri = process.env.MONGODB_URI;
+  let uri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/castreach_demo';
 
   if (uri === 'memory') {
     if (process.env.NODE_ENV === 'production') {
@@ -34,9 +34,22 @@ async function startServer() {
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
     });
-    logger.info('MongoDB connected successfully', { poolSize: 20 });
+    logger.info('MongoDB connected successfully', { uri: uri.replace(/\/\/.*@/, '//***@') });
+
+    // Auto-seed demo environment dataset when database is empty in non-production environments
+    const isDemo = process.env.APP_ENV === 'demo' || (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test');
+    if (isDemo) {
+      const User = require('./models/User');
+      const userCount = await User.countDocuments();
+      if (userCount === 0) {
+        const { seedDemoData } = require('./scripts/seedDemo');
+        await seedDemoData();
+        logger.info('Auto-seeded demo accounts into empty database on server startup.');
+      }
+    }
 
     server = http.createServer(app);
+
     realtimeServer.init(server);
 
     server.listen(PORT, () => {

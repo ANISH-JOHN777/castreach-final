@@ -1,10 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-
-/**
- * Phase E3 — AI Podcast Intelligence Panel Component
- * Displays status, generation triggers, retries, formatted viewer, chapter seek buttons,
- * and explicit confirmation controls for applying AI suggestions to episode fields.
- */
+import { Sparkles, RefreshCw, AlertCircle, CheckCircle, Clock, FileText, Play, X, ArrowRight, Zap } from 'lucide-react';
 
 const ARTIFACT_TITLES = {
   SUMMARY: 'AI Episode Summary',
@@ -48,9 +43,9 @@ export default function AIIntelligencePanel({
   const fetchStatuses = useCallback(async () => {
     if (!sourceId) return;
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('cr_token') || localStorage.getItem('token');
       const res = await fetch(`/api/ai/${sourceType}/${sourceId}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -90,12 +85,12 @@ export default function AIIntelligencePanel({
     setSuccessMsg(null);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('cr_token') || localStorage.getItem('token');
       const res = await fetch(`/api/ai/${sourceType}/${sourceId}/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: token ? `Bearer ${token}` : '',
         },
         body: JSON.stringify({ artifactType }),
       });
@@ -125,11 +120,11 @@ export default function AIIntelligencePanel({
     setSuccessMsg(null);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('cr_token') || localStorage.getItem('token');
       const res = await fetch(`/api/ai/${sourceType}/${sourceId}/${artifactType}/retry`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: token ? `Bearer ${token}` : '',
         },
       });
       const data = await res.json();
@@ -156,9 +151,9 @@ export default function AIIntelligencePanel({
     setFetchingContent(true);
     setErrorMsg(null);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('cr_token') || localStorage.getItem('token');
       const res = await fetch(`/api/ai/${sourceType}/${sourceId}/${artifactType}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to load artifact content.');
@@ -180,12 +175,12 @@ export default function AIIntelligencePanel({
     if (!podcastId || sourceType !== 'episode') return;
     setApplying(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('cr_token') || localStorage.getItem('token');
       const res = await fetch(`/api/podcasts/${podcastId}/episodes/${sourceId}/apply-ai-content`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: token ? `Bearer ${token}` : '',
         },
         body: JSON.stringify({ field, content }),
       });
@@ -210,12 +205,11 @@ export default function AIIntelligencePanel({
 
   if (loading) {
     return (
-      <div className="p-6 bg-slate-900 border border-slate-800 rounded-xl text-slate-400 text-sm flex items-center justify-center space-x-3">
-        <svg className="animate-spin h-5 w-5 text-indigo-400" viewBox="0 0 24 24" fill="none">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-        </svg>
-        <span>Loading AI Podcast Intelligence...</span>
+      <div style={panelContainerStyle}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 30, color: 'var(--text-muted)' }}>
+          <RefreshCw size={20} style={{ animation: 'spin 1.5s linear infinite', color: 'var(--plum-primary)' }} />
+          <span style={{ fontSize: 14 }}>Loading AI Podcast Intelligence...</span>
+        </div>
       </div>
     );
   }
@@ -223,113 +217,101 @@ export default function AIIntelligencePanel({
   const types = Object.keys(ARTIFACT_TITLES);
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-6">
+    <div style={panelContainerStyle}>
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-        <div>
-          <h3 className="text-lg font-bold text-white flex items-center space-x-2">
-            <span className="text-indigo-400">✨</span>
-            <span>AI Podcast Intelligence</span>
-          </h3>
-          <p className="text-xs text-slate-400 mt-1">
-            Asynchronous AI content generation grounded in your E2 timestamped recording transcript.
-          </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 16, borderBottom: '1px solid var(--border-subtle)', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--lavender-mist)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Sparkles size={20} color="var(--plum-deep)" />
+          </div>
+          <div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: 'var(--plum-deep)' }}>AI Podcast Intelligence</h3>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '2px 0 0' }}>
+              Asynchronous AI content generation grounded in your timestamped recording transcript.
+            </p>
+          </div>
         </div>
-        <button
-          onClick={fetchStatuses}
-          className="text-xs text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg transition"
-        >
-          Refresh Status
+        <button onClick={fetchStatuses} style={secondaryBtnStyle}>
+          <RefreshCw size={14} /> Refresh Status
         </button>
       </div>
 
       {errorMsg && (
-        <div className="p-3 bg-red-950/50 border border-red-800 text-red-300 text-xs rounded-lg flex items-center justify-between">
+        <div style={{ padding: '10px 14px', background: 'var(--color-error-bg)', border: '1px solid var(--color-error)', borderRadius: 10, color: 'var(--color-error)', fontSize: 13, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>{errorMsg}</span>
-          <button onClick={() => setErrorMsg(null)} className="text-red-400 hover:text-white font-bold ml-2">×</button>
+          <button onClick={() => setErrorMsg(null)} style={{ background: 'none', border: 'none', color: 'var(--color-error)', fontWeight: 'bold', cursor: 'pointer', fontSize: 16 }}>×</button>
         </div>
       )}
 
       {successMsg && (
-        <div className="p-3 bg-emerald-950/50 border border-emerald-800 text-emerald-300 text-xs rounded-lg flex items-center justify-between">
+        <div style={{ padding: '10px 14px', background: 'var(--color-success-bg)', border: '1px solid var(--color-success)', borderRadius: 10, color: 'var(--color-success)', fontSize: 13, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>{successMsg}</span>
-          <button onClick={() => setSuccessMsg(null)} className="text-emerald-400 hover:text-white font-bold ml-2">×</button>
+          <button onClick={() => setSuccessMsg(null)} style={{ background: 'none', border: 'none', color: 'var(--color-success)', fontWeight: 'bold', cursor: 'pointer', fontSize: 16 }}>×</button>
         </div>
       )}
 
       {/* Artifact Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
         {types.map((type) => {
           const meta = statuses[type] || {};
           const status = meta.status || 'NOT_REQUESTED';
           const isBusy = actionLoading[type];
 
           return (
-            <div
-              key={type}
-              className="bg-slate-950 border border-slate-800/80 hover:border-slate-700 rounded-xl p-4 transition flex flex-col justify-between"
-            >
+            <div key={type} style={artifactCardStyle}>
               <div>
-                <div className="flex items-start justify-between">
-                  <h4 className="font-semibold text-sm text-slate-200">{ARTIFACT_TITLES[type]}</h4>
-                  {/* Status Badge */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <h4 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--plum-deep)' }}>{ARTIFACT_TITLES[type]}</h4>
+
+                  {/* Status Badges */}
                   {status === 'NOT_REQUESTED' && (
-                    <span className="px-2 py-0.5 text-[10px] font-medium bg-slate-800 text-slate-400 rounded-full">
+                    <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 12, background: 'var(--lavender-mist)', color: 'var(--text-muted)' }}>
                       Not Generated
                     </span>
                   )}
                   {status === 'QUEUED' && (
-                    <span className="px-2 py-0.5 text-[10px] font-medium bg-amber-950 text-amber-300 border border-amber-800 rounded-full animate-pulse">
-                      Queued
+                    <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 12, background: 'var(--color-warning-bg)', color: 'var(--color-warning)' }}>
+                      ⏳ Queued
                     </span>
                   )}
                   {status === 'PROCESSING' && (
-                    <span className="px-2 py-0.5 text-[10px] font-medium bg-indigo-950 text-indigo-300 border border-indigo-800 rounded-full flex items-center space-x-1">
-                      <svg className="animate-spin h-3 w-3 text-indigo-400" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                      </svg>
-                      <span>Generating...</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 12, background: 'var(--lavender-mist)', color: 'var(--plum-deep)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> Generating...
                     </span>
                   )}
                   {status === 'READY' && (
-                    <span className="px-2 py-0.5 text-[10px] font-medium bg-emerald-950 text-emerald-300 border border-emerald-800 rounded-full">
-                      Ready
+                    <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 12, background: 'var(--color-success-bg)', color: 'var(--color-success)' }}>
+                      ✓ Ready
                     </span>
                   )}
                   {status === 'FAILED' && (
-                    <span className="px-2 py-0.5 text-[10px] font-medium bg-red-950 text-red-300 border border-red-800 rounded-full">
-                      Failed
+                    <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 12, background: 'var(--color-error-bg)', color: 'var(--color-error)' }}>
+                      ⚠️ Failed
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
                   {ARTIFACT_DESCRIPTIONS[type]}
                 </p>
               </div>
 
               {/* Action Buttons */}
-              <div className="mt-4 pt-3 border-t border-slate-900 flex items-center justify-end space-x-2">
+              <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                 {status === 'NOT_REQUESTED' && (
                   <button
                     onClick={() => handleGenerate(type)}
                     disabled={isBusy}
-                    className="px-3 py-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-lg transition"
+                    style={primaryBtnStyle}
                   >
+                    {isBusy ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Zap size={13} />}
                     {isBusy ? 'Queueing...' : 'Generate'}
                   </button>
                 )}
 
                 {(status === 'QUEUED' || status === 'PROCESSING') && (
-                  <button
-                    disabled
-                    className="px-3 py-1.5 text-xs font-medium bg-slate-800 text-slate-400 rounded-lg cursor-not-allowed flex items-center space-x-1"
-                  >
-                    <svg className="animate-spin h-3 w-3 text-slate-400" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                    </svg>
-                    <span>Processing...</span>
+                  <button disabled style={{ ...secondaryBtnStyle, opacity: 0.6, cursor: 'not-allowed' }}>
+                    <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> Processing...
                   </button>
                 )}
 
@@ -338,14 +320,14 @@ export default function AIIntelligencePanel({
                     <button
                       onClick={() => handleView(type)}
                       disabled={fetchingContent}
-                      className="px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition"
+                      style={{ ...primaryBtnStyle, background: 'var(--color-success)' }}
                     >
                       View Artifact
                     </button>
                     <button
                       onClick={() => handleGenerate(type)}
                       disabled={isBusy}
-                      className="px-2.5 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition"
+                      style={secondaryBtnStyle}
                       title="Regenerate artifact"
                     >
                       Regenerate
@@ -357,8 +339,9 @@ export default function AIIntelligencePanel({
                   <button
                     onClick={() => handleRetry(type)}
                     disabled={isBusy}
-                    className="px-3 py-1.5 text-xs font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg transition"
+                    style={{ ...primaryBtnStyle, background: 'var(--color-error)' }}
                   >
+                    <RefreshCw size={13} style={{ animation: isBusy ? 'spin 1s linear infinite' : 'none' }} />
                     {isBusy ? 'Retrying...' : 'Retry'}
                   </button>
                 )}
@@ -370,45 +353,45 @@ export default function AIIntelligencePanel({
 
       {/* Artifact Viewer Modal */}
       {activeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+        <div style={modalBackdropStyle}>
+          <div style={modalContentStyle}>
             {/* Modal Header */}
-            <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--lavender-mist)' }}>
               <div>
-                <h3 className="font-bold text-base text-white">{ARTIFACT_TITLES[activeModal.type]}</h3>
-                <span className="text-xs text-indigo-400 font-mono">STATUS: {activeModal.status}</span>
+                <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--plum-deep)' }}>{ARTIFACT_TITLES[activeModal.type]}</h3>
+                <span style={{ fontSize: 11, color: 'var(--plum-primary)', fontWeight: 600, fontFamily: 'monospace' }}>STATUS: {activeModal.status}</span>
               </div>
               <button
                 onClick={() => setActiveModal(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 text-lg font-bold"
+                style={{ background: 'none', border: 'none', fontSize: 20, color: 'var(--text-muted)', cursor: 'pointer', lineHeight: 1 }}
               >
-                ×
+                <X size={20} />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-4 text-sm text-slate-300">
+            <div style={{ padding: 20, maxHeight: '60vh', overflowY: 'auto' }}>
               {/* SUMMARY */}
               {activeModal.type === 'SUMMARY' && (
-                <div className="space-y-4">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   <div>
-                    <h5 className="font-semibold text-white mb-1">Overview</h5>
-                    <p className="leading-relaxed bg-slate-950 p-3 rounded-lg border border-slate-800">{activeModal.content.overview}</p>
+                    <h5 style={modalSectionHeaderStyle}>Overview</h5>
+                    <p style={modalBoxStyle}>{activeModal.content?.overview}</p>
                   </div>
-                  {activeModal.content.majorPoints?.length > 0 && (
+                  {activeModal.content?.majorPoints?.length > 0 && (
                     <div>
-                      <h5 className="font-semibold text-white mb-1">Major Discussion Points</h5>
-                      <ul className="list-disc list-inside space-y-1 bg-slate-950 p-3 rounded-lg border border-slate-800 text-slate-300">
+                      <h5 style={modalSectionHeaderStyle}>Major Discussion Points</h5>
+                      <ul style={modalListStyle}>
                         {activeModal.content.majorPoints.map((pt, i) => (
                           <li key={i}>{pt}</li>
                         ))}
                       </ul>
                     </div>
                   )}
-                  {activeModal.content.conclusions?.length > 0 && (
+                  {activeModal.content?.conclusions?.length > 0 && (
                     <div>
-                      <h5 className="font-semibold text-white mb-1">Conclusions</h5>
-                      <ul className="list-disc list-inside space-y-1 bg-slate-950 p-3 rounded-lg border border-slate-800 text-slate-300">
+                      <h5 style={modalSectionHeaderStyle}>Conclusions</h5>
+                      <ul style={modalListStyle}>
                         {activeModal.content.conclusions.map((c, i) => (
                           <li key={i}>{c}</li>
                         ))}
@@ -420,27 +403,17 @@ export default function AIIntelligencePanel({
 
               {/* SHOW_NOTES */}
               {activeModal.type === 'SHOW_NOTES' && (
-                <div className="space-y-4">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   <div>
-                    <h5 className="font-semibold text-white mb-1">Overview</h5>
-                    <p className="leading-relaxed bg-slate-950 p-3 rounded-lg border border-slate-800">{activeModal.content.overview}</p>
+                    <h5 style={modalSectionHeaderStyle}>Overview</h5>
+                    <p style={modalBoxStyle}>{activeModal.content?.overview}</p>
                   </div>
-                  {activeModal.content.keyPoints?.length > 0 && (
+                  {activeModal.content?.keyPoints?.length > 0 && (
                     <div>
-                      <h5 className="font-semibold text-white mb-1">Key Points</h5>
-                      <ul className="list-disc list-inside space-y-1 bg-slate-950 p-3 rounded-lg border border-slate-800">
+                      <h5 style={modalSectionHeaderStyle}>Key Points</h5>
+                      <ul style={modalListStyle}>
                         {activeModal.content.keyPoints.map((kp, i) => (
                           <li key={i}>{kp}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {activeModal.content.takeaways?.length > 0 && (
-                    <div>
-                      <h5 className="font-semibold text-white mb-1">Takeaways</h5>
-                      <ul className="list-disc list-inside space-y-1 bg-slate-950 p-3 rounded-lg border border-slate-800">
-                        {activeModal.content.takeaways.map((t, i) => (
-                          <li key={i}>{t}</li>
                         ))}
                       </ul>
                     </div>
@@ -451,9 +424,9 @@ export default function AIIntelligencePanel({
               {/* DESCRIPTION */}
               {activeModal.type === 'DESCRIPTION' && (
                 <div>
-                  <h5 className="font-semibold text-white mb-1">Episode Description</h5>
-                  <p className="leading-relaxed whitespace-pre-wrap bg-slate-950 p-4 rounded-lg border border-slate-800 font-sans">
-                    {activeModal.content.description}
+                  <h5 style={modalSectionHeaderStyle}>Episode Description</h5>
+                  <p style={{ ...modalBoxStyle, whiteSpace: 'pre-wrap' }}>
+                    {activeModal.content?.description}
                   </p>
                 </div>
               )}
@@ -461,21 +434,18 @@ export default function AIIntelligencePanel({
               {/* TITLE_SUGGESTIONS */}
               {activeModal.type === 'TITLE_SUGGESTIONS' && (
                 <div>
-                  <h5 className="font-semibold text-white mb-2">Suggested Titles</h5>
-                  <div className="space-y-2">
-                    {activeModal.content.titleSuggestions?.map((title, i) => (
-                      <div
-                        key={i}
-                        className="bg-slate-950 p-3 rounded-lg border border-slate-800 flex items-center justify-between"
-                      >
-                        <span className="font-medium text-white">{title}</span>
+                  <h5 style={modalSectionHeaderStyle}>Suggested Titles</h5>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {activeModal.content?.titleSuggestions?.map((title, i) => (
+                      <div key={i} style={{ ...modalBoxStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--plum-deep)' }}>{title}</span>
                         {sourceType === 'episode' && podcastId && (
                           <button
                             onClick={() => handleApplyContent('title', title)}
                             disabled={applying}
-                            className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1 rounded transition"
+                            style={primaryBtnStyle}
                           >
-                            Use This Title
+                            Use Title
                           </button>
                         )}
                       </div>
@@ -487,23 +457,17 @@ export default function AIIntelligencePanel({
               {/* CHAPTERS */}
               {activeModal.type === 'CHAPTERS' && (
                 <div>
-                  <h5 className="font-semibold text-white mb-2">Timestamped Chapters</h5>
-                  <div className="space-y-2">
-                    {activeModal.content.chapters?.map((ch, i) => (
-                      <div
-                        key={i}
-                        className="bg-slate-950 p-3 rounded-lg border border-slate-800 flex items-center justify-between hover:border-slate-700 transition"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <button
-                            onClick={() => onSeek && onSeek(ch.start)}
-                            className="font-mono text-xs bg-indigo-950 hover:bg-indigo-900 border border-indigo-700 text-indigo-300 px-2 py-1 rounded"
-                            title="Seek to timestamp"
-                          >
-                            ▶ {formatSeconds(ch.start)}
-                          </button>
-                          <span className="font-medium text-slate-200">{ch.title}</span>
-                        </div>
+                  <h5 style={modalSectionHeaderStyle}>Timestamped Chapters</h5>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {activeModal.content?.chapters?.map((ch, i) => (
+                      <div key={i} style={{ ...modalBoxStyle, display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <button
+                          onClick={() => onSeek && onSeek(ch.start)}
+                          style={{ background: 'var(--plum-deep)', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 8px', fontSize: 12, fontWeight: 700, fontFamily: 'monospace', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        >
+                          <Play size={10} /> {formatSeconds(ch.start)}
+                        </button>
+                        <span style={{ fontWeight: 600, color: 'var(--text-dark)' }}>{ch.title}</span>
                       </div>
                     ))}
                   </div>
@@ -513,13 +477,10 @@ export default function AIIntelligencePanel({
               {/* KEY_TOPICS */}
               {activeModal.type === 'KEY_TOPICS' && (
                 <div>
-                  <h5 className="font-semibold text-white mb-2">Topics & Tags</h5>
-                  <div className="flex flex-wrap gap-2">
-                    {activeModal.content.keyTopics?.map((topic, i) => (
-                      <span
-                        key={i}
-                        className="px-3 py-1 bg-indigo-950 text-indigo-300 border border-indigo-800 rounded-full text-xs font-medium"
-                      >
+                  <h5 style={modalSectionHeaderStyle}>Topics &amp; Tags</h5>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {activeModal.content?.keyTopics?.map((topic, i) => (
+                      <span key={i} style={{ padding: '6px 12px', background: 'var(--lavender-mist)', color: 'var(--plum-deep)', border: '1px solid var(--border-subtle)', borderRadius: 20, fontSize: 13, fontWeight: 600 }}>
                         #{topic}
                       </span>
                     ))}
@@ -527,76 +488,24 @@ export default function AIIntelligencePanel({
                 </div>
               )}
 
-              {/* GUEST_BRIEF */}
-              {activeModal.type === 'GUEST_BRIEF' && (
-                <div className="space-y-3">
-                  {activeModal.content.background && (
-                    <div>
-                      <h5 className="font-semibold text-white mb-1">Guest Background</h5>
-                      <p className="bg-slate-950 p-3 rounded-lg border border-slate-800">{activeModal.content.background}</p>
-                    </div>
-                  )}
-                  {activeModal.content.keyTalkingPoints?.length > 0 && (
-                    <div>
-                      <h5 className="font-semibold text-white mb-1">Key Talking Points</h5>
-                      <ul className="list-disc list-inside space-y-1 bg-slate-950 p-3 rounded-lg border border-slate-800">
-                        {activeModal.content.keyTalkingPoints.map((tp, i) => (
-                          <li key={i}>{tp}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
-
               {/* INTERVIEW_PREP */}
               {activeModal.type === 'INTERVIEW_PREP' && (
                 <div>
-                  <h5 className="font-semibold text-white mb-2">Suggested Interview Questions</h5>
-                  <ol className="list-decimal list-inside space-y-2 bg-slate-950 p-4 rounded-lg border border-slate-800">
-                    {activeModal.content.questions?.map((q, i) => (
-                      <li key={i} className="text-slate-200 leading-relaxed font-medium">
-                        {q}
-                      </li>
+                  <h5 style={modalSectionHeaderStyle}>Suggested Interview Questions</h5>
+                  <ol style={{ ...modalListStyle, listStyleType: 'decimal' }}>
+                    {activeModal.content?.questions?.map((q, i) => (
+                      <li key={i} style={{ marginBottom: 6 }}>{q}</li>
                     ))}
                   </ol>
                 </div>
               )}
             </div>
 
-            {/* Modal Footer / Explicit Confirmation Buttons */}
-            <div className="p-4 border-t border-slate-800 bg-slate-950 flex items-center justify-between">
-              <span className="text-xs text-slate-500">
-                AI output suggestions require explicit user confirmation before replacing episode metadata.
-              </span>
-              <div className="flex items-center space-x-2">
-                {sourceType === 'episode' && podcastId && activeModal.type === 'DESCRIPTION' && (
-                  <button
-                    onClick={() => handleApplyContent('description', activeModal.content.description)}
-                    disabled={applying}
-                    className="px-3 py-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition"
-                  >
-                    {applying ? 'Applying...' : 'Use This Description'}
-                  </button>
-                )}
-
-                {sourceType === 'episode' && podcastId && activeModal.type === 'SHOW_NOTES' && (
-                  <button
-                    onClick={() => handleApplyContent('showNotes', activeModal.content)}
-                    disabled={applying}
-                    className="px-3 py-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition"
-                  >
-                    {applying ? 'Applying...' : 'Use These Show Notes'}
-                  </button>
-                )}
-
-                <button
-                  onClick={() => setActiveModal(null)}
-                  className="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition"
-                >
-                  Close
-                </button>
-              </div>
+            {/* Modal Footer */}
+            <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border-subtle)', background: 'var(--color-background-primary)', display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={() => setActiveModal(null)} style={secondaryBtnStyle}>
+                Close
+              </button>
             </div>
           </div>
         </div>
@@ -604,3 +513,105 @@ export default function AIIntelligencePanel({
     </div>
   );
 }
+
+const panelContainerStyle = {
+  background: '#ffffff',
+  border: '1px solid var(--border-subtle)',
+  borderRadius: 16,
+  padding: 24,
+  boxShadow: 'var(--shadow-md)',
+  marginBottom: 24,
+};
+
+const artifactCardStyle = {
+  background: 'var(--color-background-primary)',
+  border: '1px solid var(--border-subtle)',
+  borderRadius: 12,
+  padding: 16,
+  display: 'flex',
+  flexDirection: 'column',
+  justify: 'space-between',
+  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+};
+
+const primaryBtnStyle = {
+  background: 'var(--plum-deep)',
+  color: '#ffffff',
+  border: 'none',
+  borderRadius: 8,
+  padding: '7px 14px',
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: 'pointer',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  boxShadow: 'var(--shadow-sm)',
+  transition: 'all 0.2s',
+};
+
+const secondaryBtnStyle = {
+  background: 'var(--white-pure)',
+  color: 'var(--text-dark)',
+  border: '1px solid var(--border-subtle)',
+  borderRadius: 8,
+  padding: '7px 14px',
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: 'pointer',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  transition: 'all 0.2s',
+};
+
+const modalBackdropStyle = {
+  position: 'fixed',
+  inset: 0,
+  background: 'rgba(50, 31, 58, 0.65)',
+  backdropFilter: 'blur(6px)',
+  zIndex: 1000,
+  display: 'flex',
+  alignItems: 'center',
+  justify: 'center',
+  padding: 20,
+};
+
+const modalContentStyle = {
+  background: '#ffffff',
+  borderRadius: 16,
+  maxWidth: 640,
+  width: '100%',
+  overflow: 'hidden',
+  boxShadow: 'var(--shadow-plum)',
+  border: '1px solid var(--border-subtle)',
+};
+
+const modalSectionHeaderStyle = {
+  fontSize: 14,
+  fontWeight: 700,
+  color: 'var(--plum-deep)',
+  marginBottom: 6,
+};
+
+const modalBoxStyle = {
+  background: 'var(--color-background-secondary)',
+  padding: 12,
+  borderRadius: 10,
+  border: '1px solid var(--border-subtle)',
+  fontSize: 13,
+  color: 'var(--text-dark)',
+  lineHeight: 1.5,
+  margin: 0,
+};
+
+const modalListStyle = {
+  background: 'var(--color-background-secondary)',
+  padding: '12px 12px 12px 28px',
+  borderRadius: 10,
+  border: '1px solid var(--border-subtle)',
+  fontSize: 13,
+  color: 'var(--text-dark)',
+  lineHeight: 1.6,
+  margin: 0,
+};

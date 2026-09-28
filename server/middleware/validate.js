@@ -32,6 +32,7 @@ const LoginSchema = z.object({
 
 const BookingSchema = z.object({
   hostId:    z.string().min(1),
+  guestId:   z.string().optional(),
   slotStart: z.string().datetime(),
   slotEnd:   z.string().datetime(),
   topics:    z.array(z.string()).optional(),

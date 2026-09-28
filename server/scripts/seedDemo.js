@@ -34,16 +34,31 @@ async function seedDemoData() {
   let mongodInstance = null;
 
   if (mongoose.connection.readyState === 0) {
-    if (mongoUri === 'memory') {
+    if (mongoUri === 'memory' || process.env.NODE_ENV === 'test') {
       const { MongoMemoryReplSet } = require('mongodb-memory-server');
       mongodInstance = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
       mongoUri = mongodInstance.getUri();
       console.log('[Seed] Created MongoMemoryReplSet instance for demo transaction compatibility.');
     }
-    await mongoose.connect(mongoUri, {
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000,
-    });
+    try {
+      await mongoose.connect(mongoUri, {
+        maxPoolSize: 10,
+        serverSelectionTimeoutMS: 5000,
+      });
+    } catch (err) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`[Seed] Connection to ${mongoUri} failed (${err.message}). Falling back to MongoMemoryReplSet.`);
+        const { MongoMemoryReplSet } = require('mongodb-memory-server');
+        mongodInstance = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
+        mongoUri = mongodInstance.getUri();
+        await mongoose.connect(mongoUri, {
+          maxPoolSize: 10,
+          serverSelectionTimeoutMS: 5000,
+        });
+      } else {
+        throw err;
+      }
+    }
   }
 
   console.log('[Seed] Connected to MongoDB. Commencing idempotent seed...');
@@ -357,7 +372,16 @@ async function seedDemoData() {
 
   const bookings = [];
   for (const b of sampleBookings) {
-    const booking = await Booking.create(b);
+    let booking = null;
+    if (b.paymentIntentId) {
+      booking = await Booking.findOne({ paymentIntentId: b.paymentIntentId });
+    }
+    if (!booking) {
+      booking = await Booking.findOne({ host: b.host, guest: b.guest, slotStart: b.slotStart });
+    }
+    if (!booking) {
+      booking = await Booking.create(b);
+    }
     bookings.push(booking);
   }
 
@@ -392,35 +416,47 @@ async function seedDemoData() {
   ];
 
   for (const m of messagesData) {
-    await Message.create(m);
+    const existingMsg = await Message.findOne({ booking: m.booking, sender: m.sender, content: m.content });
+    if (!existingMsg) {
+      await Message.create(m);
+    }
   }
 
   // ── 5. DEMO REVIEWS & REPUTATION ─────────────────────────────────────────
-  await Review.create({
-    booking: bookings[0]._id,
-    reviewer: guests[0]._id,
-    reviewee: hosts[0]._id,
-    rating: 5,
-    title: 'World-class podcast host!',
-    comment: 'Dr. Rostova is an incredible interviewer. The recording room audio quality and live subtitles were outstanding.',
-    status: 'PUBLISHED',
-    tenantId,
-  });
+  const existingReview = await Review.findOne({ booking: bookings[0]._id, reviewer: guests[0]._id });
+  if (!existingReview) {
+    await Review.create({
+      booking: bookings[0]._id,
+      reviewer: guests[0]._id,
+      reviewee: hosts[0]._id,
+      rating: 5,
+      title: 'World-class podcast host!',
+      comment: 'Dr. Rostova is an incredible interviewer. The recording room audio quality and live subtitles were outstanding.',
+      status: 'PUBLISHED',
+      tenantId,
+    });
+  }
 
   // ── 6. DEMO AVAILABILITY ──────────────────────────────────────────────────
-  await Availability.create({
-    user: hosts[0]._id,
-    start: new Date(now + 86400000),
-    end: new Date(now + 90000000),
-    isBooked: false,
-  });
+  const avail1 = await Availability.findOne({ user: hosts[0]._id, start: new Date(now + 86400000) });
+  if (!avail1) {
+    await Availability.create({
+      user: hosts[0]._id,
+      start: new Date(now + 86400000),
+      end: new Date(now + 90000000),
+      isBooked: false,
+    });
+  }
 
-  await Availability.create({
-    user: hosts[1]._id,
-    start: new Date(now + 172800000),
-    end: new Date(now + 176400000),
-    isBooked: false,
-  });
+  const avail2 = await Availability.findOne({ user: hosts[1]._id, start: new Date(now + 172800000) });
+  if (!avail2) {
+    await Availability.create({
+      user: hosts[1]._id,
+      start: new Date(now + 172800000),
+      end: new Date(now + 176400000),
+      isBooked: false,
+    });
+  }
 
   console.log('[Seed] Demo database seeding completed successfully!');
   if (mongodInstance) {

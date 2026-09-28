@@ -141,7 +141,7 @@ export default function LiveCaptionOverlay({
 
   if (!enabled && status === 'DISABLED') {
     return (
-      <div className="absolute bottom-4 right-4 z-40">
+      <div className="absolute bottom-16 right-4 z-40">
         <button
           onClick={handleToggleEnabled}
           className="flex items-center space-x-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-lg backdrop-blur-md transition"
@@ -154,7 +154,7 @@ export default function LiveCaptionOverlay({
   }
 
   return (
-    <div className="absolute bottom-4 left-4 right-4 z-40 max-w-2xl mx-auto transition-all duration-300">
+    <div className="absolute bottom-16 left-4 right-4 z-40 max-w-2xl mx-auto transition-all duration-300">
       <div className="bg-slate-950/90 border border-slate-800/90 rounded-2xl shadow-2xl backdrop-blur-md overflow-hidden">
         {/* Controls Bar Header */}
         <div className="px-4 py-2.5 bg-slate-900/90 border-b border-slate-800/80 flex items-center justify-between text-xs">

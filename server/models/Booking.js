@@ -4,6 +4,7 @@ const bookingSchema = new mongoose.Schema(
   {
     host:      { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     guest:     { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     slotStart: { type: Date, required: true },
     slotEnd:   { type: Date, required: true },
     topics:    [{ type: String }],
@@ -45,6 +46,11 @@ const bookingSchema = new mongoose.Schema(
     recordingStoppedAt: { type: Date },
     recordingReadyAt:   { type: Date },
     recordingDuration:  { type: Number },
+    // Phase E7 Mutual Session End State
+    hostEndRequested:   { type: Boolean, default: false },
+    hostEndRequestedAt: { type: Date },
+    guestEndRequested:  { type: Boolean, default: false },
+    guestEndRequestedAt:{ type: Date },
     // Phase C3.1 Non-Destructive Recording Edit (EDL Metadata)
     recordingEdit: {
       trimStartSeconds:      { type: Number, default: 0 },

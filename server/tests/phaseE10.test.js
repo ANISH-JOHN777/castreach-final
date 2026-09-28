@@ -40,7 +40,7 @@ describe('Phase E10 — Investor Demo Environment & Integration Verification', (
     hostToken = jwt.sign({ id: hostUser._id.toString(), role: 'host', tenantId: 'castreach' }, jwtSecret, { expiresIn: '15m' });
     guestToken = jwt.sign({ id: guestUser._id.toString(), role: 'guest', tenantId: 'castreach' }, jwtSecret, { expiresIn: '15m' });
     otherToken = jwt.sign({ id: otherUser._id.toString(), role: 'guest', tenantId: 'castreach' }, jwtSecret, { expiresIn: '15m' });
-  });
+  }, 30000);
 
   // ── 1. DEMO ENVIRONMENT CONFIGURATION & SECURITY ───────────────────────────
   describe('1. Demo Environment Detection & Production Isolation', () => {

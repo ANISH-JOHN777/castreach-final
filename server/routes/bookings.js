@@ -12,6 +12,7 @@ const { createDailyRoom }     = require('../services/daily');
 const { refundPayment }       = require('../services/stripe');
 const { recomputeUserRating, recomputeHostResponseMetrics } = require('../services/reviews');
 const { completeBooking }     = require('../services/bookingLifecycle');
+const { broadcastToBooking }  = require('../services/realtimeServer');
 const stitcher                = require('../stitcher');
 
 // ── GET /api/bookings — list own bookings (paginated) ─────────────────────────
@@ -31,6 +32,7 @@ router.get('/', verifyToken, async (req, res) => {
       Booking.find(filter)
         .populate('host',  'name avatar podcastName avgRating')
         .populate('guest', 'name avatar expertise avgRating')
+        .populate('createdBy', 'name avatar')
         .sort({ slotStart: -1 })
         .skip((page - 1) * limit)
         .limit(limit),
@@ -56,19 +58,28 @@ router.get('/:id', verifyToken, async (req, res) => {
       const bookings = await Booking.find(filter)
         .populate('host',  'name avatar podcastName avgRating')
         .populate('guest', 'name avatar expertise avgRating')
+        .populate('createdBy', 'name avatar')
         .sort({ slotStart: -1 });
       return res.json({ bookings });
     }
 
     const booking = await Booking.findById(req.params.id)
       .populate('host',  'name avatar podcastName')
-      .populate('guest', 'name avatar expertise');
+      .populate('guest', 'name avatar expertise')
+      .populate('createdBy', 'name avatar');
 
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
 
-    const isParticipant = [booking.host._id, booking.guest._id]
-      .some((id) => id.toString() === req.user.id);
+    const hostIdStr  = booking.host?._id  ? booking.host._id.toString()  : booking.host?.toString();
+    const guestIdStr = booking.guest?._id ? booking.guest._id.toString() : booking.guest?.toString();
+
+    const isParticipant = [hostIdStr, guestIdStr].includes(req.user.id) || req.user.role === 'admin';
     if (!isParticipant) return res.status(403).json({ error: 'Forbidden' });
+
+    if (booking.status === 'confirmed' && !booking.dailyRoomUrl) {
+      booking.dailyRoomUrl = `https://castreach.daily.co/room-${booking._id}`;
+      await booking.save();
+    }
 
     res.json({ booking });
   } catch (err) {
@@ -83,8 +94,12 @@ router.get('/:id', verifyToken, async (req, res) => {
 router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
   let session = null;
   try {
-    session = await mongoose.startSession();
-    session.startTransaction();
+    const topoType = mongoose.connection.client?.topology?.description?.type;
+    const isReplicaSet = topoType === 'ReplicaSetWithPrimary' || topoType === 'Sharded' || (typeof topoType === 'string' && topoType.includes('ReplicaSet'));
+    if (isReplicaSet) {
+      session = await mongoose.startSession();
+      session.startTransaction();
+    }
   } catch {
     if (session) {
       try { session.endSession(); } catch {}
@@ -104,14 +119,27 @@ router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
   };
 
   try {
-    const { hostId, slotStart, slotEnd, topics, message } = req.body;
+    const { hostId, guestId, slotStart, slotEnd, topics, message } = req.body;
 
-    if (hostId === req.user.id) {
+    let effectiveHostId = hostId;
+    let effectiveGuestId = req.user.id;
+
+    if (req.user.role === 'host' || hostId === req.user.id) {
+      effectiveHostId = req.user.id;
+      effectiveGuestId = guestId || (hostId !== req.user.id ? hostId : null);
+    }
+
+    if (!effectiveGuestId) {
+      await cleanupSession(true);
+      return res.status(400).json({ error: 'Guest participant is required' });
+    }
+
+    if (effectiveHostId.toString() === effectiveGuestId.toString()) {
       await cleanupSession(true);
       return res.status(400).json({ error: 'You cannot book yourself' });
     }
 
-    let hostQuery = User.findById(hostId).select('role isBlocked sessionRateCents');
+    let hostQuery = User.findById(effectiveHostId).select('role isBlocked sessionRateCents');
     if (session?.inTransaction()) hostQuery = hostQuery.session(session);
     const host = await hostQuery;
 
@@ -121,7 +149,16 @@ router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
     }
     if (host.role !== 'host') {
       await cleanupSession(true);
-      return res.status(400).json({ error: 'Selected user is not a host' });
+      return res.status(400).json({ error: 'Selected host user is invalid' });
+    }
+
+    let guestQuery = User.findById(effectiveGuestId).select('role isBlocked');
+    if (session?.inTransaction()) guestQuery = guestQuery.session(session);
+    const guestUser = await guestQuery;
+
+    if (!guestUser || guestUser.isBlocked) {
+      await cleanupSession(true);
+      return res.status(404).json({ error: 'Guest not found' });
     }
 
     const start = new Date(slotStart);
@@ -137,7 +174,7 @@ router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
     }
 
     let conflictQuery = Booking.findOne({
-      host:   hostId,
+      host:   effectiveHostId,
       status: { $in: ['pending', 'confirmed'] },
       $or:    [{ slotStart: { $lt: end }, slotEnd: { $gt: start } }],
     });
@@ -150,8 +187,9 @@ router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
     }
 
     const bookingData = {
-      host:        hostId,
-      guest:       req.user.id,
+      host:        effectiveHostId,
+      guest:       effectiveGuestId,
+      createdBy:   req.user.id,
       slotStart:   start,
       slotEnd:     end,
       topics,
@@ -166,7 +204,7 @@ router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
     // Mark matching availability slot as booked inside the transaction if present
     await Availability.updateOne(
       {
-        user: hostId,
+        user: effectiveHostId,
         isBooked: false,
         $or: [{ start, end }, { start: { $lt: end }, end: { $gt: start } }],
       },
@@ -184,6 +222,17 @@ router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
       }],
       session?.inTransaction() ? { session } : {}
     );
+
+    if (message && message.trim()) {
+      await Message.create(
+        [{
+          booking: booking._id,
+          sender: req.user.id,
+          content: message.trim(),
+        }],
+        session?.inTransaction() ? { session } : {}
+      );
+    }
 
     if (session?.inTransaction()) {
       await session.commitTransaction();
@@ -222,19 +271,18 @@ router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
       link:  `/bookings/${booking._id}`,
     }).catch((err) => console.error('Notify failed:', err.message));
 
-    res.status(201).json({ booking });
   } catch (err) {
-    // abortTransaction can itself throw if commitTransaction already ran and
-    // the session transitioned to a terminal state — swallow that error.
-    await session.abortTransaction().catch(() => {});
-    // E11000 = duplicate key from the unique partial index (committed conflict).
-    // 112    = WriteConflict when two concurrent transactions race to commit.
+    if (session) {
+      await session.abortTransaction().catch(() => {});
+    }
     if (err.code === 11000 || err.code === 112) {
       return res.status(409).json({ error: 'Slot already booked' });
     }
     res.status(err.status || 500).json({ error: err.message });
   } finally {
-    session.endSession();
+    if (session) {
+      try { session.endSession(); } catch {}
+    }
   }
 });
 
@@ -243,7 +291,8 @@ router.patch('/:id/confirm', verifyToken, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ error: 'Not found' });
-    if (booking.host.toString() !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+    const isParticipant = [booking.host.toString(), booking.guest.toString()].includes(req.user.id) || req.user.role === 'admin';
+    if (!isParticipant) return res.status(403).json({ error: 'Forbidden' });
     if (booking.status !== 'pending') return res.status(400).json({ error: 'Cannot confirm' });
 
     let roomUrl = '';
@@ -300,7 +349,14 @@ router.patch('/:id/confirm', verifyToken, async (req, res) => {
       sender:   req.user.id,
       content:  'Host confirmed the booking.',
       isSystem: true,
-    }).catch((err) => console.error('System message failed:', err.message));
+    }).catch((err) => console.error('System msg create error:', err.message));
+
+    // Broadcast real-time status update to all room subscribers
+    broadcastToBooking(booking._id.toString(), 'booking:updated', {
+      bookingId: booking._id.toString(),
+      status: 'confirmed',
+      dailyRoomUrl: booking.dailyRoomUrl,
+    });
 
     res.json({ booking });
   } catch (err) {

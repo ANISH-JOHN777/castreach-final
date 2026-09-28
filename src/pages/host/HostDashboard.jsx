@@ -1,21 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Headphones, ArrowRight, Star, Radio, Video, Calendar } from 'lucide-react';
+import { Headphones, ArrowRight, Star, Radio, Video, Calendar, MessageSquare } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import RecommendedGuests from '../../components/RecommendedGuests';
 
 export default function HostDashboard() {
-  const { user } = useAuth();
+  const { user, authFetch } = useAuth();
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/bookings?limit=10', { headers: { Authorization: `Bearer ${user?.token}` } })
+    authFetch('/bookings?limit=10')
       .then((res) => res.ok ? res.json() : { bookings: [] })
       .then((data) => { setBookings(data.bookings || []); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [user]);
+  }, [authFetch]);
 
   const pendingRequests = bookings.filter((b) => b.status === 'pending');
   const confirmedSessions = bookings.filter((b) => b.status === 'confirmed');
@@ -180,6 +180,12 @@ export default function HostDashboard() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    onClick={() => navigate(`/messages/${b._id}`)}
+                    style={{ background: 'var(--plum-deep)', color: '#fff', padding: '8px 16px', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <MessageSquare size={14} /> Message Guest
+                  </button>
                   <button
                     onClick={() => navigate(`/bookings/${b._id}`)}
                     style={{ background: 'var(--plum-primary)', color: '#fff', padding: '8px 16px', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 600 }}

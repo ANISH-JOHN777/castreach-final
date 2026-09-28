@@ -91,6 +91,17 @@ app.use('/api/webhooks/daily', express.raw({ type: 'application/json' }), requir
 app.use('/api/webhooks',       express.raw({ type: 'application/json' }), require('./routes/webhooks'));
 
 // ── Health & Readiness checks ──────────────────────────────────────────────────
+app.get('/', (_req, res) => {
+  res.json({
+    name: 'CastReach API Server',
+    status: 'ok',
+    frontendUrl: 'http://localhost:5173',
+    health: '/health',
+    ready: '/ready',
+    documentation: 'Access the CastReach Web UI at http://localhost:5173',
+  });
+});
+
 app.get(['/health', '/api/health'], (_req, res) => {
   res.json({
     status: 'ok',
@@ -98,6 +109,7 @@ app.get(['/health', '/api/health'], (_req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
 
 app.get(['/ready', '/api/ready'], (_req, res) => {
   const mongoose = require('mongoose');

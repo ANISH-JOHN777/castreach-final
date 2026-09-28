@@ -24,12 +24,14 @@ export function useRealtimeMessages(bookingId, pollIntervalMs = 10000) {
     if (isInitial) setLoading(true);
     try {
       const res = await authFetch(`/messages/${bookingId}`);
-      const data = await res.json();
+      const text = await res.text();
+      let data = {};
+      try { data = text ? JSON.parse(text) : {}; } catch {}
       if (res.ok && isMountedRef.current) {
         setMessages(data.messages || []);
         setError(null);
       } else if (isMountedRef.current) {
-        setError(data.error || 'Failed to fetch messages');
+        setError(data.error || `Failed to fetch messages (${res.status})`);
       }
     } catch (err) {
       if (isMountedRef.current) setError(err.message);
@@ -46,7 +48,7 @@ export function useRealtimeMessages(bookingId, pollIntervalMs = 10000) {
       return;
     }
 
-    const token = localStorage.getItem('token') || (user && user.token);
+    const token = localStorage.getItem('cr_token') || localStorage.getItem('token') || (user && user.token);
     if (token) {
       realtime.connect(token);
     }

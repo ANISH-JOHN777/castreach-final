@@ -1,9 +1,13 @@
-const router      = require('express').Router();
-const crypto      = require('crypto');
-const Booking     = require('../models/Booking');
+const express    = require('express');
+const router     = express.Router();
+const fs         = require('fs');
+const path       = require('path');
+const crypto     = require('crypto');
+const Booking    = require('../models/Booking');
 const verifyToken = require('../middleware/verifyToken');
 const { createDailyRoom, createMeetingToken } = require('../services/daily');
 const renderWorker = require('../worker/renderWorker');
+const realtimeServer = require('../services/realtimeServer');
 
 // ── POST /api/recordings/token — generate short-lived Daily meeting token ───
 router.post('/token', verifyToken, async (req, res) => {
@@ -133,9 +137,106 @@ router.get('/:bookingId', verifyToken, async (req, res) => {
       recordingDuration:  booking.recordingDuration,
       recordingEdit:      hasEdit ? booking.recordingEdit : null,
       recordingStorage:   booking.recordingStorage || null,
+      hostEndRequested:   booking.hostEndRequested || false,
+      hostEndRequestedAt: booking.hostEndRequestedAt || null,
+      guestEndRequested:  booking.guestEndRequested || false,
+      guestEndRequestedAt:booking.guestEndRequestedAt || null,
     });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/recordings/:bookingId/session-end-request ──────────────────────
+router.post('/:bookingId/session-end-request', verifyToken, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.bookingId);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    const isHost  = booking.host.toString()  === req.user.id;
+    const isGuest = booking.guest.toString() === req.user.id;
+
+    if (!isHost && !isGuest && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden: Only booking participants can request ending the session' });
+    }
+
+    const now = new Date();
+    if (isHost) {
+      booking.hostEndRequested = true;
+      booking.hostEndRequestedAt = now;
+    } else if (isGuest) {
+      booking.guestEndRequested = true;
+      booking.guestEndRequestedAt = now;
+    }
+
+    const bothRequested = booking.hostEndRequested && booking.guestEndRequested;
+
+    if (bothRequested) {
+      booking.recordingStatus = 'PROCESSING';
+      await booking.save();
+
+      realtimeServer.broadcastToBooking(booking._id.toString(), 'session:end_confirmed', {
+        bookingId: booking._id.toString(),
+        confirmedBy: req.user.id,
+        timestamp: now.toISOString(),
+      });
+
+      return res.json({
+        success: true,
+        sessionEnded: true,
+        hostEndRequested: booking.hostEndRequested,
+        guestEndRequested: booking.guestEndRequested,
+        recordingStatus: booking.recordingStatus,
+      });
+    } else {
+      await booking.save();
+
+      realtimeServer.broadcastToBooking(booking._id.toString(), 'session:end_requested', {
+        bookingId: booking._id.toString(),
+        requestedBy: req.user.id,
+        requestedRole: isHost ? 'host' : 'guest',
+        timestamp: now.toISOString(),
+      });
+
+      return res.json({
+        success: true,
+        sessionEnded: false,
+        hostEndRequested: booking.hostEndRequested,
+        guestEndRequested: booking.guestEndRequested,
+        recordingStatus: booking.recordingStatus,
+      });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/recordings/:bookingId/session-end-decline ──────────────────────
+router.post('/:bookingId/session-end-decline', verifyToken, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.bookingId);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    const isParticipant = [booking.host, booking.guest].some((id) => id.toString() === req.user.id) || req.user.role === 'admin';
+    if (!isParticipant) return res.status(403).json({ error: 'Forbidden' });
+
+    booking.hostEndRequested = false;
+    booking.guestEndRequested = false;
+    await booking.save();
+
+    realtimeServer.broadcastToBooking(booking._id.toString(), 'session:end_cancelled', {
+      bookingId: booking._id.toString(),
+      cancelledBy: req.user.id,
+      timestamp: new Date().toISOString(),
+    });
+
+    res.json({
+      success: true,
+      hostEndRequested: false,
+      guestEndRequested: false,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -258,7 +359,7 @@ router.post('/:bookingId/edit', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'Recording must be READY before saving edit instructions' });
     }
 
-    let { trimStartSeconds, trimEndSeconds } = req.body;
+    let { trimStartSeconds, trimEndSeconds, musicTrack, musicVolume } = req.body;
     if (trimStartSeconds === undefined || trimStartSeconds === null || trimEndSeconds === undefined || trimEndSeconds === null) {
       return res.status(400).json({ error: 'trimStartSeconds and trimEndSeconds are required' });
     }
@@ -288,6 +389,8 @@ router.post('/:bookingId/edit', verifyToken, async (req, res) => {
       trimStartSeconds,
       trimEndSeconds,
       editedDurationSeconds,
+      musicTrack: musicTrack || 'none',
+      musicVolume: musicVolume !== undefined ? Number(musicVolume) : 20,
       updatedAt: new Date(),
       updatedBy: req.user.id,
     };
@@ -536,6 +639,159 @@ router.post('/:bookingId/render/retry', verifyToken, async (req, res) => {
     });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/recordings/:bookingId/upload — upload recorded session blob ─────
+router.post('/:bookingId/upload', verifyToken, express.raw({ type: ['video/webm', 'video/mp4', 'application/octet-stream'], limit: '100mb' }), async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.bookingId);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    const isParticipant = [booking.host, booking.guest]
+      .some((id) => id.toString() === req.user.id) || req.user.role === 'admin';
+    if (!isParticipant) return res.status(403).json({ error: 'Forbidden' });
+
+    const buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || '');
+    if (buffer.length === 0) {
+      return res.status(400).json({ error: 'Empty recording payload' });
+    }
+
+    const targetDir = path.join(process.cwd(), 'scratch', 'storage', 'recordings', booking._id.toString(), 'original');
+    await fs.promises.mkdir(targetDir, { recursive: true });
+    const targetPath = path.join(targetDir, 'source.mp4');
+    await fs.promises.writeFile(targetPath, buffer);
+
+    booking.recordingReady = true;
+    booking.recordingStatus = 'READY';
+    booking.recordingStorage = {
+      provider: 'local',
+      objectKey: `recordings/${booking._id}/original/source.mp4`,
+      status: 'READY',
+      sizeBytes: buffer.length,
+      contentType: 'video/mp4',
+      storedAt: new Date(),
+    };
+    await booking.save();
+
+    res.json({
+      success: true,
+      bookingId: booking._id,
+      recordingStorage: booking.recordingStorage,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/recordings/:bookingId/stop — stop recording session ─────────────
+router.post('/:bookingId/stop', verifyToken, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.bookingId);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    const isParticipant = [booking.host, booking.guest]
+      .some((id) => id.toString() === req.user.id) || req.user.role === 'admin';
+    if (!isParticipant) return res.status(403).json({ error: 'Forbidden' });
+
+    if (booking.recordingStatus !== 'READY') {
+      booking.recordingStatus = 'PROCESSING';
+    }
+    await booking.save();
+
+    res.json({ success: true, bookingId: booking._id, recordingStatus: booking.recordingStatus });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/recordings/:bookingId/storage-file — stream original MP4 ─────────
+router.get('/:bookingId/storage-file', async (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const token = req.query.token || req.headers.authorization?.replace('Bearer ', '') || req.cookies?.refreshToken;
+    let userId = null;
+    let userRole = 'guest';
+
+    if (token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'test_jwt_secret_32_chars_minimum_len');
+        userId = decoded.id;
+        userRole = decoded.role;
+      } catch { /* proceed */ }
+    }
+
+    const booking = await Booking.findById(req.params.bookingId);
+    if (!booking) return res.status(404).json({ error: 'Recording not found' });
+
+    if (userId) {
+      const isParticipant = [booking.host, booking.guest].some((id) => id.toString() === userId) || userRole === 'admin';
+      if (!isParticipant) return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const filePath = path.join(process.cwd(), 'scratch', 'storage', 'recordings', booking._id.toString(), 'original', 'source.mp4');
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'Recording video file not found on disk' });
+    }
+
+    const stat = await fs.promises.stat(filePath);
+    const range = req.headers.range;
+
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1;
+      const chunksize = end - start + 1;
+      const file = fs.createReadStream(filePath, { start, end });
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${stat.size}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunksize,
+        'Content-Type': 'video/mp4',
+      });
+      file.pipe(res);
+    } else {
+      res.writeHead(200, {
+        'Content-Length': stat.size,
+        'Content-Type': 'video/mp4',
+        'Content-Disposition': `inline; filename="recording_${booking._id}.mp4"`,
+      });
+      fs.createReadStream(filePath).pipe(res);
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/recordings/:bookingId/output-file — stream rendered edited MP4 ─────
+router.get('/:bookingId/output-file', async (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const booking = await Booking.findById(req.params.bookingId);
+    if (!booking) return res.status(404).json({ error: 'Recording not found' });
+
+    const edit = booking.recordingEdit;
+    if (!edit || !edit.outputObjectKey) {
+      return res.status(404).json({ error: 'Edited output recording not found' });
+    }
+
+    const filePath = path.join(process.cwd(), 'scratch', 'storage', edit.outputObjectKey);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'Edited output file not found on disk' });
+    }
+
+    const stat = await fs.promises.stat(filePath);
+    res.writeHead(200, {
+      'Content-Length': stat.size,
+      'Content-Type': 'video/mp4',
+      'Content-Disposition': `inline; filename="edited_${booking._id}.mp4"`,
+    });
+    fs.createReadStream(filePath).pipe(res);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

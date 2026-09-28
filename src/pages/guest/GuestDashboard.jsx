@@ -1,21 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mic, Calendar, ArrowRight, Radio } from 'lucide-react';
+import { Mic, Calendar, ArrowRight, Radio, MessageSquare } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import RecommendedGuests from '../../components/RecommendedGuests';
 
 export default function GuestDashboard() {
-  const { user } = useAuth();
+  const { user, authFetch } = useAuth();
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/bookings?limit=5', { headers: { Authorization: `Bearer ${user?.token}` } })
+    authFetch('/bookings?limit=5')
       .then((res) => res.ok ? res.json() : { bookings: [] })
       .then((data) => { setBookings(data.bookings || []); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [user]);
+  }, [authFetch]);
 
   const profileCompletion = user?.bio && user?.expertise?.length ? 100 : 75;
 
@@ -137,9 +137,14 @@ export default function GuestDashboard() {
                     <Calendar size={14} /> {new Date(b.slotStart).toLocaleString()} • Status: <span style={{ fontWeight: 700, color: 'var(--plum-primary)' }}>{b.status.toUpperCase()}</span>
                   </div>
                 </div>
-                <button onClick={() => navigate(`/bookings/${b._id}`)} style={{ background: 'var(--plum-deep)', color: '#fff', padding: '8px 16px', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 600 }}>
-                  Open Workspace
-                </button>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => navigate(`/messages/${b._id}`)} style={{ background: 'var(--plum-primary)', color: '#fff', padding: '8px 16px', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <MessageSquare size={14} /> Message Host
+                  </button>
+                  <button onClick={() => navigate(`/bookings/${b._id}`)} style={{ background: 'var(--plum-deep)', color: '#fff', padding: '8px 16px', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 600 }}>
+                    Open Workspace
+                  </button>
+                </div>
               </div>
             ))}
           </div>

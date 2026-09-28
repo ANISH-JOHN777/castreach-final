@@ -160,6 +160,30 @@ function handleConnection(ws) {
           handleTypingStop(ws, data);
           break;
 
+        case 'webrtc:signal':
+          handleWebRTCSignal(ws, data);
+          break;
+
+        case 'webrtc:join':
+          handleWebRTCJoin(ws, data);
+          break;
+
+        case 'webrtc:leave':
+          handleWebRTCLeave(ws, data);
+          break;
+
+        case 'session:end_requested':
+          handleSessionEndRequested(ws, data);
+          break;
+
+        case 'session:end_confirmed':
+          handleSessionEndConfirmed(ws, data);
+          break;
+
+        case 'session:end_cancelled':
+          handleSessionEndCancelled(ws, data);
+          break;
+
         default:
           sendToSocket(ws, 'error', { code: 'INVALID_EVENT', message: `Unknown event: ${event}` });
       }
@@ -170,6 +194,140 @@ function handleConnection(ws) {
 
   ws.on('close', () => handleDisconnect(ws));
   ws.on('error', () => handleDisconnect(ws));
+}
+
+function ensureSubscribed(ws, bookingId) {
+  if (!bookingId) return;
+  if (!bookingRooms.has(bookingId)) {
+    bookingRooms.set(bookingId, new Set());
+  }
+  const room = bookingRooms.get(bookingId);
+  let exists = false;
+  for (const item of room) {
+    if (item.userId === ws.user.id) {
+      item.socket = ws;
+      exists = true;
+      break;
+    }
+  }
+  if (!exists) {
+    room.add({
+      socket: ws,
+      userId: ws.user.id,
+      role: ws.user.role,
+      tenantId: ws.user.tenantId,
+    });
+  }
+}
+
+// Session End tracking: Map<bookingId, Set<userId>>
+const sessionEndRequests = new Map();
+
+async function handleSessionEndRequested(ws, data = {}) {
+  const { bookingId } = data;
+  if (!bookingId) return;
+
+  ensureSubscribed(ws, bookingId);
+
+  try {
+    const booking = await Booking.findById(bookingId);
+    if (!booking) return;
+
+    const isHost = booking.host.toString() === ws.user.id;
+    const isGuest = booking.guest.toString() === ws.user.id;
+    if (!isHost && !isGuest && ws.user.role !== 'admin') return;
+
+    const now = new Date();
+    if (isHost) {
+      booking.hostEndRequested = true;
+      booking.hostEndRequestedAt = now;
+    } else if (isGuest) {
+      booking.guestEndRequested = true;
+      booking.guestEndRequestedAt = now;
+    }
+
+    const bothRequested = booking.hostEndRequested && booking.guestEndRequested;
+
+    if (bothRequested) {
+      booking.recordingStatus = 'PROCESSING';
+      await booking.save();
+      sessionEndRequests.delete(bookingId);
+      broadcastToBooking(bookingId, 'session:end_confirmed', {
+        bookingId,
+        endedBy: ws.user.id,
+        timestamp: now.toISOString(),
+      });
+    } else {
+      await booking.save();
+      broadcastToBooking(bookingId, 'session:end_requested', {
+        bookingId,
+        requestedBy: ws.user.id,
+        requestedRole: isHost ? 'host' : 'guest',
+        timestamp: now.toISOString(),
+      });
+    }
+  } catch (err) {
+    console.error('[RealtimeServer] Error in handleSessionEndRequested:', err);
+  }
+}
+
+async function handleSessionEndConfirmed(ws, data = {}) {
+  const { bookingId } = data;
+  if (!bookingId) return;
+
+  ensureSubscribed(ws, bookingId);
+
+  try {
+    const booking = await Booking.findById(bookingId);
+    if (booking) {
+      const isHost = booking.host.toString() === ws.user.id;
+      const isGuest = booking.guest.toString() === ws.user.id;
+      const now = new Date();
+      if (isHost) {
+        booking.hostEndRequested = true;
+        booking.hostEndRequestedAt = now;
+      } else if (isGuest) {
+        booking.guestEndRequested = true;
+        booking.guestEndRequestedAt = now;
+      }
+      booking.recordingStatus = 'PROCESSING';
+      await booking.save();
+    }
+  } catch (err) {
+    console.error('[RealtimeServer] Error in handleSessionEndConfirmed:', err);
+  }
+
+  sessionEndRequests.delete(bookingId);
+  broadcastToBooking(bookingId, 'session:end_confirmed', {
+    bookingId,
+    confirmedBy: ws.user.id,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+async function handleSessionEndCancelled(ws, data = {}) {
+  const { bookingId } = data;
+  if (!bookingId) return;
+
+  ensureSubscribed(ws, bookingId);
+
+  try {
+    const booking = await Booking.findById(bookingId);
+    if (booking) {
+      booking.hostEndRequested = false;
+      booking.guestEndRequested = false;
+      await booking.save();
+    }
+  } catch (err) {
+    console.error('[RealtimeServer] Error in handleSessionEndCancelled:', err);
+  }
+
+  sessionEndRequests.delete(bookingId);
+  broadcastToBooking(bookingId, 'session:end_cancelled', {
+    bookingId,
+    cancelledBy: ws.user.id,
+    timestamp: new Date().toISOString(),
+  });
 }
 
 /**
@@ -237,6 +395,25 @@ async function handleSubscribe(ws, data = {}) {
       bookingId,
       status: 'SUCCESS',
     });
+
+    // Notify room participants of peer presence if room has multiple connected users
+    const currentRoom = bookingRooms.get(bookingId);
+    if (currentRoom.size > 1) {
+      for (const item of currentRoom) {
+        if (item.userId !== ws.user.id) {
+          sendToSocket(item.socket, 'webrtc:peer_join', {
+            bookingId,
+            peerId: ws.user.id,
+            peerRole: ws.user.role,
+          });
+          sendToSocket(ws, 'webrtc:peer_join', {
+            bookingId,
+            peerId: item.userId,
+            peerRole: item.role,
+          });
+        }
+      }
+    }
   } catch (err) {
     sendToSocket(ws, 'error', { code: 'SERVER_ERROR', message: err.message });
   }
@@ -314,6 +491,42 @@ function handleTypingStop(ws, data = {}) {
   broadcastToBooking(bookingId, 'typing:stop', {
     bookingId,
     userId,
+  }, ws.user.id);
+}
+
+/**
+ * Handle WebRTC P2P signaling events (SDP offer/answer, ICE candidates)
+ */
+function handleWebRTCSignal(ws, data = {}) {
+  const { bookingId, signal } = data;
+  if (!bookingId || !signal) return;
+  ensureSubscribed(ws, bookingId);
+  broadcastToBooking(bookingId, 'webrtc:signal', {
+    bookingId,
+    signal,
+    senderId: ws.user.id,
+    senderRole: ws.user.role,
+  }, ws.user.id);
+}
+
+function handleWebRTCJoin(ws, data = {}) {
+  const { bookingId } = data;
+  if (!bookingId) return;
+  ensureSubscribed(ws, bookingId);
+  broadcastToBooking(bookingId, 'webrtc:peer_join', {
+    bookingId,
+    peerId: ws.user.id,
+    peerRole: ws.user.role,
+  }, ws.user.id);
+}
+
+function handleWebRTCLeave(ws, data = {}) {
+  const { bookingId } = data;
+  if (!bookingId) return;
+  broadcastToBooking(bookingId, 'webrtc:peer_leave', {
+    bookingId,
+    peerId: ws.user.id,
+    peerRole: ws.user.role,
   }, ws.user.id);
 }
 

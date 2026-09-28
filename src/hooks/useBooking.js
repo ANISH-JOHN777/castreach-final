@@ -16,38 +16,46 @@ export function useBooking(bookingId) {
     setLoading(true);
     try {
       const res  = await authFetch(`/bookings/${bookingId}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const text = await res.text();
+      let data = {};
+      try { data = text ? JSON.parse(text) : {}; } catch {}
+      if (!res.ok) throw new Error(data.error || `Failed to load booking (${res.status})`);
       setBooking(data.booking);
     } catch (e) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
-  }, [bookingId]);
+  }, [bookingId, authFetch]);
 
   useEffect(() => { refetch(); }, [refetch]);
 
   const confirm = async () => {
     const res  = await authFetch(`/bookings/${bookingId}/confirm`, { method: 'PATCH' });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+    const text = await res.text();
+    let data = {};
+    try { data = text ? JSON.parse(text) : {}; } catch {}
+    if (!res.ok) throw new Error(data.error || `Confirm failed (${res.status})`);
     setBooking(data.booking);
     return data.booking;
   };
 
   const cancel = async () => {
     const res  = await authFetch(`/bookings/${bookingId}/cancel`, { method: 'PATCH' });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+    const text = await res.text();
+    let data = {};
+    try { data = text ? JSON.parse(text) : {}; } catch {}
+    if (!res.ok) throw new Error(data.error || `Cancel failed (${res.status})`);
     setBooking(data.booking);
     return data.booking;
   };
 
   const complete = async () => {
     const res  = await authFetch(`/bookings/${bookingId}/complete`, { method: 'PATCH' });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+    const text = await res.text();
+    let data = {};
+    try { data = text ? JSON.parse(text) : {}; } catch {}
+    if (!res.ok) throw new Error(data.error || `Completion failed (${res.status})`);
     setBooking(data.booking);
     return data.booking;
   };
@@ -57,8 +65,10 @@ export function useBooking(bookingId) {
       method: 'POST',
       body: JSON.stringify({ rating, comment }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+    const text = await res.text();
+    let data = {};
+    try { data = text ? JSON.parse(text) : {}; } catch {}
+    if (!res.ok) throw new Error(data.error || `Review failed (${res.status})`);
     setBooking(data.booking);
     return data.booking;
   };
@@ -68,8 +78,10 @@ export function useBooking(bookingId) {
       method: 'POST',
       body: JSON.stringify({ bookingId }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+    const text = await res.text();
+    let data = {};
+    try { data = text ? JSON.parse(text) : {}; } catch {}
+    if (!res.ok) throw new Error(data.error || `Payment intent failed (${res.status})`);
     return data.clientSecret;
   };
 
@@ -91,15 +103,17 @@ export function useBookings(statusFilter) {
     try {
       const qs  = statusFilter ? `?status=${statusFilter}` : '';
       const res  = await authFetch(`/bookings${qs}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setBookings(data.bookings);
+      const text = await res.text();
+      let data = {};
+      try { data = text ? JSON.parse(text) : {}; } catch {}
+      if (!res.ok) throw new Error(data.error || `Failed to fetch bookings (${res.status})`);
+      setBookings(data.bookings || []);
     } catch (e) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, authFetch]);
 
   useEffect(() => { refetch(); }, [refetch]);
 

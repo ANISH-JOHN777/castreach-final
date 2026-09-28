@@ -19,6 +19,7 @@ const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'));
 
 const Discover = lazy(() => import('./pages/Discover'));
+const Messages = lazy(() => import('./pages/Messages'));
 const Bookings = lazy(() => import('./pages/Bookings'));
 const BookingDetail = lazy(() => import('./pages/BookingDetail'));
 const Profile = lazy(() => import('./pages/Profile'));
@@ -86,14 +87,16 @@ export default function App() {
             />
 
             <Route path="/discover" element={<Discover />} />
+            <Route path="/messages" element={<Messages />} />
+            <Route path="/messages/:bookingId" element={<Messages />} />
             <Route path="/bookings" element={<Bookings />} />
             <Route path="/bookings/:id" element={<BookingDetail />} />
-            <Route path="/bookings/:id/record" element={<RecordingRoom />} />
             <Route path="/profile/:id" element={<Profile />} />
             <Route path="/insights" element={<Insights />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
 
+          <Route path="/bookings/:id/record" element={<RecordingRoom />} />
           <Route path="/onboarding" element={<Onboarding />} />
         </Route>
 

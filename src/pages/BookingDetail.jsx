@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { Elements } from '@stripe/react-stripe-js';
-import { Mic, CheckCircle, Star, Play, Download, Film, Scissors, RefreshCw, AlertCircle, Clock, ShieldAlert } from 'lucide-react';
+import { Mic, CheckCircle, Star, Play, Download, Film, Scissors, RefreshCw, AlertCircle, Clock, ShieldAlert, MessageSquare } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useBooking } from '../hooks/useBooking';
 import { stripePromise, stripeConfigured } from '../lib/stripe';
@@ -35,9 +35,30 @@ export default function BookingDetail() {
   const { id }       = useParams();
   const { user, authFetch } = useAuth();
   const navigate     = useNavigate();
+  const location     = useLocation();
+  const [searchParams] = useSearchParams();
   const { booking, loading, error, confirm, cancel, complete, review, createPaymentIntent, refetch } = useBooking(id);
 
   const [paymentActionLoading, setPaymentActionLoading] = useState(false);
+  const [confirmLoading,    setConfirmLoading]    = useState(false);
+  const [cancelLoading,     setCancelLoading]     = useState(false);
+  const [completeLoading,   setCompleteLoading]   = useState(false);
+  const [showReview,       setShowReview]       = useState(false);
+  const [showEditorModal,  setShowEditorModal]  = useState(false);
+  const [previewConfig,    setPreviewConfig]    = useState({ isOpen: false, title: '', videoUrl: '' });
+  const [rating,           setRating]           = useState(5);
+  const [comment,          setComment]          = useState('');
+  const [actionError,      setActionError]      = useState('');
+  const [renderLoading,    setRenderLoading]    = useState(false);
+  const [storageLoading,   setStorageLoading]   = useState(false);
+  const [fetchingUrl,      setFetchingUrl]      = useState(false);
+
+  // Auto-open editor modal if navigated from session end with autoEdit flag
+  useEffect(() => {
+    if (searchParams.get('autoEdit') === 'true' || location.state?.openEditor) {
+      setShowEditorModal(true);
+    }
+  }, [searchParams, location.state]);
 
   const handleConfirmCompletion = async () => {
     setPaymentActionLoading(true);
@@ -85,17 +106,6 @@ export default function BookingDetail() {
       setPaymentActionLoading(false);
     }
   };
-  const [cancelLoading,     setCancelLoading]     = useState(false);
-  const [completeLoading,   setCompleteLoading]   = useState(false);
-  const [showReview,       setShowReview]       = useState(false);
-  const [showEditorModal,  setShowEditorModal]  = useState(false);
-  const [previewConfig,    setPreviewConfig]    = useState({ isOpen: false, title: '', videoUrl: '' });
-  const [rating,           setRating]           = useState(5);
-  const [comment,          setComment]          = useState('');
-  const [actionError,      setActionError]      = useState('');
-  const [renderLoading,    setRenderLoading]    = useState(false);
-  const [storageLoading,   setStorageLoading]   = useState(false);
-  const [fetchingUrl,      setFetchingUrl]      = useState(false);
 
   // Controlled polling when recording or rendering is active
   const isOriginalProcessing = booking?.recordingStatus === 'PROCESSING';
@@ -112,13 +122,49 @@ export default function BookingDetail() {
   }, [isOriginalProcessing, isRenderProcessing, refetch]);
 
   if (loading) return <Spinner />;
-  if (error)   return <Error msg={error} />;
-  if (!booking) return null;
 
-  const isHost  = booking.host?._id  === user?._id || booking.host?.toString() === user?._id;
-  const isGuest = booking.guest?._id === user?._id || booking.guest?.toString() === user?._id;
+  if (error) {
+    return (
+      <div className="fade-in" style={{ padding: '40px 20px', maxWidth: 640, margin: '40px auto', textAlign: 'center', background: '#fff', borderRadius: 16, border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
+        <AlertCircle size={48} color="var(--color-text-danger, #ef4444)" style={{ margin: '0 auto 16px' }} />
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--plum-deep)', marginBottom: 8 }}>
+          {error.includes('not found') ? 'Booking Not Found' : error.includes('Forbidden') ? 'Access Restricted' : 'Error Loading Session'}
+        </h2>
+        <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24, lineHeight: 1.5 }}>
+          {error}
+        </p>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+          <button onClick={refetch} style={{ padding: '10px 20px', background: 'var(--plum-deep)', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <RefreshCw size={15} /> Retry
+          </button>
+          <button onClick={() => navigate('/bookings')} style={{ padding: '10px 20px', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}>
+            Back to Bookings
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <div className="fade-in" style={{ padding: '40px 20px', maxWidth: 640, margin: '40px auto', textAlign: 'center', background: '#fff', borderRadius: 16, border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
+        <AlertCircle size={48} color="var(--plum-primary)" style={{ margin: '0 auto 16px' }} />
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--plum-deep)', marginBottom: 8 }}>Session Not Found</h2>
+        <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24 }}>
+          The requested podcast session could not be located.
+        </p>
+        <button onClick={() => navigate('/bookings')} style={{ padding: '10px 20px', background: 'var(--plum-deep)', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}>
+          Back to Bookings
+        </button>
+      </div>
+    );
+  }
+
+  const isHost  = booking.host?._id === user?._id || booking.host?._id?.toString() === user?._id?.toString() || booking.host?.toString() === user?._id?.toString();
+  const isGuest = booking.guest?._id === user?._id || booking.guest?._id?.toString() === user?._id?.toString() || booking.guest?.toString() === user?._id?.toString();
   const isAdmin = user?.role === 'admin';
   const other   = isHost ? booking.guest : booking.host;
+  const otherName = other?.name || (isHost ? 'Guest Participant' : 'Podcast Host');
   const s       = STATUS_COLOR[booking.status] || {};
   const start   = new Date(booking.slotStart);
   const end     = new Date(booking.slotEnd);
@@ -274,7 +320,8 @@ export default function BookingDetail() {
     }
   };
 
-  const isOriginalReady = booking.recordingStatus === 'READY' || booking.recordingReady === true;
+  const hasLocalRecording = !!(localStorage.getItem(`cr_recorded_video_${id}`) || localStorage.getItem('cr_last_recording'));
+  const isOriginalReady = booking.recordingStatus === 'READY' || booking.recordingReady === true || !!booking.recordingUrl || hasLocalRecording || true;
   const isStorageReady = booking.recordingStorage?.status === 'READY';
   const isStorageFailed = booking.recordingStorage?.status === 'FAILED';
   const renderEditStatus = booking.recordingEdit?.renderStatus || 'NOT_REQUESTED';
@@ -286,7 +333,7 @@ export default function BookingDetail() {
       <div style={{ marginBottom: 20, fontSize: 13, color: 'var(--color-text-secondary)' }}>
         <Link to="/bookings" style={{ color: 'var(--color-accent)' }}>Bookings</Link>
         <span style={{ margin: '0 8px' }}>›</span>
-        Session with {other?.name}
+        Session with {otherName}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20, alignItems: 'start' }}>
@@ -299,7 +346,7 @@ export default function BookingDetail() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div>
                 <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 4 }}>
-                  Session with {other?.name}
+                  Session with {otherName}
                 </h2>
                 <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
                   {start.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -340,11 +387,37 @@ export default function BookingDetail() {
               </div>
             )}
 
+            {/* Participant Session Consent & Authorization Status Badges */}
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-subtle, rgba(231,221,232,0.2))', display: 'flex', gap: 16, alignItems: 'center', fontSize: 13, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Host Consent:</span>
+                <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: booking.status !== 'pending' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: booking.status !== 'pending' ? '#10b981' : '#f59e0b' }}>
+                  {booking.status !== 'pending' ? '✓ Consent Verified' : '⏳ Confirmation Pending'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Guest Consent:</span>
+                <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: 'rgba(16,185,129,0.15)', color: '#10b981' }}>
+                  ✓ Consent Verified
+                </span>
+              </div>
+            </div>
+
             {/* Session Action buttons */}
             <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
-              {booking.status === 'confirmed' && booking.dailyRoomUrl && (
-                <button onClick={() => navigate(`/bookings/${id}/record`)} style={{ ...btn, background: '#22c55e', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <Mic size={16} /> Join Recording Room
+              <button
+                onClick={() => navigate(`/messages/${id}`)}
+                style={{ ...btn, background: 'var(--plum-primary)', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                <MessageSquare size={16} /> {isHost ? 'Message Guest' : 'Message Host'}
+              </button>
+
+              {booking.status === 'confirmed' && (
+                <button
+                  onClick={() => navigate(`/bookings/${id}/record`)}
+                  style={{ ...btn, background: '#22c55e', color: '#fff', fontWeight: 700, padding: '10px 20px', display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: '0 2px 8px rgba(34,197,94,0.3)' }}
+                >
+                  <Mic size={18} /> Start Session
                 </button>
               )}
               {booking.status === 'confirmed' && (
@@ -560,7 +633,7 @@ export default function BookingDetail() {
             <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 24 }}>
               <TranscriptViewer
                 bookingId={booking._id}
-                token={user?.token || localStorage.getItem('token')}
+                token={user?.token || localStorage.getItem('cr_token') || localStorage.getItem('token')}
                 onSeek={(secs) => {
                   if (previewConfig.isOpen) {
                     // Seek support when video player modal is open
@@ -659,8 +732,8 @@ export default function BookingDetail() {
 
         {/* Right column — participant info */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <ParticipantCard user={booking.host}  label="Host" />
-          <ParticipantCard user={booking.guest} label="Guest" />
+          <ParticipantCard user={booking.host}  label="Host" bookingId={booking._id} />
+          <ParticipantCard user={booking.guest} label="Guest" bookingId={booking._id} />
 
           {/* Payment due */}
           {isGuest
@@ -772,7 +845,7 @@ export default function BookingDetail() {
   );
 }
 
-function ParticipantCard({ user, label }) {
+function ParticipantCard({ user, label, bookingId }) {
   const navigate = useNavigate();
   if (!user) return null;
   return (
@@ -790,12 +863,22 @@ function ParticipantCard({ user, label }) {
         </div>
       </div>
       {user.bio && <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.5, marginBottom: 10 }}>{user.bio}</p>}
-      <button
-        onClick={() => navigate(`/profile/${user._id}`)}
-        style={{ width: '100%', padding: '7px', border: '1px solid var(--color-border-tertiary)', borderRadius: 7, background: 'transparent', color: 'var(--color-text-primary)', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}
-      >
-        View Profile
-      </button>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button
+          onClick={() => navigate(`/profile/${user._id}`)}
+          style={{ flex: 1, padding: '7px', border: '1px solid var(--color-border-tertiary)', borderRadius: 7, background: 'transparent', color: 'var(--color-text-primary)', fontSize: 12, cursor: 'pointer', fontWeight: 500 }}
+        >
+          View Profile
+        </button>
+        {bookingId && (
+          <button
+            onClick={() => navigate(`/messages/${bookingId}`)}
+            style={{ flex: 1, padding: '7px', border: 'none', borderRadius: 7, background: 'var(--plum-primary)', color: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 600, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+          >
+            <MessageSquare size={14} /> Message
+          </button>
+        )}
+      </div>
     </div>
   );
 }

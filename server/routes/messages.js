@@ -17,13 +17,22 @@ router.get('/:bookingId', verifyToken, async (req, res) => {
       .some((id) => id.toString() === req.user.id) || req.user.role === 'admin';
     if (!isParticipant) return res.status(403).json({ error: 'Forbidden' });
 
-    const messages = await Message.find({ booking: req.params.bookingId })
+    // Find all bookings between the host and guest so conversation history is continuous
+    const relatedBookings = await Booking.find({
+      $or: [
+        { host: booking.host, guest: booking.guest },
+        { host: booking.guest, guest: booking.host },
+      ],
+    }).select('_id');
+    const relatedBookingIds = relatedBookings.map((b) => b._id);
+
+    const messages = await Message.find({ booking: { $in: relatedBookingIds } })
       .populate('sender', 'name avatar')
       .sort({ createdAt: 1 });
 
-    // Mark unread messages as read
+    // Mark unread messages as read across related bookings
     const updateRes = await Message.updateMany(
-      { booking: req.params.bookingId, sender: { $ne: req.user.id }, isRead: false },
+      { booking: { $in: relatedBookingIds }, sender: { $ne: req.user.id }, isRead: false },
       { isRead: true }
     );
 

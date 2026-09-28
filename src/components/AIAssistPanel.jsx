@@ -42,19 +42,19 @@ export default function AIAssistPanel({ hostBio, guestBio, guestExpertise = [], 
     <div style={{ border: '1px solid var(--color-border-tertiary)', borderRadius: 12, padding: '1rem', background: 'var(--color-background-secondary)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Sparkles size={18} color="#7c3aed" />
+          <Sparkles size={18} color="var(--plum-primary)" />
           <span style={{ fontWeight: 600, fontSize: 14 }}>AI Episode Assist</span>
         </div>
         <button
           onClick={generate}
           disabled={loading}
-          style={{ padding: '6px 14px', borderRadius: 8, background: loading ? '#d1d5db' : '#7c3aed', color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: loading ? 'default' : 'pointer' }}
+          style={{ padding: '6px 14px', borderRadius: 8, background: loading ? 'var(--color-border-tertiary)' : 'var(--plum-primary)', color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: loading ? 'default' : 'pointer' }}
         >
           {loading ? 'Generating…' : result ? 'Regenerate' : 'Generate ideas'}
         </button>
       </div>
 
-      {error && <div style={{ color: '#ef4444', fontSize: 12, marginBottom: 8 }}>{error}</div>}
+      {error && <div style={{ color: 'var(--color-error)', fontSize: 12, marginBottom: 8 }}>{error}</div>}
 
       {!result && !loading && (
         <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: 0 }}>
@@ -64,7 +64,7 @@ export default function AIAssistPanel({ hostBio, guestBio, guestExpertise = [], 
 
       {loading && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text-secondary)', fontSize: 13 }}>
-          <Loader2 size={16} color="#7c3aed" style={{ animation: 'spin 1s linear infinite' }} />
+          <Loader2 size={16} color="var(--plum-primary)" style={{ animation: 'spin 1s linear infinite' }} />
           Thinking…
         </div>
       )}
@@ -79,7 +79,7 @@ export default function AIAssistPanel({ hostBio, guestBio, guestExpertise = [], 
                 onClick={() => setTab(id)}
                 style={{
                   padding: '4px 12px', borderRadius: 20, fontSize: 12, cursor: 'pointer', border: 'none',
-                  background: tab === id ? '#7c3aed' : 'var(--color-background-primary)',
+                  background: tab === id ? 'var(--plum-primary)' : 'var(--color-background-primary)',
                   color:      tab === id ? '#fff'    : 'var(--color-text-secondary)',
                   fontWeight: tab === id ? 600 : 400,
                 }}

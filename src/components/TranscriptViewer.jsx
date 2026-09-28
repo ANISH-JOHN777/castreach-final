@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Search, RefreshCw, AlertCircle, CheckCircle2, Clock, FileText } from 'lucide-react';
+import { Play, Search, RefreshCw, AlertCircle, CheckCircle2, Clock, FileText, Sparkles } from 'lucide-react';
 
 export default function TranscriptViewer({
   bookingId,
@@ -149,34 +149,38 @@ export default function TranscriptViewer({
 
   if (loading) {
     return (
-      <div className="p-6 bg-slate-900 border border-slate-800 rounded-xl text-center text-slate-400">
-        <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-400" />
-        <p className="text-sm">Loading transcript state...</p>
+      <div style={containerCardStyle}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 30, color: 'var(--text-muted)' }}>
+          <RefreshCw size={20} style={{ animation: 'spin 1.5s linear infinite', color: 'var(--plum-primary)' }} />
+          <span style={{ fontSize: 14 }}>Loading transcript status...</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-        <div>
-          <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <FileText className="w-5 h-5 text-indigo-400" />
-            Episode Transcript
-          </h3>
-          <p className="text-xs text-slate-400 mt-1">
-            Search, inspect timestamps, and jump to specific audio moments.
-          </p>
+    <div style={containerCardStyle}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 16, borderBottom: '1px solid var(--border-subtle)', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--lavender-mist)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <FileText size={20} color="var(--plum-deep)" />
+          </div>
+          <div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: 'var(--plum-deep)' }}>Episode Transcript</h3>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '2px 0 0' }}>
+              Search, inspect timestamps, and jump to specific audio moments.
+            </p>
+          </div>
         </div>
 
         {status === 'READY' && (
-          <div className="flex items-center gap-3 text-xs text-slate-400">
-            <span className="flex items-center gap-1">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              READY
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-muted)' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 12, background: 'var(--color-success-bg)', color: 'var(--color-success)', fontWeight: 600 }}>
+              <CheckCircle2 size={14} /> READY
             </span>
             <span>•</span>
-            <span className="uppercase">{transcription?.language || 'EN'}</span>
+            <span style={{ fontWeight: 600, textTransform: 'uppercase' }}>{transcription?.language || 'EN'}</span>
             <span>•</span>
             <span>{segments.length} segments</span>
           </div>
@@ -184,89 +188,88 @@ export default function TranscriptViewer({
       </div>
 
       {error && (
-        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-2 text-xs text-red-300">
-          <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-          <span>{error}</span>
+        <div style={{ padding: '10px 14px', background: 'var(--color-error-bg)', border: '1px solid var(--color-error)', borderRadius: 10, color: 'var(--color-error)', fontSize: 13, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <AlertCircle size={16} /> {error}
         </div>
       )}
 
       {/* STATE 1: NOT_REQUESTED */}
       {status === 'NOT_REQUESTED' && (
-        <div className="text-center py-8 px-4 bg-slate-950/50 border border-slate-800/80 rounded-lg">
-          <FileText className="w-10 h-10 text-indigo-400/80 mx-auto mb-3" />
-          <h4 className="text-sm font-semibold text-slate-200">No Transcript Generated Yet</h4>
-          <p className="text-xs text-slate-400 max-w-md mx-auto mt-1 mb-4">
+        <div style={emptyBoxStyle}>
+          <FileText size={42} color="var(--plum-primary)" style={{ marginBottom: 10, opacity: 0.8 }} />
+          <h4 style={{ fontSize: 16, fontWeight: 700, color: 'var(--plum-deep)', margin: '0 0 6px' }}>No Transcript Generated Yet</h4>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 420, margin: '0 auto 18px', lineHeight: 1.5 }}>
             Generate an automated timestamped transcript for this podcast recording.
           </p>
           <button
             onClick={handleRequestTranscription}
             disabled={requesting}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors inline-flex items-center gap-2"
+            style={primaryBtnStyle}
           >
-            {requesting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : null}
-            Generate Transcript
+            {requesting ? <RefreshCw size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={15} />}
+            {requesting ? 'Queuing Transcript...' : 'Generate Transcript'}
           </button>
         </div>
       )}
 
       {/* STATE 2: QUEUED */}
       {status === 'QUEUED' && (
-        <div className="text-center py-8 px-4 bg-slate-950/50 border border-amber-500/20 rounded-lg">
-          <Clock className="w-10 h-10 text-amber-400 animate-pulse mx-auto mb-3" />
-          <h4 className="text-sm font-semibold text-amber-200">Transcript Queued</h4>
-          <p className="text-xs text-slate-400 max-w-md mx-auto mt-1">
-            Your recording transcript has been queued for background worker processing.
+        <div style={{ ...emptyBoxStyle, background: 'var(--color-warning-bg)', border: '1px solid var(--color-warning)' }}>
+          <Clock size={40} color="var(--color-warning)" style={{ marginBottom: 10, animation: 'floatSlow 2s infinite' }} />
+          <h4 style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-warning)', margin: '0 0 6px' }}>Transcript Queued</h4>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 420, margin: 0 }}>
+            Your recording transcript has been queued for background processing. This page will update automatically.
           </p>
         </div>
       )}
 
       {/* STATE 3: PROCESSING */}
       {status === 'PROCESSING' && (
-        <div className="text-center py-8 px-4 bg-slate-950/50 border border-indigo-500/20 rounded-lg">
-          <RefreshCw className="w-10 h-10 text-indigo-400 animate-spin mx-auto mb-3" />
-          <h4 className="text-sm font-semibold text-indigo-200">Generating Transcript...</h4>
-          <p className="text-xs text-slate-400 max-w-md mx-auto mt-1">
-            Extracting audio and processing timestamped segments...
+        <div style={{ ...emptyBoxStyle, background: 'var(--lavender-mist)', border: '1px solid var(--border-subtle)' }}>
+          <RefreshCw size={40} color="var(--plum-deep)" style={{ marginBottom: 10, animation: 'spin 1.5s linear infinite' }} />
+          <h4 style={{ fontSize: 16, fontWeight: 700, color: 'var(--plum-deep)', margin: '0 0 6px' }}>Generating Transcript...</h4>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 420, margin: 0 }}>
+            Extracting audio stream and generating timestamped dialogue segments...
           </p>
         </div>
       )}
 
       {/* STATE 4: FAILED */}
       {status === 'FAILED' && (
-        <div className="text-center py-8 px-4 bg-slate-950/50 border border-red-500/30 rounded-lg">
-          <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-          <h4 className="text-sm font-semibold text-red-200">Transcription Failed</h4>
-          <p className="text-xs text-slate-400 max-w-md mx-auto mt-1 mb-4">
+        <div style={{ ...emptyBoxStyle, background: 'var(--color-error-bg)', border: '1px solid var(--color-error)' }}>
+          <AlertCircle size={40} color="var(--color-error)" style={{ marginBottom: 10 }} />
+          <h4 style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-error)', margin: '0 0 6px' }}>Transcription Failed</h4>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 420, margin: '0 auto 16px' }}>
             {transcription?.error || 'An unexpected error occurred during transcription processing.'}
           </p>
           <button
             onClick={handleRetry}
             disabled={requesting}
-            className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors inline-flex items-center gap-2"
+            style={{ ...primaryBtnStyle, background: 'var(--color-error)' }}
           >
-            {requesting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-            Retry Transcription
+            <RefreshCw size={15} style={{ animation: requesting ? 'spin 1s linear infinite' : 'none' }} />
+            {requesting ? 'Retrying...' : 'Retry Transcription'}
           </button>
         </div>
       )}
 
       {/* STATE 5: READY */}
       {status === 'READY' && (
-        <div className="space-y-4">
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+        <div>
+          <div style={{ position: 'relative', marginBottom: 16 }}>
+            <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: 14, top: 12 }} />
             <input
               type="text"
-              placeholder="Search in transcript text..."
+              placeholder="Search transcript text..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              style={searchInputStyle}
             />
           </div>
 
-          <div className="max-h-96 overflow-y-auto space-y-2 pr-2">
+          <div style={{ maxHeight: 380, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 4 }}>
             {filteredSegments.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-6">No matching transcript segments found.</p>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '24px 0' }}>No matching transcript segments found.</p>
             ) : (
               filteredSegments.map((seg, idx) => {
                 const isActive = currentTime >= seg.start && currentTime <= seg.end;
@@ -274,27 +277,46 @@ export default function TranscriptViewer({
                   <div
                     key={idx}
                     onClick={() => onSeek && onSeek(seg.start)}
-                    className={`p-3 rounded-lg border text-xs transition-all cursor-pointer flex items-start gap-3 ${
-                      isActive
-                        ? 'bg-indigo-950/60 border-indigo-500/60 text-indigo-100 shadow-sm'
-                        : 'bg-slate-950/40 border-slate-800/80 hover:bg-slate-800/50 text-slate-300'
-                    }`}
+                    style={{
+                      padding: 12,
+                      borderRadius: 10,
+                      border: isActive ? '1px solid var(--plum-deep)' : '1px solid var(--border-subtle)',
+                      background: isActive ? 'var(--lavender-mist)' : 'var(--white-pure)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 12,
+                      transition: 'all 0.2s',
+                    }}
                   >
                     <button
                       type="button"
-                      className="mt-0.5 text-indigo-400 hover:text-indigo-300 font-mono text-[11px] flex items-center gap-1 shrink-0"
+                      style={{
+                        background: 'var(--lavender-mist)',
+                        border: '1px solid var(--border-accent)',
+                        color: 'var(--plum-deep)',
+                        borderRadius: 6,
+                        padding: '4px 8px',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        fontFamily: 'monospace',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        cursor: 'pointer',
+                        shrink: 0,
+                      }}
                     >
-                      <Play className="w-3 h-3" />
-                      {formatTime(seg.start)}
+                      <Play size={11} /> {formatTime(seg.start)}
                     </button>
 
-                    <div className="space-y-0.5 flex-1">
+                    <div style={{ flex: 1 }}>
                       {seg.speaker && (
-                        <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
+                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--plum-primary)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: 2 }}>
                           {seg.speaker}:
                         </span>
                       )}
-                      <p className="leading-relaxed">{seg.text}</p>
+                      <p style={{ fontSize: 13, color: 'var(--text-dark)', margin: 0, lineHeight: 1.5 }}>{seg.text}</p>
                     </div>
                   </div>
                 );
@@ -306,3 +328,47 @@ export default function TranscriptViewer({
     </div>
   );
 }
+
+const containerCardStyle = {
+  background: '#ffffff',
+  border: '1px solid var(--border-subtle)',
+  borderRadius: 16,
+  padding: 24,
+  boxShadow: 'var(--shadow-md)',
+  marginBottom: 24,
+};
+
+const emptyBoxStyle = {
+  textAlign: 'center',
+  padding: '36px 20px',
+  background: 'var(--color-background-secondary)',
+  border: '1px solid var(--border-subtle)',
+  borderRadius: 12,
+};
+
+const primaryBtnStyle = {
+  background: 'var(--plum-deep)',
+  color: '#ffffff',
+  border: 'none',
+  borderRadius: 10,
+  padding: '10px 20px',
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: 'pointer',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 8,
+  boxShadow: 'var(--shadow-sm)',
+  transition: 'all 0.2s',
+};
+
+const searchInputStyle = {
+  width: '100%',
+  padding: '10px 14px 10px 40px',
+  borderRadius: 10,
+  border: '1px solid var(--border-subtle)',
+  background: 'var(--color-background-primary)',
+  fontSize: 13,
+  color: 'var(--text-dark)',
+  outline: 'none',
+};

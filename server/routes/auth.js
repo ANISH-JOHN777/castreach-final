@@ -89,7 +89,7 @@ router.post('/refresh', async (req, res) => {
     user.refreshToken = newRefresh;
     await user.save();
     res.cookie('refreshToken', newRefresh, COOKIE_OPTS);
-    res.json({ token: newAccess });
+    res.json({ token: newAccess, user });
   } catch {
     res.status(403).json({ error: 'Invalid refresh token' });
   }
