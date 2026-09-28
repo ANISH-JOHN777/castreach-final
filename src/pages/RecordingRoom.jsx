@@ -951,23 +951,12 @@ export default function RecordingRoom() {
       }
 
       if (blob) {
-        // Instant Blob URL for local storage playback
+        // Fast Object URL for immediate local playback
         const blobUrl = URL.createObjectURL(blob);
         localStorage.setItem(`cr_recorded_video_${bId}`, blobUrl);
         localStorage.setItem('cr_last_recording', blobUrl);
 
-        // Persistent Data URL for cross-session storage
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          if (reader.result) {
-            try {
-              localStorage.setItem(`cr_recorded_video_${bId}`, reader.result);
-              localStorage.setItem('cr_last_recording', reader.result);
-            } catch (e) {}
-          }
-        };
-        reader.readAsDataURL(blob);
-
+        // Upload binary arrayBuffer to backend storage without freezing main thread
         const arrayBuffer = await blob.arrayBuffer();
         await authFetch(`/recordings/${bId}/upload`, {
           method: 'POST',
