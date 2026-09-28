@@ -88,7 +88,63 @@ export default function Login() {
         <div style={{ width: '100%', maxWidth: 420 }} className="fade-in">
           <div style={{ marginBottom: 32 }}>
             <h1 style={{ fontSize: 28, marginBottom: 6 }}>Sign In</h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Enter your credentials to access your CastReach account</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Enter your credentials or click a demo account below</p>
+          </div>
+
+          <div style={{
+            background: 'var(--plum-wash, #f5efff)',
+            border: '1px dashed var(--plum-primary)',
+            borderRadius: 'var(--radius-md, 8px)',
+            padding: 16,
+            marginBottom: 24
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--plum-deep)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              ⚡ Quick Demo Login (1-Click)
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('demo.host3@castreach.demo');
+                  setPassword('password123');
+                }}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 6,
+                  border: '1px solid var(--plum-primary)',
+                  background: '#fff',
+                  color: 'var(--plum-deep)',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  textAlign: 'left'
+                }}
+              >
+                🎙️ Host Demo <br />
+                <span style={{ fontSize: 11, fontWeight: 400, color: '#666' }}>Sophia Chen</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('demo.guest1@castreach.demo');
+                  setPassword('password123');
+                }}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 6,
+                  border: '1px solid var(--plum-primary)',
+                  background: '#fff',
+                  color: 'var(--plum-deep)',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  textAlign: 'left'
+                }}
+              >
+                👥 Guest Demo <br />
+                <span style={{ fontSize: 11, fontWeight: 400, color: '#666' }}>Sarah Jenkins</span>
+              </button>
+            </div>
           </div>
 
           {error && (
