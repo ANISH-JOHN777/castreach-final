@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "jest --runInBand",
+    "test": "jest --runInBand --forceExit",
     "worker:render": "node worker/renderWorker.js",
     "worker:transcription": "node worker/transcriptionWorker.js",
     "worker:ai": "node worker/aiWorker.js",
