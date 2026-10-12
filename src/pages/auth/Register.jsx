@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mic, Headphones, Sparkles, AlertCircle } from 'lucide-react';
+import { Radio, Headphones, Mic, ShieldCheck, AlertCircle, ArrowRight, User, Mail, Lock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'guest' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'host' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -28,175 +28,280 @@ export default function Register() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
-      background: 'var(--cream-warm)',
-    }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+        background: '#0e0f13',
+        color: '#f3f4f6',
+      }}
+    >
       {/* Left Brand Panel */}
-      <div style={{
-        background: 'linear-gradient(135deg, var(--plum-deep) 0%, var(--plum-primary) 100%)',
-        color: '#fff',
-        padding: '60px 48px',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        position: 'relative',
-        overflow: 'hidden',
-      }}>
+      <div
+        style={{
+          background: 'linear-gradient(135deg, #090a0d 0%, #151821 100%)',
+          color: '#fff',
+          padding: '60px 48px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          borderRight: '1px solid #1f222b',
+        }}
+      >
         <div>
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 48 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Mic size={24} color="#fff" />
+          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 48, textDecoration: 'none' }}>
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 14,
+                background: '#2563eb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)',
+              }}
+            >
+              <Radio size={22} color="#fff" />
             </div>
-            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 24, color: '#fff' }}>
-              CastReach
-            </span>
+            <div>
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 24, color: '#fff' }}>
+                Podcast
+              </span>
+              <span
+                style={{
+                  display: 'inline-block',
+                  marginLeft: 8,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: '#60a5fa',
+                  background: 'rgba(37, 99, 235, 0.2)',
+                  padding: '2px 8px',
+                  borderRadius: 6,
+                }}
+              >
+                CastReach
+              </span>
+            </div>
           </Link>
 
-          <h2 style={{ fontSize: 36, color: '#fff', lineHeight: 1.2, marginBottom: 20 }}>
-            Join the podcast creator marketplace.
+          <h2 style={{ fontSize: 38, fontWeight: 800, color: '#fff', lineHeight: 1.15, marginBottom: 18, letterSpacing: '-0.02em' }}>
+            Join the podcast creator & guest marketplace.
           </h2>
-          <p style={{ color: 'var(--lavender-soft)', fontSize: 16, lineHeight: 1.6, maxWidth: 440 }}>
-            Whether you run a top-ranked show or have industry expertise to share, CastReach provides the studio and security you need.
+
+          <p style={{ color: '#9ca3af', fontSize: 16, lineHeight: 1.6, maxWidth: 440 }}>
+            Whether you run an established show, want to be interviewed as an expert guest, or want to stream and listen to top podcasts, CastReach brings it all together.
           </p>
         </div>
 
-        <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 'var(--radius-md)', padding: 24, border: '1px solid rgba(255,255,255,0.12)' }}>
-          <div style={{ fontSize: 13, color: 'var(--lavender-soft)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Sparkles size={16} /> CREATOR TRUST
+        <div
+          style={{
+            background: 'rgba(255, 255, 255, 0.04)',
+            borderRadius: 18,
+            padding: 24,
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#60a5fa', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <ShieldCheck size={16} /> WHAT YOU GET
           </div>
-          <div style={{ fontSize: 14, fontWeight: 500 }}>
-            "Found 4 incredible expert guests in my first week. Studio recording audio quality is pristine."
-          </div>
+          <p style={{ fontSize: 13, color: '#d1d5db', lineHeight: 1.5 }}>
+            WebRTC Studio with local multi-track audio backup, automated AI transcription, live subtitles, and Stripe escrow protection.
+          </p>
         </div>
       </div>
 
       {/* Right Form Panel */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '48px 24px',
-      }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '48px 24px',
+          background: '#0e0f13',
+        }}
+      >
         <div style={{ width: '100%', maxWidth: 440 }} className="fade-in">
           <div style={{ marginBottom: 28 }}>
-            <h1 style={{ fontSize: 28, marginBottom: 6 }}>Create your Account</h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Select your primary role to get started</p>
+            <h1 style={{ fontSize: 28, fontWeight: 800, color: '#fff', marginBottom: 6 }}>Create Account</h1>
+            <p style={{ color: '#9ca3af', fontSize: 14 }}>
+              Choose your role and start your podcast journey
+            </p>
           </div>
 
           {error && (
-            <div style={{
-              background: 'var(--color-error-bg)',
-              color: 'var(--color-error)',
-              border: '1px solid #F3C6C6',
-              padding: '12px 16px',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: 14,
-              marginBottom: 20,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-            }}>
-              <AlertCircle size={16} color="var(--color-error)" /> {error}
+            <div
+              style={{
+                background: 'rgba(239, 68, 68, 0.15)',
+                color: '#ef4444',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                padding: '12px 16px',
+                borderRadius: 12,
+                fontSize: 13,
+                marginBottom: 20,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              <AlertCircle size={16} /> {error}
             </div>
           )}
 
           <form onSubmit={submit}>
-            {/* Role selector */}
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--plum-deep)', marginBottom: 8 }}>
-              I want to join CastReach as a:
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
-              {[
-                { value: 'guest', Icon: Mic, label: 'Podcast Guest', sub: 'Appear on shows' },
-                { value: 'host',  Icon: Headphones, label: 'Podcast Host',  sub: 'Run a show & book guests' },
-              ].map(({ value, Icon, label, sub }) => (
-                <div
-                  key={value}
-                  onClick={() => setForm((f) => ({ ...f, role: value }))}
+            {/* Role selector tabs */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#d1d5db', marginBottom: 8 }}>
+                I want to join as:
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, role: 'host' }))}
                   style={{
-                    padding: 16,
-                    borderRadius: 'var(--radius-md)',
+                    padding: '12px 14px',
+                    borderRadius: 14,
+                    border: form.role === 'host' ? '2px solid #2563eb' : '1px solid #282a36',
+                    background: form.role === 'host' ? 'rgba(37, 99, 235, 0.15)' : '#16171d',
+                    color: form.role === 'host' ? '#60a5fa' : '#9ca3af',
+                    fontWeight: 700,
+                    fontSize: 13,
                     cursor: 'pointer',
-                    textAlign: 'center',
-                    border: `2px solid ${form.role === value ? 'var(--plum-primary)' : 'var(--border-subtle)'}`,
-                    background: form.role === value ? 'var(--lavender-mist)' : '#fff',
-                    boxShadow: form.role === value ? 'var(--shadow-sm)' : 'none',
-                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    transition: 'all 0.15s',
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}>
-                    <Icon size={26} color="var(--plum-primary)" />
-                  </div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--plum-deep)' }}>{label}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{sub}</div>
-                </div>
-              ))}
+                  <Headphones size={18} /> Podcast Host
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, role: 'guest' }))}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 14,
+                    border: form.role === 'guest' ? '2px solid #2563eb' : '1px solid #282a36',
+                    background: form.role === 'guest' ? 'rgba(37, 99, 235, 0.15)' : '#16171d',
+                    color: form.role === 'guest' ? '#60a5fa' : '#9ca3af',
+                    fontWeight: 700,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <Mic size={18} /> Guest Speaker
+                </button>
+              </div>
             </div>
 
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--plum-deep)', marginBottom: 6 }}>
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#d1d5db', marginBottom: 6 }}>
                 Full Name
               </label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={set('name')}
-                placeholder="Jane Doe"
-                required
+              <div
                 style={{
-                  width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-subtle)',
-                  fontSize: 15,
-                  background: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: '#16171d',
+                  border: '1px solid #282a36',
+                  borderRadius: 12,
+                  padding: '0 14px',
                 }}
-              />
+              >
+                <User size={16} color="#6b7280" />
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={set('name')}
+                  placeholder="e.g. Ethan Anderson"
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '12px 10px',
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    color: '#fff',
+                    fontSize: 14,
+                  }}
+                />
+              </div>
             </div>
 
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--plum-deep)', marginBottom: 6 }}>
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#d1d5db', marginBottom: 6 }}>
                 Email Address
               </label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={set('email')}
-                placeholder="jane@example.com"
-                required
+              <div
                 style={{
-                  width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-subtle)',
-                  fontSize: 15,
-                  background: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: '#16171d',
+                  border: '1px solid #282a36',
+                  borderRadius: 12,
+                  padding: '0 14px',
                 }}
-              />
+              >
+                <Mail size={16} color="#6b7280" />
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={set('email')}
+                  placeholder="anderson@gmail.com"
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '12px 10px',
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    color: '#fff',
+                    fontSize: 14,
+                  }}
+                />
+              </div>
             </div>
 
             <div style={{ marginBottom: 24 }}>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--plum-deep)', marginBottom: 6 }}>
-                Password
+              <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#d1d5db', marginBottom: 6 }}>
+                Password (min. 8 characters)
               </label>
-              <input
-                type="password"
-                value={form.password}
-                onChange={set('password')}
-                placeholder="At least 8 characters"
-                required
+              <div
                 style={{
-                  width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-subtle)',
-                  fontSize: 15,
-                  background: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: '#16171d',
+                  border: '1px solid #282a36',
+                  borderRadius: 12,
+                  padding: '0 14px',
                 }}
-              />
+              >
+                <Lock size={16} color="#6b7280" />
+                <input
+                  type="password"
+                  value={form.password}
+                  onChange={set('password')}
+                  placeholder="••••••••"
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '12px 10px',
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    color: '#fff',
+                    fontSize: 14,
+                  }}
+                />
+              </div>
             </div>
 
             <button
@@ -204,23 +309,30 @@ export default function Register() {
               disabled={loading}
               style={{
                 width: '100%',
-                background: 'linear-gradient(135deg, var(--plum-deep), var(--plum-primary))',
-                color: '#fff',
-                padding: '14px',
-                borderRadius: 'var(--radius-md)',
-                fontSize: 16,
+                padding: '13px 20px',
+                borderRadius: 9999,
+                background: '#2563eb',
+                color: '#ffffff',
                 fontWeight: 700,
-                boxShadow: 'var(--shadow-plum)',
-                opacity: loading ? 0.7 : 1,
+                fontSize: 14,
+                border: 'none',
+                cursor: loading ? 'wait' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                boxShadow: '0 6px 20px rgba(37, 99, 235, 0.35)',
+                transition: 'all 0.2s',
               }}
             >
-              {loading ? 'Creating Account…' : 'Create Account'}
+              {loading ? 'Creating Account...' : 'Get Started Free'}
+              <ArrowRight size={16} />
             </button>
           </form>
 
-          <p style={{ textAlign: 'center', marginTop: 24, fontSize: 14, color: 'var(--text-muted)' }}>
+          <p style={{ textAlign: 'center', marginTop: 24, fontSize: 13, color: '#9ca3af' }}>
             Already have an account?{' '}
-            <Link to="/login" style={{ color: 'var(--plum-primary)', fontWeight: 700 }}>
+            <Link to="/login" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
               Sign In
             </Link>
           </p>

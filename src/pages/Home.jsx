@@ -1,413 +1,690 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
+  Play, 
+  Pause, 
   Sparkles, 
-  Bot, 
-  Rocket, 
-  Briefcase, 
-  TrendingUp, 
-  Gem, 
-  Dna, 
-  Palette, 
   Mic, 
+  Users, 
+  Radio, 
+  Volume2, 
+  Calendar, 
+  ShieldCheck, 
   Star, 
-  ArrowRight 
+  ArrowRight,
+  Headphones,
+  CheckCircle2
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { useAudioPlayer } from '../context/AudioPlayerContext';
 
 export default function Home() {
   const navigate = useNavigate();
+  const { currentTrack, isPlaying, playTrack, togglePlay } = useAudioPlayer();
+  const [showHowItWorksModal, setShowHowItWorksModal] = useState(false);
 
-  const categories = [
-    { title: 'Technology & AI', count: '4.2k Hosts', Icon: Bot },
-    { title: 'Startups & Venture', count: '3.8k Hosts', Icon: Rocket },
-    { title: 'Business & Leadership', count: '5.1k Hosts', Icon: Briefcase },
-    { title: 'Growth & Marketing', count: '2.9k Hosts', Icon: TrendingUp },
-    { title: 'Finance & Crypto', count: '2.4k Hosts', Icon: Gem },
-    { title: 'Health & Science', count: '1.9k Hosts', Icon: Dna },
-    { title: 'Design & Product', count: '2.1k Hosts', Icon: Palette },
-    { title: 'Creator Economy', count: '3.5k Hosts', Icon: Mic },
+  // Top & Latest Podcasts matching Image 1
+  const topPodcasts = [
+    {
+      id: 'track-9',
+      title: 'Product Designer',
+      episodes: '10 Episode',
+      duration: '100 minutes',
+      category: 'Design & UX',
+      host: 'Sarah Lin',
+      image: 'https://images.unsplash.com/photo-1581291518655-9523c9320e6b?auto=format&fit=crop&w=600&q=80',
+      description: 'Human-centered design, UI system architectures, and design career growth.',
+    },
+    {
+      id: 'track-10',
+      title: 'Digital Marketing',
+      episodes: '40 Episode',
+      duration: '160 minutes',
+      category: 'Growth & Business',
+      host: 'Marcus Vance',
+      image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80',
+      description: 'B2B SaaS growth tactics, demand generation, and organic inbound playbooks.',
+    },
+    {
+      id: 'track-2',
+      title: 'The AI Frontier',
+      episodes: '24 Episode',
+      duration: '180 minutes',
+      category: 'Artificial Intelligence',
+      host: 'Dr. Elena Rostova',
+      image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80',
+      description: 'Conversations with top neural engineers, LLM researchers, and quantum physicists.',
+    },
+    {
+      id: 'track-4',
+      title: 'Startup Scaling Playbook',
+      episodes: '18 Episode',
+      duration: '140 minutes',
+      category: 'Venture & Startups',
+      host: 'Sophia Chen',
+      image: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=600&q=80',
+      description: 'Zero to one milestones, venture funding secrets, and executive hiring lessons.',
+    },
   ];
 
-  const featuredCreators = [
-    {
-      id: 'demo-1',
-      name: 'Dr. Elena Rostova',
-      podcast: 'AI Frontiers & Ethics',
-      category: 'Technology',
-      rating: 4.95,
-      reviews: 48,
-      price: '$150',
-      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
-      expertise: ['Artificial Intelligence', 'Neural Nets', 'Ethics'],
-    },
-    {
-      id: 'demo-2',
-      name: 'Marcus Vance',
-      podcast: 'The B2B Growth Engine',
-      category: 'Marketing',
-      rating: 4.92,
-      reviews: 62,
-      price: '$200',
-      avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=300&q=80',
-      expertise: ['SaaS Growth', 'GTM Strategy', 'Demand Gen'],
-    },
-    {
-      id: 'demo-3',
-      name: 'Sophia Chen',
-      podcast: 'Founder Uncut Podcast',
-      category: 'Startups',
-      rating: 5.0,
-      reviews: 35,
-      price: '$175',
-      avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80',
-      expertise: ['Venture Capital', 'Scaling 0 to 1', 'Product Strategy'],
-    },
-  ];
+  const handlePlayPodcast = (pod) => {
+    playTrack({
+      id: pod.id,
+      title: pod.title,
+      host: pod.host,
+      category: pod.category,
+      cover: pod.image,
+      duration: 3600,
+      currentTime: 120,
+    });
+  };
 
   return (
-    <div style={{ background: 'var(--cream-warm)', minHeight: '100vh' }}>
+    <div style={{ background: '#fdfdfd', minHeight: '100vh', color: '#111827', fontFamily: 'var(--font-body)' }}>
       <Navbar />
 
-      {/* SECTION 1: HERO */}
-      <section style={{
-        position: 'relative',
-        padding: '90px 24px 80px',
-        maxWidth: 1280,
-        margin: '0 auto',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-        gap: 60,
-        alignItems: 'center',
-      }}>
-        <div className="fade-in">
+      {/* ── SECTION 1: HERO (EXACTLY MATCHING IMAGE 1) ────────────────────── */}
+      <section style={{ maxWidth: 1240, margin: '0 auto', padding: '40px 24px 60px' }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+          gap: 28,
+          alignItems: 'stretch',
+        }}>
+          {/* LEFT HERO CARD: Soft Cyan / Sky Blue */}
           <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '6px 16px',
-            borderRadius: 30,
-            background: 'var(--lavender-mist)',
-            border: '1px solid var(--border-subtle)',
-            color: 'var(--plum-primary)',
-            fontSize: 13,
-            fontWeight: 600,
-            marginBottom: 24,
-          }}>
-            <Sparkles size={14} color="var(--purple-castreach)" />
-            <span>THE FUTURE OF PODCAST COLLABORATION</span>
-          </div>
-
-          <h1 style={{
-            fontSize: 'clamp(36px, 5vw, 56px)',
-            lineHeight: 1.1,
-            color: 'var(--plum-deep)',
-            marginBottom: 24,
-            fontWeight: 800,
-          }}>
-            Connect. Record. <span className="gradient-text">Grow Together.</span>
-          </h1>
-
-          <p style={{
-            fontSize: 18,
-            color: 'var(--text-muted)',
-            lineHeight: 1.6,
-            marginBottom: 36,
-            maxWidth: 540,
-          }}>
-            Find remarkable podcast guests, authorize secure escrow holds, record studio-quality audio in WebRTC rooms, and prepare with built-in AI assistance.
-          </p>
-
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-            <button
-              onClick={() => navigate('/discover')}
-              style={{
-                background: 'linear-gradient(135deg, var(--plum-deep), var(--plum-primary))',
-                color: '#fff',
-                padding: '16px 32px',
-                borderRadius: 'var(--radius-md)',
-                fontSize: 16,
-                fontWeight: 700,
-                boxShadow: 'var(--shadow-plum)',
-              }}
-            >
-              Explore Guests & Hosts
-            </button>
-            <button
-              onClick={() => navigate('/register?role=host')}
-              style={{
-                background: '#fff',
-                color: 'var(--plum-deep)',
-                border: '2px solid var(--border-subtle)',
-                padding: '14px 28px',
-                borderRadius: 'var(--radius-md)',
-                fontSize: 16,
-                fontWeight: 700,
-              }}
-            >
-              Become a Host
-            </button>
-          </div>
-        </div>
-
-        {/* Hero Studio Card Visual */}
-        <div style={{ position: 'relative' }}>
-          <div style={{
-            background: 'linear-gradient(135deg, var(--plum-deep) 0%, var(--plum-primary) 100%)',
-            borderRadius: 'var(--radius-xl)',
-            padding: 32,
-            color: '#fff',
-            boxShadow: 'var(--shadow-lg)',
+            background: '#dcf2fd',
+            borderRadius: 28,
+            padding: '56px 48px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            boxShadow: '0 10px 30px rgba(186, 230, 253, 0.45)',
             position: 'relative',
             overflow: 'hidden',
           }}>
             <div style={{
-              display: 'flex',
-              justify: 'space-between',
+              display: 'inline-flex',
               alignItems: 'center',
-              marginBottom: 24,
-              borderBottom: '1px solid rgba(255,255,255,0.1)',
-              paddingBottom: 16,
+              gap: 8,
+              background: 'rgba(255, 255, 255, 0.85)',
+              padding: '6px 14px',
+              borderRadius: 20,
+              fontSize: 12,
+              fontWeight: 700,
+              color: '#0284c7',
+              marginBottom: 28,
+              width: 'fit-content',
+              letterSpacing: '0.04em',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#EF4444', display: 'inline-block' }} />
-                <span style={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.05em' }}>LIVE STUDIO SESSION</span>
-              </div>
-              <span style={{ background: 'rgba(255,255,255,0.15)', padding: '4px 10px', borderRadius: 12, fontSize: 12 }}>HD 1080p WebRTC</span>
+              <Radio size={14} /> LIVE PODCAST MARKETPLACE & STUDIO
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-              <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 'var(--radius-md)', padding: 16, textAlign: 'center' }}>
-                <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#fff', margin: '0 auto 10px', overflow: 'hidden' }}>
-                  <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" alt="Host" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                </div>
-                <div style={{ fontWeight: 600, fontSize: 13 }}>Sarah Miller (Host)</div>
-                <div style={{ fontSize: 11, color: 'var(--lavender-soft)' }}>Mic Active • 48kHz</div>
-              </div>
-              <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 'var(--radius-md)', padding: 16, textAlign: 'center' }}>
-                <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#fff', margin: '0 auto 10px', overflow: 'hidden' }}>
-                  <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80" alt="Guest" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                </div>
-                <div style={{ fontWeight: 600, fontSize: 13 }}>David Kim (Guest)</div>
-                <div style={{ fontSize: 11, color: 'var(--lavender-soft)' }}>Mic Active • 48kHz</div>
-              </div>
-            </div>
-
-            {/* Simulated Audio Waveform */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, height: 32, padding: '0 8px' }}>
-              {[40, 70, 30, 90, 60, 100, 45, 80, 50, 95, 30, 75, 85, 40, 90, 65, 30, 80].map((h, i) => (
-                <div key={i} style={{ flex: 1, height: `${h}%`, background: 'var(--lavender-soft)', borderRadius: 2, opacity: 0.8 }} />
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* SECTION 2: PLATFORM STATISTICS */}
-      <section style={{ background: 'var(--plum-deep)', color: '#fff', padding: '60px 24px' }}>
-        <div style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 40, textAlign: 'center' }}>
-          <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 44, fontWeight: 800, color: 'var(--lavender-soft)' }}>10K+</div>
-            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', marginTop: 4 }}>Verified Creators</div>
-          </div>
-          <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 44, fontWeight: 800, color: 'var(--lavender-soft)' }}>50K+</div>
-            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', marginTop: 4 }}>Recorded Episodes</div>
-          </div>
-          <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 44, fontWeight: 800, color: 'var(--lavender-soft)' }}>120+</div>
-            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', marginTop: 4 }}>Podcast Categories</div>
-          </div>
-          <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 44, fontWeight: 800, color: 'var(--lavender-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              4.9 <Star size={28} fill="currentColor" color="var(--color-warning)" />
-            </div>
-            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', marginTop: 4 }}>Average Rating</div>
-          </div>
-        </div>
-      </section>
-
-      {/* SECTION 3: DISCOVER EXCEPTIONAL GUESTS */}
-      <section style={{ padding: '90px 24px', maxWidth: 1280, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 54 }}>
-          <h2 style={{ fontSize: 36, marginBottom: 12 }}>Discover Featured Guests</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: 16 }}>Connect with top authors, founders, and industry experts for your next show.</p>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 32 }}>
-          {featuredCreators.map((creator) => (
-            <div key={creator.id} className="card-hover" style={{
-              background: '#fff',
-              borderRadius: 'var(--radius-lg)',
-              padding: 24,
-              border: '1px solid var(--border-subtle)',
-              boxShadow: 'var(--shadow-sm)',
+            <h1 style={{
+              fontSize: 'clamp(36px, 5vw, 56px)',
+              fontWeight: 900,
+              lineHeight: 1.1,
+              letterSpacing: '-0.03em',
+              color: '#0f172a',
+              marginBottom: 20,
             }}>
-              <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 16 }}>
-                <img src={creator.avatar} alt={creator.name} style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover' }} />
-                <div>
-                  <h3 style={{ fontSize: 18, marginBottom: 2 }}>{creator.name}</h3>
-                  <div style={{ fontSize: 13, color: 'var(--plum-primary)', fontWeight: 600 }}>{creator.podcast}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Star size={13} fill="currentColor" color="var(--color-warning)" /> {creator.rating} ({creator.reviews} reviews)
-                  </div>
-                </div>
-              </div>
+              Find and listen <br />
+              your favorite <br />
+              podcast!
+            </h1>
 
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
-                {creator.expertise.map((tag, idx) => (
-                  <span key={idx} style={{ background: 'var(--lavender-mist)', color: 'var(--plum-deep)', padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 500 }}>
-                    {tag}
-                  </span>
-                ))}
-              </div>
+            <p style={{
+              fontSize: 16,
+              lineHeight: 1.6,
+              color: '#475569',
+              maxWidth: 420,
+              marginBottom: 36,
+            }}>
+              The best podcast websites communicate a feel and make it easy for visitors to discover your podcast.
+            </p>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-subtle)', paddingTop: 16 }}>
-                <div>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block' }}>Session Rate</span>
-                  <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--plum-deep)' }}>{creator.price}</span>
-                </div>
-                <button
-                  onClick={() => navigate('/discover')}
-                  style={{
-                    background: 'var(--plum-primary)',
-                    color: '#fff',
-                    padding: '8px 18px',
-                    borderRadius: 'var(--radius-md)',
-                    fontWeight: 600,
-                    fontSize: 13,
-                  }}
-                >
-                  View Profile
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* SECTION 4: EXPLORE CATEGORIES */}
-      <section style={{ background: 'var(--lavender-mist)', padding: '80px 24px' }}>
-        <div style={{ maxWidth: 1280, margin: '0 auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 40, flexWrap: 'wrap', gap: 16 }}>
-            <div>
-              <h2 style={{ fontSize: 32, marginBottom: 8 }}>Explore Podcast Categories</h2>
-              <p style={{ color: 'var(--text-muted)' }}>Browse creators across high-impact verticals.</p>
-            </div>
-            <button onClick={() => navigate('/discover')} style={{ background: 'transparent', color: 'var(--plum-primary)', fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-              View All Categories <ArrowRight size={16} />
-            </button>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 20 }}>
-            {categories.map((cat, idx) => (
-              <div
-                key={idx}
-                onClick={() => navigate(`/discover?category=${encodeURIComponent(cat.title)}`)}
-                className="card-hover"
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+              <Link
+                to="/discover"
                 style={{
-                  background: '#fff',
-                  borderRadius: 'var(--radius-md)',
-                  padding: 20,
-                  border: '1px solid var(--border-subtle)',
-                  cursor: 'pointer',
-                  display: 'flex',
+                  background: '#0f172a',
+                  color: '#ffffff',
+                  padding: '14px 28px',
+                  borderRadius: 9999,
+                  fontWeight: 700,
+                  fontSize: 15,
+                  display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 16,
+                  gap: 8,
+                  boxShadow: '0 8px 20px rgba(15, 23, 42, 0.25)',
+                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-2px)')}
+                onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
+              >
+                Start Listening
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => setShowHowItWorksModal(true)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: '#0f172a',
+                  cursor: 'pointer',
+                  padding: '10px 16px',
                 }}
               >
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--lavender-mist)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--plum-primary)' }}>
-                  <cat.Icon size={24} />
+                <div style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: '50%',
+                  background: '#0f172a',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(15, 23, 42, 0.2)',
+                  transition: 'transform 0.2s',
+                }}>
+                  <Play size={18} fill="#ffffff" style={{ marginLeft: 2 }} />
+                </div>
+                <span>How it's work</span>
+              </button>
+            </div>
+          </div>
+
+          {/* RIGHT HERO CARD: Vibrant Sunny Warm Yellow Card */}
+          <div style={{
+            background: '#ffc83b',
+            borderRadius: 28,
+            overflow: 'hidden',
+            position: 'relative',
+            minHeight: 460,
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            boxShadow: '0 12px 36px rgba(255, 200, 59, 0.4)',
+          }}>
+            {/* Creator Photo with Headphones & Mug matching Image 1 */}
+            <img
+              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=900&q=85"
+              alt="Podcast Host Listener"
+              style={{
+                width: '100%',
+                height: '100%',
+                maxHeight: 520,
+                objectFit: 'cover',
+                objectPosition: 'center top',
+              }}
+            />
+
+            {/* Floating Live Indicator Badge */}
+            <div style={{
+              position: 'absolute',
+              bottom: 24,
+              left: 24,
+              right: 24,
+              background: 'rgba(15, 23, 42, 0.85)',
+              backdropFilter: 'blur(12px)',
+              borderRadius: 18,
+              padding: '14px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              color: '#ffffff',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: '50%',
+                  background: '#2563eb',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Headphones size={18} color="#fff" />
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700, color: 'var(--plum-deep)', fontSize: 15 }}>{cat.title}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{cat.count}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700 }}>Studio Quality Audio</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8' }}>48kHz uncompressed local tracks</div>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* SECTION 5: HOW IT WORKS */}
-      <section style={{ padding: '90px 24px', maxWidth: 1280, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 60 }}>
-          <h2 style={{ fontSize: 36, marginBottom: 12 }}>How CastReach Works</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: 16 }}>Four simple steps from discovery to published podcast.</p>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 32 }}>
-          {[
-            { step: '01', title: 'Discover', desc: 'Browse verified hosts and guest experts with transparent ratings and session rates.' },
-            { step: '02', title: 'Connect', desc: 'Send booking requests, propose slot times, and hold funds safely in Stripe Escrow.' },
-            { step: '03', title: 'Record', desc: 'Enter the HD WebRTC studio with built-in AI topic preparation and live waveform audio.' },
-            { step: '04', title: 'Grow', desc: 'Verify completion, release payment, publish episodes, and build your audience.' },
-          ].map((item, i) => (
-            <div key={i} style={{ background: '#fff', borderRadius: 'var(--radius-lg)', padding: 32, border: '1px solid var(--border-subtle)', position: 'relative' }}>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 48, fontWeight: 800, color: 'var(--lavender-soft)', display: 'block', marginBottom: 12 }}>
-                {item.step}
-              </span>
-              <h3 style={{ fontSize: 20, marginBottom: 10 }}>{item.title}</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: 14, lineHeight: 1.6 }}>{item.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* SECTION 7: ESCROW SECURITY WORKFLOW */}
-      <section style={{ background: 'var(--plum-deep)', color: '#fff', padding: '80px 24px' }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto', textAlign: 'center' }}>
-          <span style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--lavender-soft)', padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>
-            STRIPE CONNECT ESCROW PROTECTION
-          </span>
-          <h2 style={{ fontSize: 36, color: '#fff', marginTop: 16, marginBottom: 20 }}>
-            Guaranteed Payment Escrow Workflow
-          </h2>
-          <p style={{ color: 'var(--lavender-soft)', fontSize: 16, marginBottom: 48, maxWidth: 640, margin: '0 auto 48px' }}>
-            Funds are authorized upon booking confirmation and held securely in escrow until both host and guest verify the completed session.
-          </p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 20 }}>
-            {[
-              { title: '1. Authorized', text: 'Guest authorizes fee' },
-              { title: '2. Funds Secured', text: 'Held in Stripe Escrow' },
-              { title: '3. Session Live', text: 'Record in Studio' },
-              { title: '4. Verified', text: 'Host/Guest confirm' },
-              { title: '5. Released', text: 'Automatic payout' },
-            ].map((step, idx) => (
-              <div key={idx} style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-md)', padding: 20, border: '1px solid rgba(255,255,255,0.1)' }}>
-                <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--lavender-soft)', marginBottom: 4 }}>{step.title}</div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{step.text}</div>
+              <div style={{
+                background: '#10b981',
+                color: '#fff',
+                fontSize: 11,
+                fontWeight: 700,
+                padding: '4px 10px',
+                borderRadius: 12,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />
+                LIVE
               </div>
-            ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── TOP & LATEST PODCAST SECTION (MATCHING IMAGE 1) ──────────────── */}
+        <div style={{ marginTop: 64 }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 28,
+          }}>
+            <div>
+              <h2 style={{
+                fontSize: 26,
+                fontWeight: 800,
+                letterSpacing: '-0.02em',
+                color: '#0f172a',
+              }}>
+                Top & Latest Podcast
+              </h2>
+              <p style={{ fontSize: 14, color: '#64748b', marginTop: 4 }}>
+                Curated episodes and professional interview sessions ready to stream
+              </p>
+            </div>
+
+            <Link
+              to="/discover"
+              style={{
+                background: '#0f172a',
+                color: '#ffffff',
+                padding: '9px 20px',
+                borderRadius: 9999,
+                fontSize: 13,
+                fontWeight: 600,
+                transition: 'background 0.2s',
+              }}
+            >
+              View More
+            </Link>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+            gap: 22,
+          }}>
+            {topPodcasts.map((pod) => {
+              const isThisPlaying = isPlaying && currentTrack?.id === pod.id;
+              return (
+                <div
+                  key={pod.id}
+                  style={{
+                    background: '#ffffff',
+                    borderRadius: 20,
+                    overflow: 'hidden',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 4px 18px rgba(0, 0, 0, 0.04)',
+                    transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-4px)';
+                    e.currentTarget.style.boxShadow = '0 12px 28px rgba(0, 0, 0, 0.08)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 18px rgba(0, 0, 0, 0.04)';
+                  }}
+                >
+                  <div style={{ height: 160, position: 'relative', overflow: 'hidden' }}>
+                    <img
+                      src={pod.image}
+                      alt={pod.title}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                    <div style={{
+                      position: 'absolute',
+                      top: 12,
+                      left: 12,
+                      background: 'rgba(15, 23, 42, 0.8)',
+                      backdropFilter: 'blur(8px)',
+                      color: '#fff',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      padding: '4px 10px',
+                      borderRadius: 12,
+                    }}>
+                      {pod.category}
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                    <h3 style={{ fontSize: 17, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>
+                      {pod.title}
+                    </h3>
+
+                    <div style={{ fontSize: 13, color: '#64748b', fontWeight: 500, marginBottom: 16 }}>
+                      {pod.episodes} • {pod.duration}
+                    </div>
+
+                    <p style={{
+                      fontSize: 13,
+                      color: '#475569',
+                      lineHeight: 1.5,
+                      marginBottom: 20,
+                      flex: 1,
+                    }}>
+                      {pod.description}
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={() => handlePlayPodcast(pod)}
+                      style={{
+                        background: isThisPlaying ? '#2563eb' : '#f1f5f9',
+                        color: isThisPlaying ? '#ffffff' : '#0f172a',
+                        border: 'none',
+                        padding: '10px 16px',
+                        borderRadius: 9999,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        cursor: 'pointer',
+                        width: 'fit-content',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      {isThisPlaying ? (
+                        <>
+                          <Pause size={14} fill="#ffffff" />
+                          <span>Playing Now</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play size={14} fill="#0f172a" />
+                          <span>Listen Now</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* SECTION 10: FINAL CTA */}
-      <section style={{ padding: '100px 24px', textAlign: 'center' }}>
-        <div style={{ maxWidth: 700, margin: '0 auto' }}>
-          <h2 style={{ fontSize: 42, marginBottom: 20 }}>Your Next Great Conversation Starts Here.</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: 18, marginBottom: 36 }}>
-            Join thousands of podcast creators, industry leaders, and experts on CastReach.
-          </p>
-          <button
-            onClick={() => navigate('/register')}
-            style={{
-              background: 'linear-gradient(135deg, var(--plum-deep), var(--plum-primary))',
-              color: '#fff',
-              padding: '18px 40px',
-              borderRadius: 'var(--radius-md)',
-              fontSize: 18,
+      {/* ── SECTION 2: DUAL MARKETPLACE & STUDIO SHOWCASE ─────────────────── */}
+      <section style={{
+        background: '#f8fafc',
+        borderTop: '1px solid #e2e8f0',
+        borderBottom: '1px solid #e2e8f0',
+        padding: '80px 24px',
+      }}>
+        <div style={{ maxWidth: 1240, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', maxWidth: 680, margin: '0 auto 56px' }}>
+            <span style={{
+              fontSize: 12,
               fontWeight: 800,
-              boxShadow: 'var(--shadow-plum)',
-            }}
-          >
-            Get Started Free
-          </button>
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: '#2563eb',
+            }}>
+              Complete Ecosystem
+            </span>
+            <h2 style={{
+              fontSize: 34,
+              fontWeight: 800,
+              letterSpacing: '-0.02em',
+              color: '#0f172a',
+              marginTop: 8,
+              marginBottom: 14,
+            }}>
+              Built for Podcast Hosts, Guests & Avid Listeners
+            </h2>
+            <p style={{ fontSize: 16, color: '#64748b', lineHeight: 1.6 }}>
+              Whether you want to discover trending audio or find expert guests for your next blockbuster show, CastReach handles matching, recording, payments, and publishing.
+            </p>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: 28,
+          }}>
+            {/* Pillar 1 */}
+            <div style={{
+              background: '#ffffff',
+              borderRadius: 24,
+              padding: 36,
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
+            }}>
+              <div style={{
+                width: 52,
+                height: 52,
+                borderRadius: 16,
+                background: '#eff6ff',
+                color: '#2563eb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 20,
+              }}>
+                <Users size={26} />
+              </div>
+              <h3 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>
+                Host & Guest Matchmaking
+              </h3>
+              <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6, marginBottom: 20 }}>
+                Find verified domain experts and top podcasters. Filter by topics, language, follower reach, and instant availability.
+              </p>
+              <Link
+                to="/discover"
+                style={{
+                  color: '#2563eb',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                Browse Podcasters & Guests <ArrowRight size={16} />
+              </Link>
+            </div>
+
+            {/* Pillar 2 */}
+            <div style={{
+              background: '#ffffff',
+              borderRadius: 24,
+              padding: 36,
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
+            }}>
+              <div style={{
+                width: 52,
+                height: 52,
+                borderRadius: 16,
+                background: '#fef3c7',
+                color: '#d97706',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 20,
+              }}>
+                <Mic size={26} />
+              </div>
+              <h3 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>
+                Studio Recording Room
+              </h3>
+              <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6, marginBottom: 20 }}>
+                Broadcast-grade WebRTC recording studio with separate participant tracks, real-time live captions, and automatic audio cloud backups.
+              </p>
+              <Link
+                to="/register"
+                style={{
+                  color: '#d97706',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                Try Recording Studio <ArrowRight size={16} />
+              </Link>
+            </div>
+
+            {/* Pillar 3 */}
+            <div style={{
+              background: '#ffffff',
+              borderRadius: 24,
+              padding: 36,
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
+            }}>
+              <div style={{
+                width: 52,
+                height: 52,
+                borderRadius: 16,
+                background: '#ecfdf5',
+                color: '#059669',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 20,
+              }}>
+                <ShieldCheck size={26} />
+              </div>
+              <h3 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>
+                Escrow Security & Reviews
+              </h3>
+              <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6, marginBottom: 20 }}>
+                Session fees are held in secure Stripe escrow until both parties finish recording. Verified reputation badges and authentic reviews.
+              </p>
+              <Link
+                to="/about"
+                style={{
+                  color: '#059669',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                Learn How Escrow Works <ArrowRight size={16} />
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
+
+      {/* ── SECTION 3: HOW IT WORKS MODAL ─────────────────────────────────── */}
+      {showHowItWorksModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: 24,
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: 28,
+            maxWidth: 580,
+            width: '100%',
+            padding: 36,
+            boxShadow: '0 24px 60px rgba(0, 0, 0, 0.3)',
+            position: 'relative',
+          }}>
+            <h3 style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', marginBottom: 12 }}>
+              How CastReach Works
+            </h3>
+            <p style={{ fontSize: 14, color: '#64748b', marginBottom: 24 }}>
+              Step-by-step workflow for podcast creation and audio streaming:
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 28 }}>
+              <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#2563eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                  1
+                </div>
+                <div>
+                  <h4 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Discover or Match</h4>
+                  <p style={{ fontSize: 13, color: '#64748b' }}>Explore podcasts and stream episodes, or search verified hosts and guests by expertise.</p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#2563eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                  2
+                </div>
+                <div>
+                  <h4 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Schedule with Escrow</h4>
+                  <p style={{ fontSize: 13, color: '#64748b' }}>Pick an open time slot. Booking payments are securely escrowed with zero risk.</p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#2563eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                  3
+                </div>
+                <div>
+                  <h4 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Record in the Studio</h4>
+                  <p style={{ fontSize: 13, color: '#64748b' }}>Join the high-fidelity recording room with automated live captions and individual multi-track capture.</p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#2563eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                  4
+                </div>
+                <div>
+                  <h4 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Publish & Stream</h4>
+                  <p style={{ fontSize: 13, color: '#64748b' }}>Generate AI show notes, export RSS feeds, and stream directly to thousands of listeners.</p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowHowItWorksModal(false)}
+              style={{
+                width: '100%',
+                background: '#0f172a',
+                color: '#ffffff',
+                padding: '12px 24px',
+                borderRadius: 9999,
+                fontWeight: 700,
+                fontSize: 14,
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              Got it, Let's Explore
+            </button>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

@@ -1,270 +1,703 @@
 import { useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
-  Mic, 
-  Shield, 
-  Search, 
-  MessageSquare,
+  Radio, 
+  Compass, 
+  Flame, 
+  Layers, 
+  Mic2, 
+  Clock, 
+  ListMusic, 
+  Heart, 
+  Download, 
+  Video, 
   Calendar, 
-  BarChart2, 
+  MessageSquare, 
+  BarChart3, 
   Settings, 
-  Headphones, 
-  Bell, 
-  User, 
-  LogOut 
+  LogOut, 
+  Search, 
+  UserPlus, 
+  Check, 
+  Shield, 
+  ChevronRight,
+  Headphones,
+  SlidersHorizontal
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useNotifications } from '../hooks/useRealtimeMessages';
+import { useAudioPlayer } from '../context/AudioPlayerContext';
+import NowPlayingWidget from './NowPlayingWidget';
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { unreadCount, notifications, markAllRead } = useNotifications();
-  const [showNotifs, setShowNotifs] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
+  const location = useLocation();
+  const { following, toggleFollow, playTrack } = useAudioPlayer();
 
-  const getRoleNav = () => {
-    const role = user?.role || 'guest';
-    if (role === 'admin') {
-      return [
-        { to: '/control-center', label: 'Admin Control Center', Icon: Shield },
-        { to: '/discover', label: 'Discover Creators', Icon: Search },
-        { to: '/messages', label: 'Messages Audit', Icon: MessageSquare },
-        { to: '/bookings', label: 'Bookings Audit', Icon: Calendar },
-        { to: '/insights', label: 'Platform Insights', Icon: BarChart2 },
-        { to: '/settings', label: 'System Settings', Icon: Settings },
-      ];
-    }
-    if (role === 'host') {
-      return [
-        { to: '/host', label: 'Host Dashboard', Icon: Headphones },
-        { to: '/discover', label: 'Find Guests', Icon: Search },
-        { to: '/messages', label: 'Messages', Icon: MessageSquare },
-        { to: '/bookings', label: 'Studio Bookings', Icon: Calendar },
-        { to: '/insights', label: 'Analytics', Icon: BarChart2 },
-        { to: '/settings', label: 'Host Settings', Icon: Settings },
-      ];
-    }
-    return [
-      { to: '/guest', label: 'Guest Dashboard', Icon: Mic },
-      { to: '/discover', label: 'Discover Shows', Icon: Search },
-      { to: '/messages', label: 'Messages', Icon: MessageSquare },
-      { to: '/bookings', label: 'My Bookings', Icon: Calendar },
-      { to: '/insights', label: 'Profile Analytics', Icon: BarChart2 },
-      { to: '/settings', label: 'Account Settings', Icon: Settings },
-    ];
-  };
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const navItems = getRoleNav();
+  // Top Podcasters matching Image 2 & 3
+  const topPodcasters = [
+    {
+      id: 'podcaster-1',
+      name: 'Anna Johnson',
+      followers: '25k followers',
+      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80',
+      role: 'Host',
+      topic: 'Tech & Psychology',
+    },
+    {
+      id: 'podcaster-2',
+      name: 'Benjamin Thompson',
+      followers: '50k followers',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80',
+      role: 'Host',
+      topic: 'Venture & Growth',
+    },
+    {
+      id: 'podcaster-3',
+      name: 'Noah Davis',
+      followers: '120k followers',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80',
+      role: 'Guest Speaker',
+      topic: 'Personal Finance',
+    },
+    {
+      id: 'podcaster-4',
+      name: 'Andrius Peregorius',
+      followers: '185k followers',
+      avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=150&q=80',
+      role: 'Host',
+      topic: 'Health & Sports',
+    },
+  ];
 
   const handleLogout = async () => {
     await logout();
     navigate('/');
   };
 
+  // Determine if on studio or booking recording page (needs wide layout)
+  const isFullWidthPage = location.pathname.includes('/record') || location.pathname.includes('/bookings/');
+
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--cream-warm)' }}>
-      {/* Top Navigation */}
-      <header style={{
-        height: 64,
-        background: 'rgba(255, 255, 255, 0.95)',
-        backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid var(--border-subtle)',
+    <div
+      style={{
         display: 'flex',
-        alignItems: 'center',
-        padding: '0 24px',
-        justifyContent: 'space-between',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-        boxShadow: 'var(--shadow-sm)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-          {/* Logo */}
-          <NavLink to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--plum-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-              <Mic size={20} color="#fff" />
-            </div>
-            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, color: 'var(--plum-deep)' }}>
-              Cast<span style={{ color: 'var(--purple-castreach)' }}>Reach</span>
-            </span>
-          </NavLink>
-
-          {/* User Role Badge */}
-          <span style={{
-            background: 'var(--lavender-mist)',
-            color: 'var(--plum-deep)',
-            border: '1px solid var(--border-subtle)',
-            padding: '4px 10px',
-            borderRadius: 16,
-            fontSize: 11,
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-          }}>
-            {user?.role || 'Guest'} Mode
-          </span>
-        </div>
-
-        {/* Right side items */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          {/* Notifications bell */}
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => { setShowNotifs((v) => !v); setShowProfile(false); }}
-              style={{ background: 'var(--lavender-mist)', border: '1px solid var(--border-subtle)', borderRadius: '50%', width: 38, height: 38, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
-            >
-              <Bell size={18} color="var(--plum-deep)" />
-              {unreadCount > 0 && (
-                <span style={{
-                  position: 'absolute', top: -2, right: -2,
-                  width: 18, height: 18, borderRadius: 9,
-                  background: 'var(--color-error)', color: '#fff',
-                  fontSize: 10, fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </button>
-
-            {showNotifs && (
-              <div style={{
-                position: 'absolute', top: 48, right: 0,
-                width: 320, background: '#fff',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)',
-                overflow: 'hidden', zIndex: 200,
-              }}>
-                <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--plum-deep)' }}>Notifications</span>
-                  {unreadCount > 0 && (
-                    <button onClick={markAllRead} style={{ fontSize: 11, color: 'var(--plum-primary)', fontWeight: 600, background: 'none' }}>
-                      Mark all read
-                    </button>
-                  )}
-                </div>
-                <div style={{ maxHeight: 320, overflowY: 'auto' }}>
-                  {notifications.length === 0 ? (
-                    <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                      No new notifications
-                    </div>
-                  ) : (
-                    notifications.slice(0, 10).map((n) => (
-                      <div
-                        key={n._id}
-                        onClick={() => { setShowNotifs(false); if (n.link) navigate(n.link); }}
-                        style={{
-                          padding: '12px 16px', cursor: n.link ? 'pointer' : 'default',
-                          background: n.isRead ? 'transparent' : 'var(--lavender-mist)',
-                          borderBottom: '1px solid var(--border-subtle)',
-                        }}
-                      >
-                        <div style={{ fontWeight: n.isRead ? 400 : 600, fontSize: 13 }}>{n.title}</div>
-                        {n.body && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{n.body}</div>}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Profile Menu */}
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => { setShowProfile((v) => !v); setShowNotifs(false); }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                background: 'transparent', border: 'none', cursor: 'pointer',
-              }}
-            >
-              <div style={{
-                width: 38, height: 38, borderRadius: '50%',
-                background: 'var(--plum-primary)', color: '#fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontWeight: 700, fontSize: 15, overflow: 'hidden',
-              }}>
-                {user?.avatar ? <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (user?.name?.[0] || 'U').toUpperCase()}
-              </div>
-              <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--plum-deep)' }}>{user?.name}</span>
-            </button>
-
-            {showProfile && (
-              <div style={{
-                position: 'absolute', top: 48, right: 0,
-                width: 220, background: '#fff',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)',
-                overflow: 'hidden', zIndex: 200,
-              }}>
-                <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--plum-deep)' }}>{user?.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'capitalize' }}>{user?.role} • {user?.email}</div>
-                </div>
-                <button onClick={() => { setShowProfile(false); navigate(`/profile/${user?._id}`); }} style={{ width: '100%', padding: '12px 16px', background: 'none', textAlign: 'left', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <User size={16} color="var(--plum-primary)" /> View Profile
-                </button>
-                <button onClick={() => { setShowProfile(false); navigate('/settings'); }} style={{ width: '100%', padding: '12px 16px', background: 'none', textAlign: 'left', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Settings size={16} color="var(--plum-primary)" /> Account Settings
-                </button>
-                <div style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                  <button onClick={() => { setShowProfile(false); handleLogout(); }} style={{ width: '100%', padding: '12px 16px', background: 'none', textAlign: 'left', fontSize: 13, fontWeight: 600, color: 'var(--color-error)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <LogOut size={16} color="var(--color-error)" /> Sign Out
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* Main Workspace Layout (Sidebar + Content Body) */}
-      <div style={{ flex: 1, display: 'flex', maxWidth: 1440, margin: '0 auto', width: '100%' }}>
-        {/* Left Role Navigation Sidebar */}
-        <aside style={{
-          width: 240,
-          background: '#fff',
-          borderRight: '1px solid var(--border-subtle)',
-          padding: '28px 16px',
+        minHeight: '100vh',
+        background: '#0e0f13',
+        color: '#f3f4f6',
+        fontFamily: 'var(--font-body)',
+        overflowX: 'hidden',
+      }}
+    >
+      {/* ── LEFT NAVIGATION SIDEBAR (MATCHING IMAGE 2 & 3) ───────────────── */}
+      <aside
+        style={{
+          width: 250,
+          background: '#14151a',
+          borderRight: '1px solid #1f2129',
           display: 'flex',
           flexDirection: 'column',
-          gap: 6,
-        }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 12px 8px' }}>
-            Navigation Menu
-          </div>
-
-          {navItems.map(({ to, label, Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === '/guest' || to === '/host' || to === '/admin' || to === '/control-center'}
-              style={({ isActive }) => ({
+          justifyContent: 'space-between',
+          flexShrink: 0,
+          height: '100vh',
+          position: 'sticky',
+          top: 0,
+          zIndex: 40,
+          overflowY: 'auto',
+          padding: '24px 16px',
+        }}
+      >
+        <div>
+          {/* User Profile Header (Ethan Anderson style) */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '8px 10px 20px',
+              borderBottom: '1px solid #1f2129',
+              marginBottom: 20,
+            }}
+          >
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: '50%',
+                overflow: 'hidden',
+                background: '#2563eb',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 12,
-                padding: '11px 16px',
-                borderRadius: 'var(--radius-md)',
-                fontSize: 14,
-                fontWeight: isActive ? 700 : 500,
-                color: isActive ? 'var(--plum-deep)' : 'var(--text-muted)',
-                background: isActive ? 'var(--lavender-mist)' : 'transparent',
-                border: isActive ? '1px solid var(--border-subtle)' : '1px solid transparent',
-              })}
+                justifyContent: 'center',
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.35)',
+                flexShrink: 0,
+              }}
             >
-              <Icon size={18} color="currentColor" />
-              {label}
-            </NavLink>
-          ))}
-        </aside>
+              <img
+                src={
+                  user?.profilePicture ||
+                  'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80'
+                }
+                alt={user?.name || 'User'}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h4
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: '#f9fafb',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {user?.name || 'Ethan Anderson'}
+              </h4>
+              <p
+                style={{
+                  fontSize: 11,
+                  color: '#6b7280',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {user?.email || 'anderson@gmail.com'}
+              </p>
+              <span
+                style={{
+                  display: 'inline-block',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  color: '#3b82f6',
+                  marginTop: 2,
+                }}
+              >
+                {user?.role || 'host'} pro
+              </span>
+            </div>
+          </div>
 
-        {/* Content Body */}
-        <main style={{ flex: 1, padding: 32, maxWidth: 1200, overflowX: 'hidden' }}>
-          {children || <Outlet />}
-        </main>
-      </div>
+          {/* SECTION: MENU */}
+          <div style={{ marginBottom: 24 }}>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                color: '#6b7280',
+                textTransform: 'uppercase',
+                padding: '0 12px',
+                display: 'block',
+                marginBottom: 8,
+              }}
+            >
+              Menu
+            </span>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <NavLink
+                to="/discover"
+                style={({ isActive }) => ({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '10px 14px',
+                  borderRadius: 12,
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  color: isActive ? '#3b82f6' : '#9ca3af',
+                  background: isActive ? 'rgba(59, 130, 246, 0.12)' : 'transparent',
+                  borderLeft: isActive ? '3px solid #3b82f6' : '3px solid transparent',
+                  transition: 'all 0.15s ease',
+                })}
+              >
+                <Compass size={18} />
+                <span>Discover</span>
+              </NavLink>
+
+              <NavLink
+                to="/explore"
+                style={({ isActive }) => ({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '10px 14px',
+                  borderRadius: 12,
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  color: isActive ? '#3b82f6' : '#9ca3af',
+                  background: isActive ? 'rgba(59, 130, 246, 0.12)' : 'transparent',
+                  borderLeft: isActive ? '3px solid #3b82f6' : '3px solid transparent',
+                  transition: 'all 0.15s ease',
+                })}
+              >
+                <Flame size={18} />
+                <span>Trending</span>
+              </NavLink>
+
+              <NavLink
+                to="/shorts"
+                style={({ isActive }) => ({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '10px 14px',
+                  borderRadius: 12,
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  color: isActive ? '#3b82f6' : '#9ca3af',
+                  background: isActive ? 'rgba(59, 130, 246, 0.12)' : 'transparent',
+                  borderLeft: isActive ? '3px solid #3b82f6' : '3px solid transparent',
+                  transition: 'all 0.15s ease',
+                })}
+              >
+                <Layers size={18} />
+                <span>Genre</span>
+              </NavLink>
+
+              <NavLink
+                to="/discover?tab=hosts"
+                style={({ isActive }) => ({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '10px 14px',
+                  borderRadius: 12,
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  color: isActive && location.search.includes('hosts') ? '#3b82f6' : '#9ca3af',
+                  background:
+                    isActive && location.search.includes('hosts')
+                      ? 'rgba(59, 130, 246, 0.12)'
+                      : 'transparent',
+                  borderLeft:
+                    isActive && location.search.includes('hosts')
+                      ? '3px solid #3b82f6'
+                      : '3px solid transparent',
+                  transition: 'all 0.15s ease',
+                })}
+              >
+                <Mic2 size={18} />
+                <span>Speaker & Guests</span>
+              </NavLink>
+            </div>
+          </div>
+
+          {/* SECTION: LIBRARY */}
+          <div style={{ marginBottom: 24 }}>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                color: '#6b7280',
+                textTransform: 'uppercase',
+                padding: '0 12px',
+                display: 'block',
+                marginBottom: 8,
+              }}
+            >
+              Library
+            </span>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <NavLink
+                to="/discover?tab=recent"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '10px 14px',
+                  borderRadius: 12,
+                  fontSize: 13.5,
+                  fontWeight: 500,
+                  color: '#9ca3af',
+                  borderLeft: '3px solid transparent',
+                }}
+              >
+                <Clock size={18} />
+                <span>Recent</span>
+              </NavLink>
+
+              <NavLink
+                to="/discover?tab=playlist"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '10px 14px',
+                  borderRadius: 12,
+                  fontSize: 13.5,
+                  fontWeight: 500,
+                  color: '#9ca3af',
+                  borderLeft: '3px solid transparent',
+                }}
+              >
+                <ListMusic size={18} />
+                <span>Playlist</span>
+              </NavLink>
+
+              <NavLink
+                to="/discover?tab=favorites"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '10px 14px',
+                  borderRadius: 12,
+                  fontSize: 13.5,
+                  fontWeight: 500,
+                  color: '#9ca3af',
+                  borderLeft: '3px solid transparent',
+                }}
+              >
+                <Heart size={18} />
+                <span>Favorites</span>
+              </NavLink>
+
+              <NavLink
+                to="/discover?tab=downloads"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '10px 14px',
+                  borderRadius: 12,
+                  fontSize: 13.5,
+                  fontWeight: 500,
+                  color: '#9ca3af',
+                  borderLeft: '3px solid transparent',
+                }}
+              >
+                <Download size={18} />
+                <span>Downloads</span>
+              </NavLink>
+            </div>
+          </div>
+
+          {/* SECTION: STUDIO & CUSTOMIZE */}
+          <div>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                color: '#6b7280',
+                textTransform: 'uppercase',
+                padding: '0 12px',
+                display: 'block',
+                marginBottom: 8,
+              }}
+            >
+              Studio & Tools
+            </span>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <NavLink
+                to="/bookings"
+                style={({ isActive }) => ({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '10px 14px',
+                  borderRadius: 12,
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  color: isActive ? '#3b82f6' : '#9ca3af',
+                  background: isActive ? 'rgba(59, 130, 246, 0.12)' : 'transparent',
+                  borderLeft: isActive ? '3px solid #3b82f6' : '3px solid transparent',
+                })}
+              >
+                <Calendar size={18} />
+                <span>Bookings & Escrow</span>
+              </NavLink>
+
+              <NavLink
+                to="/messages"
+                style={({ isActive }) => ({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '10px 14px',
+                  borderRadius: 12,
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  color: isActive ? '#3b82f6' : '#9ca3af',
+                  background: isActive ? 'rgba(59, 130, 246, 0.12)' : 'transparent',
+                  borderLeft: isActive ? '3px solid #3b82f6' : '3px solid transparent',
+                })}
+              >
+                <MessageSquare size={18} />
+                <span>Messages</span>
+              </NavLink>
+
+              <NavLink
+                to="/insights"
+                style={({ isActive }) => ({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '10px 14px',
+                  borderRadius: 12,
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  color: isActive ? '#3b82f6' : '#9ca3af',
+                  background: isActive ? 'rgba(59, 130, 246, 0.12)' : 'transparent',
+                  borderLeft: isActive ? '3px solid #3b82f6' : '3px solid transparent',
+                })}
+              >
+                <BarChart3 size={18} />
+                <span>Insights & AI</span>
+              </NavLink>
+
+              <NavLink
+                to="/settings"
+                style={({ isActive }) => ({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '10px 14px',
+                  borderRadius: 12,
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  color: isActive ? '#3b82f6' : '#9ca3af',
+                  background: isActive ? 'rgba(59, 130, 246, 0.12)' : 'transparent',
+                  borderLeft: isActive ? '3px solid #3b82f6' : '3px solid transparent',
+                })}
+              >
+                <Settings size={18} />
+                <span>Settings</span>
+              </NavLink>
+            </div>
+          </div>
+        </div>
+
+        {/* LOG OUT BUTTON */}
+        <div style={{ paddingTop: 16, borderTop: '1px solid #1f2129' }}>
+          <button
+            type="button"
+            onClick={handleLogout}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '10px 14px',
+              borderRadius: 12,
+              fontSize: 13.5,
+              fontWeight: 600,
+              color: '#ef4444',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'background 0.2s',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+          >
+            <LogOut size={18} />
+            <span>Log out</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* ── MAIN CONTENT AREA ────────────────────────────────────────────── */}
+      <main
+        style={{
+          flex: 1,
+          minWidth: 0,
+          background: '#0e0f13',
+          padding: '28px 32px 100px',
+          overflowY: 'auto',
+          minHeight: '100vh',
+        }}
+      >
+        {children || <Outlet />}
+      </main>
+
+      {/* ── RIGHT COLUMN (MATCHING IMAGE 2 & 3) ──────────────────────────── */}
+      {!isFullWidthPage && (
+        <aside
+          style={{
+            width: 320,
+            background: '#121318',
+            borderLeft: '1px solid #1f2129',
+            padding: '24px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            flexShrink: 0,
+            height: '100vh',
+            position: 'sticky',
+            top: 0,
+            zIndex: 30,
+            overflowY: 'auto',
+          }}
+        >
+          <div>
+            {/* QUICK SEARCH INPUT */}
+            <div style={{ marginBottom: 24 }}>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: '0.08em',
+                  color: '#6b7280',
+                  textTransform: 'uppercase',
+                  display: 'block',
+                  marginBottom: 8,
+                }}
+              >
+                Quick Search
+              </span>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  background: '#1a1b22',
+                  border: '1px solid #262832',
+                  borderRadius: 14,
+                  padding: '10px 14px',
+                }}
+              >
+                <Search size={16} color="#6b7280" />
+                <input
+                  type="text"
+                  placeholder="Search podcasts..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      navigate(`/discover?q=${encodeURIComponent(searchQuery)}`);
+                    }
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    color: '#fff',
+                    fontSize: 13,
+                    width: '100%',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* TOP PODCASTERS SECTION */}
+            <div style={{ marginBottom: 28 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: 14,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    color: '#6b7280',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Top Podcasters
+                </span>
+                <NavLink
+                  to="/discover?tab=hosts"
+                  style={{ fontSize: 12, color: '#3b82f6', fontWeight: 600 }}
+                >
+                  See all
+                </NavLink>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {topPodcasters.map((podcaster) => {
+                  const isFollowed = following.includes(podcaster.id);
+                  return (
+                    <div
+                      key={podcaster.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 10,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                        <div
+                          style={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: '50%',
+                            overflow: 'hidden',
+                            flexShrink: 0,
+                            background: '#2563eb',
+                          }}
+                        >
+                          <img
+                            src={podcaster.avatar}
+                            alt={podcaster.name}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <h5
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 600,
+                              color: '#f3f4f6',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            {podcaster.name}
+                          </h5>
+                          <span style={{ fontSize: 11, color: '#6b7280' }}>
+                            {podcaster.followers}
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => toggleFollow(podcaster.id)}
+                        style={{
+                          background: isFollowed ? 'rgba(59, 130, 246, 0.15)' : '#1f2028',
+                          color: isFollowed ? '#3b82f6' : '#d1d5db',
+                          border: isFollowed ? '1px solid #3b82f6' : '1px solid #2e303d',
+                          borderRadius: 9999,
+                          padding: '5px 12px',
+                          fontSize: 11.5,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        {isFollowed ? 'Following' : 'Follow'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* NOW PLAYING WIDGET (STICKY DOCK MATCHING IMAGE 3) */}
+          <div>
+            <NowPlayingWidget />
+          </div>
+        </aside>
+      )}
     </div>
   );
 }
-

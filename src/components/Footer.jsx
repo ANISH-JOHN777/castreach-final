@@ -1,15 +1,15 @@
 import { Link } from 'react-router-dom';
-import { Mic, ShieldCheck, Video, CheckCircle } from 'lucide-react';
+import { Radio, ShieldCheck, Video, Headphones, Heart } from 'lucide-react';
 
 export default function Footer() {
   return (
     <footer style={{
-      background: 'var(--plum-deep)',
-      color: 'var(--lavender-mist)',
+      background: '#090a0f',
+      color: '#94a3b8',
       padding: '64px 24px 32px',
-      borderTop: '1px solid rgba(255,255,255,0.1)',
+      borderTop: '1px solid #1a1c24',
     }}>
-      <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+      <div style={{ maxWidth: 1240, margin: '0 auto' }}>
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
@@ -19,76 +19,98 @@ export default function Footer() {
           {/* Brand Column */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <Mic size={26} color="var(--purple-castreach)" />
-              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 24, color: '#fff' }}>
+              <div style={{
+                width: 32,
+                height: 32,
+                borderRadius: 10,
+                background: '#2563eb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+              }}>
+                <Radio size={18} />
+              </div>
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 22, color: '#fff' }}>
+                Podcast
+              </span>
+              <span style={{
+                fontSize: 10,
+                fontWeight: 700,
+                color: '#38bdf8',
+                background: 'rgba(56, 189, 248, 0.12)',
+                padding: '2px 6px',
+                borderRadius: 6,
+              }}>
                 CastReach
               </span>
             </div>
-            <p style={{ color: 'var(--lavender-soft)', fontSize: 14, lineHeight: 1.6, marginBottom: 20 }}>
-              The premier marketplace and WebRTC recording studio connecting podcast hosts with industry leaders, authors, and experts worldwide.
+            <p style={{ color: '#94a3b8', fontSize: 14, lineHeight: 1.6, marginBottom: 20 }}>
+              The all-in-one platform for podcast listeners, creators, and expert guests. Discover trending shows, stream episodes, and collaborate live in our WebRTC recording studio.
             </p>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.1)', padding: '6px 12px', borderRadius: 20, fontSize: 12, color: 'var(--lavender-soft)' }}>
-                <ShieldCheck size={14} /> Escrow Security
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#13151f', padding: '6px 12px', borderRadius: 20, fontSize: 12, color: '#e2e8f0' }}>
+                <ShieldCheck size={14} color="#10b981" /> Stripe Escrow
               </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.1)', padding: '6px 12px', borderRadius: 20, fontSize: 12, color: 'var(--lavender-soft)' }}>
-                <Video size={14} /> HD Studio
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#13151f', padding: '6px 12px', borderRadius: 20, fontSize: 12, color: '#e2e8f0' }}>
+                <Headphones size={14} color="#38bdf8" /> 48kHz Studio
               </span>
             </div>
           </div>
 
-          {/* Marketplace Links */}
+          {/* Navigation */}
           <div>
-            <h4 style={{ color: '#fff', fontSize: 16, marginBottom: 20, fontFamily: 'var(--font-display)' }}>Marketplace</h4>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12, fontSize: 14, color: 'var(--lavender-soft)' }}>
-              <li><Link to="/discover">Discover Creators</Link></li>
-              <li><Link to="/explore">Featured Guests</Link></li>
-              <li><Link to="/shorts">Podcast Shorts</Link></li>
-              <li><Link to="/register?role=host">Become a Host</Link></li>
-              <li><Link to="/register?role=guest">Become a Guest</Link></li>
+            <h4 style={{ color: '#fff', fontSize: 15, fontWeight: 700, marginBottom: 18 }}>Navigation</h4>
+            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13.5 }}>
+              <li><Link to="/discover" style={{ color: '#94a3b8' }}>Discover Podcasts</Link></li>
+              <li><Link to="/explore" style={{ color: '#94a3b8' }}>Featured Episodes</Link></li>
+              <li><Link to="/discover?tab=hosts" style={{ color: '#94a3b8' }}>Top Podcasters</Link></li>
+              <li><Link to="/about" style={{ color: '#94a3b8' }}>Pricing & Features</Link></li>
             </ul>
           </div>
 
           {/* Categories */}
           <div>
-            <h4 style={{ color: '#fff', fontSize: 16, marginBottom: 20, fontFamily: 'var(--font-display)' }}>Top Categories</h4>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12, fontSize: 14, color: 'var(--lavender-soft)' }}>
-              <li><Link to="/discover?category=Technology">Technology & AI</Link></li>
-              <li><Link to="/discover?category=Startups">Startups & Venture</Link></li>
-              <li><Link to="/discover?category=Business">Business & Leadership</Link></li>
-              <li><Link to="/discover?category=Marketing">Growth & Marketing</Link></li>
-              <li><Link to="/discover?category=Creator Economy">Creator Economy</Link></li>
+            <h4 style={{ color: '#fff', fontSize: 15, fontWeight: 700, marginBottom: 18 }}>Popular Genres</h4>
+            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13.5 }}>
+              <li><Link to="/discover?category=Technology" style={{ color: '#94a3b8' }}>Technology & AI</Link></li>
+              <li><Link to="/discover?category=Business" style={{ color: '#94a3b8' }}>Business & Startups</Link></li>
+              <li><Link to="/discover?category=Psychology" style={{ color: '#94a3b8' }}>Psychology & Mindset</Link></li>
+              <li><Link to="/discover?category=Sport" style={{ color: '#94a3b8' }}>Sport & Fitness</Link></li>
             </ul>
           </div>
 
-          {/* Platform Security */}
+          {/* Security & Studio */}
           <div>
-            <h4 style={{ color: '#fff', fontSize: 16, marginBottom: 20, fontFamily: 'var(--font-display)' }}>Trust & Security</h4>
-            <p style={{ color: 'var(--lavender-soft)', fontSize: 13, lineHeight: 1.6, marginBottom: 16 }}>
-              Stripe Escrow protects payments until session verification. Every studio session is monitored by DataStitcher audit security.
+            <h4 style={{ color: '#fff', fontSize: 15, fontWeight: 700, marginBottom: 18 }}>Studio Trust</h4>
+            <p style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6, marginBottom: 16 }}>
+              Payments held in trust until guest interview verification. AI show notes and automated live multi-track backups.
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fff', fontWeight: 600, fontSize: 13 }}>
-              <CheckCircle size={16} color="var(--color-success)" /> Verified Profiles & Reviews
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
+              All Systems Operational (48kHz WebRTC)
             </div>
           </div>
         </div>
 
         <div style={{
-          borderTop: '1px solid rgba(255,255,255,0.08)',
+          borderTop: '1px solid #1a1c24',
           paddingTop: 24,
           display: 'flex',
-          justifyKeyword: 'space-between',
+          justifyContent: 'space-between',
           alignItems: 'center',
+          fontSize: 12,
+          color: '#64748b',
           flexWrap: 'wrap',
-          gap: 16,
-          fontSize: 13,
-          color: 'var(--lavender-soft)',
+          gap: 12,
         }}>
-          <div>© {new Date().getFullYear()} CastReach Platform. All rights reserved.</div>
-          <div style={{ display: 'flex', gap: 24 }}>
-            <span>Privacy Policy</span>
-            <span>Terms of Service</span>
-            <span>Security Statement</span>
+          <div>
+            © {new Date().getFullYear()} CastReach Podcast Studio Platform. All rights reserved.
+          </div>
+          <div style={{ display: 'flex', gap: 20 }}>
+            <Link to="/about" style={{ color: '#64748b' }}>Privacy Policy</Link>
+            <Link to="/about" style={{ color: '#64748b' }}>Terms of Service</Link>
+            <Link to="/about" style={{ color: '#64748b' }}>Security Whitepaper</Link>
           </div>
         </div>
       </div>

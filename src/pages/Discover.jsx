@@ -1,579 +1,970 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Search, Filter, Sparkles, UserCheck, Radio, Headphones, Calendar, Globe, Award, MessageSquare, BookOpen, Star } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { 
+  Play, 
+  Pause, 
+  Heart, 
+  MoreVertical, 
+  Share2, 
+  Search, 
+  Sparkles, 
+  Mic2, 
+  Calendar, 
+  Star, 
+  Users, 
+  Radio, 
+  Clock, 
+  Check, 
+  ExternalLink,
+  ChevronRight,
+  Flame,
+  Award
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-
-const LANGUAGES = [
-  { code: '', label: 'All Languages' },
-  { code: 'en', label: 'English' },
-  { code: 'es', label: 'Spanish' },
-  { code: 'fr', label: 'French' },
-  { code: 'de', label: 'German' },
-  { code: 'hi', label: 'Hindi' },
-  { code: 'ta', label: 'Tamil' },
-  { code: 'te', label: 'Telugu' },
-  { code: 'ml', label: 'Malayalam' },
-];
-
-const CATEGORIES = [
-  'All',
-  'Technology',
-  'Startups',
-  'Business',
-  'AI',
-  'Marketing',
-  'Finance',
-  'Health',
-  'Design',
-];
+import { useAudioPlayer } from '../context/AudioPlayerContext';
+import CreateBookingModal from '../components/CreateBookingModal';
 
 export default function Discover() {
   const { user, authFetch } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { currentTrack, isPlaying, playTrack, favorites, toggleFavorite } = useAudioPlayer();
 
-  const [activeTab, setActiveTab] = useState('podcasts'); // podcasts | episodes | hosts | guests | matches
+  // Active filter state
+  const initialCategory = searchParams.get('category') || 'New podcasts';
+  const [selectedFilter, setSelectedFilter] = useState(initialCategory);
+  const [activeViewTab, setActiveViewTab] = useState(searchParams.get('tab') || 'episodes'); // 'episodes' | 'hosts' | 'trending'
+
+  // Booking Modal State
+  const [selectedRecipient, setSelectedRecipient] = useState(null);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+
+  // Server data state
+  const [episodes, setEpisodes] = useState([]);
+  const [hosts, setHosts] = useState([]);
+  const [guests, setGuests] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [items, setItems] = useState([]);
-  const [pagination, setPagination] = useState({ page: 1, limit: 12, totalPages: 1, totalCount: 0 });
 
-  // Filters
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('All');
-  const [language, setLanguage] = useState('');
-  const [availability, setAvailability] = useState('');
-  const [sortOption, setSortOption] = useState('newest');
-  const [page, setPage] = useState(1);
+  // Trending slide index
+  const [trendingSlide, setTrendingSlide] = useState(0);
 
-  // Match Finder State
-  const [matchResults, setMatchResults] = useState([]);
-  const [matchingLoading, setMatchingLoading] = useState(false);
-  const [matchTargetType, setMatchTargetType] = useState(user?.role === 'host' ? 'GUEST' : 'HOST');
+  const filterTabs = [
+    'New podcasts',
+    'Popular',
+    'Business',
+    'Technology',
+    'Psychology',
+    'Sport',
+    'Design',
+    'All'
+  ];
 
-  const fetchData = useCallback(async () => {
-    if (activeTab === 'matches') return;
-    setLoading(true);
-    try {
-      const qs = new URLSearchParams({
-        page,
-        limit: 12,
-        sort: sortOption,
-      });
+  // Static rich episodes matching Images 2 & 3
+  const staticFeaturedEpisodes = [
+    {
+      id: 'track-3',
+      title: 'Healthy lifestyle: The search for harmony',
+      host: 'Liam Martinez',
+      episodes: '12 episodes',
+      category: 'Psychology',
+      iconType: 'heart',
+      color: '#ec4899',
+      duration: 1650,
+      cover: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=400&q=80',
+    },
+    {
+      id: 'track-4',
+      title: 'Investing in yourself',
+      host: 'Noah Davis',
+      episodes: '16 episodes',
+      category: 'Business',
+      iconType: 'clock',
+      color: '#8b5cf6',
+      duration: 2280,
+      cover: 'https://images.unsplash.com/photo-1553729459-efe14ef6055d?auto=format&fit=crop&w=400&q=80',
+    },
+    {
+      id: 'track-5',
+      title: 'How modern gadgets are changing our lives',
+      host: 'Jackson Brown',
+      episodes: '10 episodes',
+      category: 'Technology',
+      iconType: 'camera',
+      color: '#06b6d4',
+      duration: 1920,
+      cover: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=400&q=80',
+    },
+    {
+      id: 'track-1',
+      title: 'Psychological approaches to stress reduction',
+      host: 'Liam Martinez',
+      episodes: '8 episodes',
+      category: 'Psychology',
+      iconType: 'heart',
+      color: '#3b82f6',
+      duration: 2040,
+      cover: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=400&q=80',
+    },
+  ];
 
-      if (search) qs.set('q', search);
-      if (category !== 'All') qs.set('category', category);
-      if (language) qs.set('language', language);
-      if (availability) qs.set('availability', availability);
+  // Sport tracks from Image 2
+  const sportTracks = [
+    {
+      id: 'track-6',
+      title: 'Proper diet',
+      host: 'Andrius Peregorius',
+      durationStr: '01:25',
+      duration: 85,
+      category: 'Sport',
+      icon: '🍎',
+      color: '#ea580c',
+      cover: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=400&q=80',
+    },
+    {
+      id: 'track-7',
+      title: 'Just Football Podcast',
+      host: 'Andrius Peregorius',
+      durationStr: '01:05',
+      duration: 65,
+      category: 'Sport',
+      icon: '⚽',
+      color: '#2563eb',
+      cover: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=400&q=80',
+    },
+    {
+      id: 'track-8',
+      title: "Let's start on Monday",
+      host: 'Robert Fox',
+      durationStr: '00:12',
+      duration: 720,
+      category: 'Business',
+      icon: '📓',
+      color: '#059669',
+      cover: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=400&q=80',
+    },
+  ];
 
-      let endpoint = '/podcasts';
-      if (activeTab === 'episodes') endpoint = '/discovery/episodes';
-      if (activeTab === 'hosts') endpoint = '/discovery/hosts';
-      if (activeTab === 'guests') endpoint = '/discovery/guests';
+  // Featured 3 Cards from Image 2
+  const featuredCards = [
+    {
+      id: 'card-1',
+      title: 'Sleep Magic',
+      creator: 'Jessica Porter',
+      bg: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+      illustration: '🌙',
+      color: '#3b82f6',
+    },
+    {
+      id: 'card-2',
+      title: 'Work Appropriate',
+      creator: 'Crooked media',
+      bg: 'linear-gradient(135deg, #fbcfe8, #f472b6)',
+      illustration: '💻',
+      color: '#f43f5e',
+    },
+    {
+      id: 'card-3',
+      title: 'Elizabeth the first',
+      creator: 'Imperative Entertainment',
+      bg: 'linear-gradient(135deg, #bae6fd, #60a5fa)',
+      illustration: '⭐',
+      color: '#0284c7',
+    },
+  ];
 
-      const res = await authFetch(`${endpoint}?${qs.toString()}`);
-      const data = await res.json();
-      if (res.ok) {
-        if (activeTab === 'podcasts') setItems(data.podcasts || []);
-        if (activeTab === 'episodes') setItems(data.episodes || []);
-        if (activeTab === 'hosts') setItems(data.hosts || []);
-        if (activeTab === 'guests') setItems(data.guests || []);
-        setPagination({
-          page: data.page || 1,
-          limit: data.limit || 12,
-          totalPages: data.totalPages || 1,
-          totalCount: data.totalCount || 0,
-        });
-      }
-    } catch (err) {
-      console.error('Error fetching discovery data:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeTab, page, search, category, language, availability, sortOption, authFetch]);
-
+  // Fetch server data
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    let isMounted = true;
+    async function loadData() {
+      setLoading(true);
+      try {
+        const [epRes, hostRes, guestRes] = await Promise.all([
+          fetch('/api/podcasts/episodes/discover').catch(() => null),
+          fetch('/api/discovery/hosts').catch(() => null),
+          fetch('/api/discovery/guests').catch(() => null),
+        ]);
 
-  const handleRunMatchEngine = async () => {
-    setMatchingLoading(true);
-    try {
-      const res = await authFetch('/discovery/matches', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          targetType: matchTargetType,
-          limit: 10,
-          filters: {
-            language: language || undefined,
-          },
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setMatchResults(data.results || []);
+        if (epRes && epRes.ok) {
+          const epData = await epRes.json();
+          if (isMounted && epData.episodes) setEpisodes(epData.episodes);
+        }
+        if (hostRes && hostRes.ok) {
+          const hostData = await hostRes.json();
+          if (isMounted && hostData.hosts) setHosts(hostData.hosts);
+        }
+        if (guestRes && guestRes.ok) {
+          const guestData = await guestRes.json();
+          if (isMounted && guestData.guests) setGuests(guestData.guests);
+        }
+      } catch (err) {
+        console.warn('Discovery data fetch error:', err);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-    } catch (err) {
-      console.error('Error running match engine:', err);
-    } finally {
-      setMatchingLoading(false);
     }
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Filter episodes
+  const displayEpisodes = staticFeaturedEpisodes.filter((ep) => {
+    if (selectedFilter === 'All' || selectedFilter === 'New podcasts' || selectedFilter === 'Popular') {
+      return true;
+    }
+    return ep.category.toLowerCase().includes(selectedFilter.toLowerCase());
+  });
+
+  const handleOpenBooking = (target) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    setSelectedRecipient(target);
+    setIsBookingOpen(true);
   };
 
-  useEffect(() => {
-    if (activeTab === 'matches') {
-      handleRunMatchEngine();
-    }
-  }, [activeTab, matchTargetType]);
-
   return (
-    <div className="fade-in" style={{ paddingBottom: 40, maxWidth: 1200, margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <div>
-          <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Radio style={{ color: 'var(--color-primary, #6366f1)' }} /> Discovery Hub
-          </h1>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: 14 }}>
-            Discover podcasts, episodes, hosts, guest experts, and AI-powered compatibility matches.
-          </p>
-        </div>
-      </div>
+    <div style={{ maxWidth: 1040, margin: '0 auto', color: '#f3f4f6' }}>
+      {/* ── TOP SECTION: TRENDING HERO BANNER (MATCHING IMAGE 3) ────────── */}
+      <div style={{ marginBottom: 36 }}>
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: '0.08em',
+            color: '#9ca3af',
+            textTransform: 'uppercase',
+            display: 'block',
+            marginBottom: 12,
+          }}
+        >
+          Trending Podcast
+        </span>
 
-      {/* Navigation Tabs */}
-      <div style={{ display: 'flex', gap: 10, borderBottom: '1px solid var(--color-border-tertiary)', marginBottom: 20 }}>
-        {[
-          { id: 'podcasts', label: 'Podcasts', icon: Radio },
-          { id: 'episodes', label: 'Episodes', icon: Headphones },
-          { id: 'hosts', label: 'Hosts', icon: BookOpen },
-          { id: 'guests', label: 'Guests', icon: UserCheck },
-          { id: 'matches', label: 'AI Match Finder', icon: Sparkles },
-        ].map((tab) => {
-          const IconComponent = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => { setActiveTab(tab.id); setPage(1); }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '10px 16px',
-                background: 'none',
-                border: 'none',
-                borderBottom: isActive ? '2px solid var(--color-primary, #6366f1)' : '2px solid transparent',
-                color: isActive ? 'var(--color-primary, #6366f1)' : 'var(--color-text-secondary)',
-                fontWeight: isActive ? 600 : 500,
-                cursor: 'pointer',
-                fontSize: 14,
-                transition: 'all 0.2s',
-              }}
-            >
-              <IconComponent size={16} />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Filter Controls (for Podcasts, Episodes, Hosts, Guests) */}
-      {activeTab !== 'matches' && (
-        <div style={{ background: 'var(--color-background-primary, #1e293b)', padding: 16, borderRadius: 12, marginBottom: 24, border: '1px solid var(--color-border-tertiary)' }}>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-            <div style={{ flex: 1, minWidth: 240, position: 'relative' }}>
-              <input
-                type="text"
-                placeholder={`Search ${activeTab}...`}
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px 10px 36px',
-                  borderRadius: 8,
-                  border: '1px solid var(--color-border-tertiary)',
-                  background: 'var(--color-background-secondary, #0f172a)',
-                  color: 'var(--color-text-primary, #f8fafc)',
-                  fontSize: 14,
-                }}
-              />
-              <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--color-text-secondary)' }} />
-            </div>
-
-            <select
-              value={category}
-              onChange={(e) => { setCategory(e.target.value); setPage(1); }}
-              style={{
-                padding: '10px 12px',
-                borderRadius: 8,
-                border: '1px solid var(--color-border-tertiary)',
-                background: 'var(--color-background-secondary, #0f172a)',
-                color: 'var(--color-text-primary)',
-                fontSize: 14,
-              }}
-            >
-              {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>{cat === 'All' ? 'All Categories' : cat}</option>
-              ))}
-            </select>
-
-            <select
-              value={language}
-              onChange={(e) => { setLanguage(e.target.value); setPage(1); }}
-              style={{
-                padding: '10px 12px',
-                borderRadius: 8,
-                border: '1px solid var(--color-border-tertiary)',
-                background: 'var(--color-background-secondary, #0f172a)',
-                color: 'var(--color-text-primary)',
-                fontSize: 14,
-              }}
-            >
-              {LANGUAGES.map((lang) => (
-                <option key={lang.code} value={lang.code}>{lang.label}</option>
-              ))}
-            </select>
-
-            {(activeTab === 'hosts' || activeTab === 'guests') && (
-              <select
-                value={availability}
-                onChange={(e) => { setAvailability(e.target.value); setPage(1); }}
-                style={{
-                  padding: '10px 12px',
-                  borderRadius: 8,
-                  border: '1px solid var(--color-border-tertiary)',
-                  background: 'var(--color-background-secondary, #0f172a)',
-                  color: 'var(--color-text-primary)',
-                  fontSize: 14,
-                }}
-              >
-                <option value="">Any Availability</option>
-                <option value="AVAILABLE">Available Now</option>
-              </select>
-            )}
-
-            <select
-              value={sortOption}
-              onChange={(e) => { setSortOption(e.target.value); setPage(1); }}
-              style={{
-                padding: '10px 12px',
-                borderRadius: 8,
-                border: '1px solid var(--color-border-tertiary)',
-                background: 'var(--color-background-secondary, #0f172a)',
-                color: 'var(--color-text-primary)',
-                fontSize: 14,
-              }}
-            >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-            </select>
-          </div>
-        </div>
-      )}
-
-      {/* Content Rendering */}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-secondary)' }}>
-          Loading discovery content...
-        </div>
-      ) : activeTab === 'matches' ? (
-        <div>
-          {/* Match Engine Controls */}
-          <div style={{ background: 'var(--color-background-primary, #1e293b)', padding: 16, borderRadius: 12, marginBottom: 24, border: '1px solid var(--color-border-tertiary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 14, fontWeight: 500 }}>Looking for:</span>
-              <button
-                onClick={() => setMatchTargetType('GUEST')}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: 6,
-                  border: 'none',
-                  background: matchTargetType === 'GUEST' ? 'var(--color-primary, #6366f1)' : 'var(--color-background-secondary)',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                  fontSize: 13,
-                }}
-              >
-                Suitable Guests
-              </button>
-              <button
-                onClick={() => setMatchTargetType('HOST')}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: 6,
-                  border: 'none',
-                  background: matchTargetType === 'HOST' ? 'var(--color-primary, #6366f1)' : 'var(--color-background-secondary)',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                  fontSize: 13,
-                }}
-              >
-                Suitable Hosts / Podcasts
-              </button>
-            </div>
-            <button
-              onClick={handleRunMatchEngine}
-              disabled={matchingLoading}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '8px 16px',
-                borderRadius: 8,
-                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                color: '#fff',
-                border: 'none',
-                fontWeight: 600,
-                cursor: 'pointer',
-                fontSize: 14,
-              }}
-            >
-              <Sparkles size={16} />
-              {matchingLoading ? 'Calculating Matches...' : 'Refresh AI Matches'}
-            </button>
-          </div>
-
-          {/* Results Grid */}
-          {matchingLoading ? (
-            <div style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-secondary)' }}>
-              Analyzing topic overlap, expertise compatibility, and language alignment...
-            </div>
-          ) : matchResults.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-secondary)' }}>
-              No matches found matching your target criteria.
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
-              {matchResults.map(({ user: matchUser, compatibilityScore, factors, explanation }) => (
-                <div
-                  key={matchUser.id}
-                  style={{
-                    background: 'var(--color-background-primary, #1e293b)',
-                    borderRadius: 12,
-                    padding: 20,
-                    border: '1px solid var(--color-border-tertiary)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justify: 'space-between',
-                  }}
-                >
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                        <img
-                          src={matchUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(matchUser.displayName)}`}
-                          alt={matchUser.displayName}
-                          style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover' }}
-                        />
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: 16 }}>{matchUser.displayName}</div>
-                          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', textTransform: 'capitalize' }}>
-                            {matchUser.role}
-                          </div>
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 18, fontWeight: 700, color: '#22c55e' }}>{compatibilityScore}%</div>
-                        <div style={{ fontSize: 10, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>
-                          Compatibility score
-                        </div>
-                      </div>
-                    </div>
-
-                    <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12, lineClamp: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                      {matchUser.bio || 'No bio provided.'}
-                    </p>
-
-                    {/* Factors Tags */}
-                    {factors && factors.length > 0 && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-                        {factors.map((f, idx) => (
-                          <span
-                            key={idx}
-                            style={{
-                              fontSize: 11,
-                              padding: '2px 8px',
-                              borderRadius: 12,
-                              background: 'rgba(99, 102, 241, 0.15)',
-                              color: '#a5b4fc',
-                              fontWeight: 500,
-                            }}
-                          >
-                            {f}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Grounded Explanation */}
-                    {explanation && (
-                      <div style={{ background: 'var(--color-background-secondary, #0f172a)', padding: 10, borderRadius: 8, fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 16 }}>
-                        <strong>Matched because:</strong> {explanation}
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 10, marginTop: 'auto' }}>
-                    <button
-                      onClick={() => navigate(`/profile/${matchUser.id}`)}
-                      style={{
-                        flex: 1,
-                        padding: '8px 12px',
-                        borderRadius: 6,
-                        border: '1px solid var(--color-border-tertiary)',
-                        background: 'none',
-                        color: 'var(--color-text-primary)',
-                        cursor: 'pointer',
-                        fontSize: 13,
-                      }}
-                    >
-                      View Profile
-                    </button>
-                    <button
-                      onClick={() => navigate(`/book/${matchUser.id}`)}
-                      style={{
-                        flex: 1,
-                        padding: '8px 12px',
-                        borderRadius: 6,
-                        border: 'none',
-                        background: 'var(--color-primary, #6366f1)',
-                        color: '#fff',
-                        cursor: 'pointer',
-                        fontSize: 13,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Connect / Book
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : items.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-secondary)' }}>
-          No {activeTab} found matching your query.
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
-          {items.map((item) => (
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 60%, #3b82f6 100%)',
+            borderRadius: 24,
+            padding: '36px 40px',
+            color: '#fff',
+            position: 'relative',
+            overflow: 'hidden',
+            boxShadow: '0 16px 40px rgba(37, 99, 235, 0.35)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            minHeight: 220,
+          }}
+        >
+          <div style={{ maxWidth: 440, zIndex: 2 }}>
             <div
-              key={item._id || item.id}
               style={{
-                background: 'var(--color-background-primary, #1e293b)',
-                borderRadius: 12,
-                padding: 16,
-                border: '1px solid var(--color-border-tertiary)',
+                display: 'inline-block',
+                background: 'rgba(255, 255, 255, 0.2)',
+                backdropFilter: 'blur(8px)',
+                padding: '4px 12px',
+                borderRadius: 20,
+                fontSize: 11,
+                fontWeight: 600,
+                marginBottom: 16,
+                letterSpacing: '0.02em',
+              }}
+            >
+              People's favorite
+            </div>
+
+            <h2
+              style={{
+                fontSize: 'clamp(24px, 3.5vw, 36px)',
+                fontWeight: 800,
+                lineHeight: 1.15,
+                marginBottom: 14,
+                letterSpacing: '-0.02em',
+              }}
+            >
+              How we can <br />
+              save this world
+            </h2>
+
+            <p style={{ fontSize: 13, color: 'rgba(255, 255, 255, 0.85)', marginBottom: 20 }}>
+              Ethan Anderson • Global perspectives & deep tech transformations
+            </p>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button
+                type="button"
+                onClick={() =>
+                  playTrack({
+                    id: 'track-2',
+                    title: 'How we can save this world',
+                    host: 'Ethan Anderson',
+                    category: 'Technology',
+                    cover: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=400&q=80',
+                    duration: 1800,
+                    currentTime: 0,
+                  })
+                }
+                style={{
+                  background: '#ffffff',
+                  color: '#0f1013',
+                  padding: '9px 20px',
+                  borderRadius: 9999,
+                  fontWeight: 700,
+                  fontSize: 13,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  cursor: 'pointer',
+                  border: 'none',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+                }}
+              >
+                <Play size={14} fill="#0f1013" /> Play Now
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleOpenBooking({
+                    id: 'host-ethan',
+                    displayName: 'Ethan Anderson',
+                    role: 'host',
+                  })
+                }
+                style={{
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  color: '#ffffff',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  padding: '9px 18px',
+                  borderRadius: 9999,
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                }}
+              >
+                Book as Guest / Interview
+              </button>
+            </div>
+
+            {/* Slider Dots matching Image 3 */}
+            <div style={{ display: 'flex', gap: 6, marginTop: 24 }}>
+              <span style={{ width: 22, height: 4, borderRadius: 2, background: '#ffffff' }} />
+              <span style={{ width: 6, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.4)' }} />
+              <span style={{ width: 6, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.4)' }} />
+            </div>
+          </div>
+
+          {/* Right illustration / graphic */}
+          <div
+            style={{
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingRight: 20,
+            }}
+          >
+            <div
+              style={{
+                width: 180,
+                height: 180,
+                borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 72,
+              }}
+            >
+              🎙️
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 3 FEATURED CARDS (MATCHING IMAGE 2) ─────────────────────────── */}
+      <div style={{ marginBottom: 40 }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: 20,
+          }}
+        >
+          {featuredCards.map((card) => (
+            <div
+              key={card.id}
+              onClick={() =>
+                playTrack({
+                  id: card.id,
+                  title: card.title,
+                  host: card.creator,
+                  category: 'Featured',
+                  cover: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=400&q=80',
+                  duration: 1800,
+                  currentTime: 100,
+                })
+              }
+              style={{
+                background: card.bg,
+                borderRadius: 22,
+                padding: '24px 26px',
+                minHeight: 180,
                 display: 'flex',
                 flexDirection: 'column',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
               }}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-4px)')}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
             >
-              {activeTab === 'podcasts' && (
-                <>
-                  <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-                    <img
-                      src={item.coverImage || 'https://via.placeholder.com/60?text=Show'}
-                      alt={item.title}
-                      style={{ width: 60, height: 60, borderRadius: 8, objectFit: 'cover' }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 16 }}>{item.title}</div>
-                      <div style={{ fontSize: 12, color: 'var(--color-primary, #6366f1)', fontWeight: 500 }}>
-                        {item.category}
-                      </div>
-                      <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
-                        {item.episodeCount || 0} episodes
-                      </div>
-                    </div>
-                  </div>
-                  <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12, flex: 1, lineClamp: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                    {item.description}
-                  </p>
-                  <button
-                    onClick={() => navigate(`/podcasts/${item._id || item.id}`)}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      borderRadius: 6,
-                      border: '1px solid var(--color-border-tertiary)',
-                      background: 'none',
-                      color: 'var(--color-text-primary)',
-                      cursor: 'pointer',
-                      fontSize: 13,
-                    }}
-                  >
-                    View Podcast
-                  </button>
-                </>
-              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 32 }}>{card.illustration}</span>
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    background: 'rgba(255,255,255,0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Play size={14} fill="#fff" color="#fff" />
+                </div>
+              </div>
 
-              {activeTab === 'episodes' && (
-                <>
-                  <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4 }}>{item.title}</div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
-                    From: {item.podcast?.title || 'Podcast'}
-                  </div>
-                  <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12, flex: 1, lineClamp: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                    {item.description}
-                  </p>
-                  <button
-                    onClick={() => navigate(`/podcasts/${item.podcast?.id}/episodes/${item.id}`)}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      borderRadius: 6,
-                      border: '1px solid var(--color-border-tertiary)',
-                      background: 'none',
-                      color: 'var(--color-text-primary)',
-                      cursor: 'pointer',
-                      fontSize: 13,
-                    }}
-                  >
-                    Listen Episode
-                  </button>
-                </>
-              )}
-
-              {(activeTab === 'hosts' || activeTab === 'guests') && (
-                <>
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
-                    <img
-                      src={item.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.displayName)}`}
-                      alt={item.displayName}
-                      style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover' }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 16 }}>{item.displayName}</div>
-                      <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-                        {item.expertise?.slice(0, 2).join(' · ') || 'Creator'}
-                      </div>
-                    </div>
-                  </div>
-                  <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12, flex: 1, lineClamp: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                    {item.bio || 'No bio provided.'}
-                  </p>
-                  <button
-                    onClick={() => navigate(`/profile/${item.id}`)}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      borderRadius: 6,
-                      border: '1px solid var(--color-border-tertiary)',
-                      background: 'none',
-                      color: 'var(--color-text-primary)',
-                      cursor: 'pointer',
-                      fontSize: 13,
-                    }}
-                  >
-                    View Profile
-                  </button>
-                </>
-              )}
+              <div>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>
+                  {card.creator}
+                </span>
+                <h3 style={{ fontSize: 20, fontWeight: 800, color: '#fff', marginTop: 2 }}>
+                  {card.title}
+                </h3>
+              </div>
             </div>
           ))}
         </div>
+      </div>
+
+      {/* ── SECTION: YOU MIGHT LIKE (MATCHING IMAGE 2 & 3) ────────────────── */}
+      <div style={{ marginBottom: 44 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 18,
+          }}
+        >
+          <h3 style={{ fontSize: 18, fontWeight: 700, color: '#f3f4f6' }}>You might like</h3>
+          <button
+            type="button"
+            onClick={() => setSelectedFilter('All')}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              fontSize: 12,
+              color: '#9ca3af',
+              cursor: 'pointer',
+            }}
+          >
+            See all
+          </button>
+        </div>
+
+        {/* Filter Pills Tabs (matching Image 2 & 3) */}
+        <div
+          style={{
+            display: 'flex',
+            gap: 10,
+            overflowX: 'auto',
+            paddingBottom: 6,
+            marginBottom: 20,
+            scrollbarWidth: 'none',
+          }}
+        >
+          {filterTabs.map((tab) => {
+            const isActive = selectedFilter === tab;
+            return (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setSelectedFilter(tab)}
+                style={{
+                  background: isActive ? '#ffffff' : '#1c1d24',
+                  color: isActive ? '#0f1013' : '#9ca3af',
+                  padding: '7px 16px',
+                  borderRadius: 9999,
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  border: 'none',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease',
+                  boxShadow: isActive ? '0 2px 8px rgba(255,255,255,0.2)' : 'none',
+                }}
+              >
+                {tab}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Episode Cards Grid */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {displayEpisodes.map((ep) => {
+            const isFav = favorites.includes(ep.id);
+            const isPlayingThis = isPlaying && currentTrack?.id === ep.id;
+
+            return (
+              <div
+                key={ep.id}
+                style={{
+                  background: '#16171d',
+                  borderRadius: 18,
+                  padding: '14px 20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  border: '1px solid #23252e',
+                  transition: 'background 0.2s, transform 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#1c1e26';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#16171d';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                {/* Left: Custom Illustration Icon + Titles */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0, flex: 1 }}>
+                  {/* Icon Card matching Image 3 (Pink heart, Purple clock, Camera) */}
+                  <div
+                    style={{
+                      width: 52,
+                      height: 52,
+                      borderRadius: 14,
+                      background: '#23252e',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      position: 'relative',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {ep.iconType === 'heart' && (
+                      <div
+                        style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: 8,
+                          background: '#ec4899',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Heart size={18} fill="#fff" color="#fff" />
+                      </div>
+                    )}
+                    {ep.iconType === 'clock' && (
+                      <div
+                        style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: 8,
+                          background: '#8b5cf6',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Clock size={18} color="#fff" />
+                      </div>
+                    )}
+                    {ep.iconType === 'camera' && (
+                      <div
+                        style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: 8,
+                          background: '#06b6d4',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Radio size={18} color="#fff" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <h4
+                      style={{
+                        fontSize: 14.5,
+                        fontWeight: 600,
+                        color: '#f3f4f6',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        marginBottom: 4,
+                      }}
+                    >
+                      {ep.title}
+                    </h4>
+                    <p style={{ fontSize: 12, color: '#9ca3af' }}>
+                      {ep.host} • {ep.episodes}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right Actions: Play, Like, More */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      playTrack({
+                        id: ep.id,
+                        title: ep.title,
+                        host: ep.host,
+                        category: ep.category,
+                        cover: ep.cover,
+                        duration: ep.duration,
+                        currentTime: 0,
+                      })
+                    }
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      background: isPlayingThis ? '#3b82f6' : '#23252e',
+                      color: '#fff',
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                    }}
+                    title={isPlayingThis ? 'Pause' : 'Play'}
+                  >
+                    {isPlayingThis ? (
+                      <Pause size={15} fill="#fff" />
+                    ) : (
+                      <Play size={15} fill="#fff" style={{ marginLeft: 2 }} />
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => toggleFavorite(ep.id)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: isFav ? '#ef4444' : '#6b7280',
+                      cursor: 'pointer',
+                      padding: 6,
+                    }}
+                    title="Like"
+                  >
+                    <Heart size={18} fill={isFav ? '#ef4444' : 'none'} />
+                  </button>
+
+                  <button
+                    type="button"
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#6b7280',
+                      cursor: 'pointer',
+                      padding: 6,
+                    }}
+                  >
+                    <MoreVertical size={16} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── SECTION: SPORT / TRACK LIST (MATCHING IMAGE 2) ────────────────── */}
+      <div style={{ marginBottom: 44 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 16,
+          }}
+        >
+          <h3 style={{ fontSize: 18, fontWeight: 700, color: '#f3f4f6' }}>Sport & Fitness</h3>
+          <span style={{ fontSize: 12, color: '#9ca3af' }}>See all</span>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {sportTracks.map((track) => {
+            const isPlayingThis = isPlaying && currentTrack?.id === track.id;
+            return (
+              <div
+                key={track.id}
+                style={{
+                  background: '#16171d',
+                  borderRadius: 16,
+                  padding: '12px 18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  border: '1px solid #23252e',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      playTrack({
+                        id: track.id,
+                        title: track.title,
+                        host: track.host,
+                        category: track.category,
+                        cover: track.cover,
+                        duration: track.duration,
+                        currentTime: 0,
+                      })
+                    }
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: '50%',
+                      background: isPlayingThis ? '#2563eb' : '#23252e',
+                      color: '#fff',
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {isPlayingThis ? <Pause size={14} fill="#fff" /> : <Play size={14} fill="#fff" style={{ marginLeft: 2 }} />}
+                  </button>
+
+                  <div
+                    style={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: 10,
+                      background: '#23252e',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 20,
+                    }}
+                  >
+                    {track.icon}
+                  </div>
+
+                  <div>
+                    <h5 style={{ fontSize: 14, fontWeight: 600, color: '#f3f4f6' }}>{track.title}</h5>
+                    <p style={{ fontSize: 12, color: '#6b7280' }}>
+                      {track.host} | {track.durationStr}
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <button
+                    type="button"
+                    onClick={() => toggleFavorite(track.id)}
+                    style={{ background: 'transparent', border: 'none', color: '#6b7280', cursor: 'pointer' }}
+                  >
+                    <Heart size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    style={{ background: 'transparent', border: 'none', color: '#6b7280', cursor: 'pointer' }}
+                  >
+                    <Share2 size={16} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── SECTION: HOST & GUEST MATCHING MARKETPLACE ───────────────────── */}
+      <div style={{ marginBottom: 40 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 16,
+          }}
+        >
+          <div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#f3f4f6' }}>
+              🎙️ Podcast Hosts & Guests to Book
+            </h3>
+            <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>
+              Connect directly with verified show hosts and guest speakers for upcoming recordings
+            </p>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: 18,
+          }}
+        >
+          {hosts.slice(0, 3).map((h) => (
+            <div
+              key={h.id}
+              style={{
+                background: '#16171d',
+                borderRadius: 20,
+                padding: '20px',
+                border: '1px solid #23252e',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
+                  <div
+                    style={{
+                      width: 50,
+                      height: 50,
+                      borderRadius: '50%',
+                      background: '#2563eb',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <img
+                      src={
+                        h.avatar ||
+                        'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80'
+                      }
+                      alt={h.displayName}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </div>
+                  <div>
+                    <h4 style={{ fontSize: 15, fontWeight: 700, color: '#f3f4f6' }}>
+                      {h.displayName}
+                    </h4>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: '#3b82f6',
+                        background: 'rgba(59, 130, 246, 0.12)',
+                        padding: '2px 8px',
+                        borderRadius: 10,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Host • {h.podcastCount || 1} Show
+                    </span>
+                  </div>
+                </div>
+
+                <p style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.5, marginBottom: 16 }}>
+                  {h.bio || 'Experienced podcast host and tech interviewer.'}
+                </p>
+
+                {h.expertise && h.expertise.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 18 }}>
+                    {h.expertise.map((exp, idx) => (
+                      <span
+                        key={idx}
+                        style={{
+                          fontSize: 11,
+                          background: '#23252e',
+                          color: '#d1d5db',
+                          padding: '3px 8px',
+                          borderRadius: 6,
+                        }}
+                      >
+                        {exp}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => handleOpenBooking(h)}
+                  style={{
+                    flex: 1,
+                    background: '#2563eb',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '9px 14px',
+                    borderRadius: 12,
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <Calendar size={14} /> Book Session
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigate('/messages')}
+                  style={{
+                    background: '#1f2028',
+                    color: '#d1d5db',
+                    border: '1px solid #2e303d',
+                    padding: '9px 14px',
+                    borderRadius: 12,
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Message
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── CREATE BOOKING MODAL ─────────────────────────────────────────── */}
+      {isBookingOpen && (
+        <CreateBookingModal
+          isOpen={isBookingOpen}
+          onClose={() => setIsBookingOpen(false)}
+          recipientUser={selectedRecipient}
+          onSuccess={() => {
+            setIsBookingOpen(false);
+            navigate('/bookings');
+          }}
+        />
       )}
     </div>
   );

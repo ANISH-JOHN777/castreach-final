@@ -27,15 +27,34 @@ async function startServer() {
     logger.info('Using in-memory MongoDB Replica Set instance (rs0)');
   }
 
+  let mongodInstance = null;
   try {
     await mongoose.connect(uri, {
       maxPoolSize: 20,
       minPoolSize: 5,
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 3000,
       socketTimeoutMS: 45000,
     });
     logger.info('MongoDB connected successfully', { uri: uri.replace(/\/\/.*@/, '//***@') });
+  } catch (err) {
+    if (process.env.NODE_ENV !== 'production') {
+      logger.warn(`Connecting to MongoDB at ${uri} failed (${err.message}). Starting MongoMemoryReplSet fallback...`);
+      const { MongoMemoryReplSet } = require('mongodb-memory-server');
+      mongodInstance = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
+      uri = mongodInstance.getUri();
+      await mongoose.connect(uri, {
+        maxPoolSize: 20,
+        minPoolSize: 5,
+        serverSelectionTimeoutMS: 5000,
+      });
+      logger.info('MongoMemoryReplSet started and connected successfully', { uri: uri.replace(/\/\/.*@/, '//***@') });
+    } else {
+      logger.error('MongoDB connection error', { error: err.message });
+      process.exit(1);
+    }
+  }
 
+  try {
     // Auto-seed demo environment dataset when database is empty in non-production environments
     const isDemo = process.env.APP_ENV === 'demo' || (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test');
     if (isDemo) {
@@ -56,7 +75,7 @@ async function startServer() {
       logger.info(`Server running on port ${PORT}`, { env: process.env.NODE_ENV || 'development' });
     });
   } catch (err) {
-    logger.error('MongoDB connection error', { error: err.message });
+    logger.error('Server startup error', { error: err.message });
     process.exit(1);
   }
 }

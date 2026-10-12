@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Headphones, ArrowRight, Star, Radio, Video, Calendar, MessageSquare } from 'lucide-react';
+import { Headphones, ArrowRight, Star, Radio, Video, Calendar, MessageSquare, ShieldCheck, Users } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import RecommendedGuests from '../../components/RecommendedGuests';
 
@@ -12,8 +12,11 @@ export default function HostDashboard() {
 
   useEffect(() => {
     authFetch('/bookings?limit=10')
-      .then((res) => res.ok ? res.json() : { bookings: [] })
-      .then((data) => { setBookings(data.bookings || []); setLoading(false); })
+      .then((res) => (res.ok ? res.json() : { bookings: [] }))
+      .then((data) => {
+        setBookings(data.bookings || []);
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, [authFetch]);
 
@@ -21,185 +24,177 @@ export default function HostDashboard() {
   const confirmedSessions = bookings.filter((b) => b.status === 'confirmed');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }} className="fade-in">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 28, maxWidth: 960, margin: '0 auto', color: '#f3f4f6' }} className="fade-in">
       {/* Welcome Banner */}
-      <div style={{
-        background: 'linear-gradient(135deg, var(--plum-deep) 0%, #4D3354 50%, var(--plum-primary) 100%)',
-        color: '#fff',
-        borderRadius: 'var(--radius-lg)',
-        padding: '36px 32px',
-        display: 'flex',
-        justify: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: 20,
-        boxShadow: 'var(--shadow-plum)',
-      }}>
+      <div
+        style={{
+          background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #3b82f6 100%)',
+          color: '#fff',
+          borderRadius: 24,
+          padding: '36px 36px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 20,
+          boxShadow: '0 16px 36px rgba(37, 99, 235, 0.35)',
+        }}
+      >
         <div>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.15)', color: 'var(--lavender-soft)', padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>
-            <Headphones size={14} /> HOST PRODUCTION CENTER
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'rgba(255, 255, 255, 0.2)',
+              backdropFilter: 'blur(8px)',
+              color: '#fff',
+              padding: '4px 12px',
+              borderRadius: 20,
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: '0.04em',
+            }}
+          >
+            <Headphones size={13} /> HOST PRODUCTION CENTER
           </span>
-          <h1 style={{ fontSize: 32, color: '#fff', marginTop: 12, marginBottom: 8 }}>
+          <h1 style={{ fontSize: 32, fontWeight: 800, color: '#fff', marginTop: 12, marginBottom: 8, letterSpacing: '-0.02em' }}>
             Welcome, Host {user?.name || ''}!
           </h1>
-          <p style={{ color: 'var(--lavender-soft)', fontSize: 15, maxWidth: 540 }}>
-            Manage guest booking requests, authorize escrow payments, launch WebRTC studio rooms, and recompute host response metrics.
+          <p style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 14.5, maxWidth: 540 }}>
+            Manage guest booking requests, authorize escrow payments, launch WebRTC studio rooms, and distribute published episodes.
           </p>
         </div>
 
         <button
-          onClick={() => navigate('/discover')}
+          type="button"
+          onClick={() => navigate('/discover?tab=hosts')}
           style={{
-            background: 'var(--cream-warm)',
-            color: 'var(--plum-deep)',
-            padding: '14px 26px',
-            borderRadius: 'var(--radius-md)',
-            fontWeight: 800,
-            fontSize: 15,
-            boxShadow: 'var(--shadow-sm)',
+            background: '#ffffff',
+            color: '#0f1013',
+            padding: '12px 24px',
+            borderRadius: 9999,
+            fontWeight: 700,
+            fontSize: 14,
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
             display: 'flex',
             alignItems: 'center',
             gap: 8,
+            border: 'none',
+            cursor: 'pointer',
           }}
         >
-          Find Podcast Guests <ArrowRight size={18} />
+          <Users size={16} /> Find Podcast Guests
         </button>
       </div>
 
       {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
-        <div style={{ background: '#fff', padding: 24, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 6 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 18 }}>
+        <div style={{ background: '#16171d', padding: 22, borderRadius: 18, border: '1px solid #23252e' }}>
+          <div style={{ fontSize: 11, color: '#9ca3af', textTransform: 'uppercase', fontWeight: 700, marginBottom: 6 }}>
             Pending Requests
           </div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--plum-deep)' }}>
+          <div style={{ fontSize: 32, fontWeight: 800, color: '#f3f4f6' }}>
             {pendingRequests.length}
           </div>
-          <div style={{ fontSize: 12, color: 'var(--plum-primary)', marginTop: 4 }}>Awaiting your confirmation</div>
+          <div style={{ fontSize: 12, color: '#fbbf24', marginTop: 4 }}>Awaiting confirmation</div>
         </div>
 
-        <div style={{ background: '#fff', padding: 24, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 6 }}>
-            Confirmed Studio Sessions
+        <div style={{ background: '#16171d', padding: 22, borderRadius: 18, border: '1px solid #23252e' }}>
+          <div style={{ fontSize: 11, color: '#9ca3af', textTransform: 'uppercase', fontWeight: 700, marginBottom: 6 }}>
+            Confirmed Sessions
           </div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--plum-deep)' }}>
+          <div style={{ fontSize: 32, fontWeight: 800, color: '#f3f4f6' }}>
             {confirmedSessions.length}
           </div>
-          <div style={{ fontSize: 12, color: 'var(--color-success)', marginTop: 4 }}>Ready for WebRTC Studio</div>
+          <div style={{ fontSize: 12, color: '#34d399', marginTop: 4 }}>Ready for WebRTC Studio</div>
         </div>
 
-        <div style={{ background: '#fff', padding: 24, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 6 }}>
+        <div style={{ background: '#16171d', padding: 22, borderRadius: 18, border: '1px solid #23252e' }}>
+          <div style={{ fontSize: 11, color: '#9ca3af', textTransform: 'uppercase', fontWeight: 700, marginBottom: 6 }}>
             Stripe Escrow Status
           </div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--color-success)' }}>
-            Funds Protected
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#34d399', marginTop: 6, marginBottom: 2 }}>
+            Protected
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Released upon completion</div>
+          <div style={{ fontSize: 12, color: '#9ca3af' }}>Released upon completion</div>
         </div>
 
-        <div style={{ background: '#fff', padding: 24, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 6 }}>
-            Host Rating Metric
+        <div style={{ background: '#16171d', padding: 22, borderRadius: 18, border: '1px solid #23252e' }}>
+          <div style={{ fontSize: 11, color: '#9ca3af', textTransform: 'uppercase', fontWeight: 700, marginBottom: 6 }}>
+            Host Rating
           </div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: 'var(--plum-deep)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            {user?.avgRating ? user.avgRating.toFixed(1) : '5.0'} <Star size={24} fill="currentColor" color="var(--color-warning)" />
+          <div style={{ fontSize: 32, fontWeight: 800, color: '#f3f4f6', display: 'flex', alignItems: 'center', gap: 6 }}>
+            {user?.avgRating ? user.avgRating.toFixed(1) : '5.0'} <Star size={20} fill="#f59e0b" color="#f59e0b" />
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Based on verified reviews</div>
+          <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>Verified guest reviews</div>
         </div>
       </div>
 
       {/* Featured Next Studio Session */}
       {confirmedSessions.length > 0 && (
-        <div style={{
-          background: '#fff',
-          borderRadius: 'var(--radius-lg)',
-          padding: 28,
-          border: '2px solid var(--purple-castreach)',
-          boxShadow: 'var(--shadow-md)',
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--color-success-bg)', color: 'var(--color-success)', padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>
-              <Radio size={14} color="var(--color-success)" /> UPCOMING RECORDING SESSION
+        <div
+          style={{
+            background: '#16171d',
+            borderRadius: 20,
+            padding: 24,
+            border: '2px solid #2563eb',
+            boxShadow: '0 8px 24px rgba(37, 99, 235, 0.2)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'rgba(16, 185, 129, 0.15)',
+                color: '#34d399',
+                padding: '4px 12px',
+                borderRadius: 20,
+                fontSize: 11,
+                fontWeight: 700,
+              }}
+            >
+              <Radio size={12} /> UPCOMING RECORDING SESSION
             </span>
-            <span style={{ fontSize: 13, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Video size={14} /> Daily.co HD WebRTC Active
+            <span style={{ fontSize: 12, color: '#9ca3af', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Video size={14} color="#3b82f6" /> WebRTC 48kHz Active
             </span>
           </div>
-          <h3 style={{ fontSize: 22, marginBottom: 8 }}>
+
+          <h3 style={{ fontSize: 20, fontWeight: 700, color: '#f3f4f6', marginBottom: 6 }}>
             Guest: {confirmedSessions[0].guest?.name || 'Guest Creator'}
           </h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 6 }}>
+
+          <p style={{ color: '#9ca3af', fontSize: 13, marginBottom: 18, display: 'flex', alignItems: 'center', gap: 6 }}>
             <Calendar size={14} /> Scheduled Slot: <b>{new Date(confirmedSessions[0].slotStart).toLocaleString()}</b>
           </p>
+
           <button
-            onClick={() => navigate(`/bookings/${confirmedSessions[0]._id}`)}
+            type="button"
+            onClick={() => navigate(`/bookings/${confirmedSessions[0]._id}/record`)}
             style={{
-              background: 'linear-gradient(135deg, var(--plum-deep), var(--plum-primary))',
+              background: '#2563eb',
               color: '#fff',
-              padding: '12px 24px',
-              borderRadius: 'var(--radius-md)',
+              padding: '11px 22px',
+              borderRadius: 9999,
               fontWeight: 700,
-              fontSize: 14,
-              boxShadow: 'var(--shadow-plum)',
-              display: 'flex',
+              fontSize: 13.5,
+              border: 'none',
+              cursor: 'pointer',
+              display: 'inline-flex',
               alignItems: 'center',
               gap: 8,
+              boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
             }}
           >
-            Launch Production Studio <ArrowRight size={18} />
+            Launch Production Studio <ArrowRight size={16} />
           </button>
         </div>
       )}
 
-      {/* Pending Requests Table */}
-      <div style={{ background: '#fff', padding: 28, borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h2 style={{ fontSize: 20 }}>Guest Booking Requests</h2>
-          <Link to="/bookings" style={{ color: 'var(--plum-primary)', fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 4 }}>
-            View All Bookings <ArrowRight size={16} />
-          </Link>
-        </div>
-
-        {loading ? (
-          <div className="skeleton" style={{ height: 100 }} />
-        ) : bookings.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px 20px', background: 'var(--cream-warm)', borderRadius: 'var(--radius-md)' }}>
-            <p style={{ color: 'var(--text-muted)' }}>No booking requests currently pending.</p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {bookings.map((b) => (
-              <div key={b._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 16, background: 'var(--lavender-mist)', borderRadius: 'var(--radius-md)', flexWrap: 'wrap', gap: 12 }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--plum-deep)' }}>
-                    Guest: {b.guest?.name || 'Guest User'}
-                  </div>
-                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Calendar size={14} /> Slot: {new Date(b.slotStart).toLocaleString()} • Amount: ${((b.amountCents || 0) / 100).toFixed(2)}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button
-                    onClick={() => navigate(`/messages/${b._id}`)}
-                    style={{ background: 'var(--plum-deep)', color: '#fff', padding: '8px 16px', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                  >
-                    <MessageSquare size={14} /> Message Guest
-                  </button>
-                  <button
-                    onClick={() => navigate(`/bookings/${b._id}`)}
-                    style={{ background: 'var(--plum-primary)', color: '#fff', padding: '8px 16px', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 600 }}
-                  >
-                    Open Details
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Recommended Guests Matchmaking */}
+      {/* Recommended Guests Widget */}
       <RecommendedGuests />
     </div>
   );
