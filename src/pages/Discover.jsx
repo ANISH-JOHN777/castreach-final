@@ -193,12 +193,33 @@ export default function Discover() {
     };
   }, []);
 
-  const displayEpisodes = curatedEpisodes.filter((ep) => {
+  const allEpisodes = episodes.length > 0
+    ? episodes.map((ep, idx) => ({
+        id: ep.id || ep._id,
+        title: ep.title,
+        host: ep.owner?.displayName || ep.owner?.name || 'Podcast Host',
+        episodes: ep.podcast?.title || 'Episode',
+        category: ep.podcast?.category || ep.topics?.[0] || 'General',
+        cover: ep.podcast?.coverImage || 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=400&q=80',
+        duration: ep.duration || 1800,
+        durationStr: `${Math.floor((ep.duration || 1800) / 60)}:${String((ep.duration || 1800) % 60).padStart(2, '0')}`,
+        themeColor: ['#e11d48', '#7c3aed', '#0284c7', '#2563eb', '#10b981', '#f59e0b'][idx % 6]
+      }))
+    : curatedEpisodes;
+
+  const displayEpisodes = allEpisodes.filter((ep) => {
     if (selectedFilter === 'All' || selectedFilter === 'New podcasts' || selectedFilter === 'Popular') {
       return true;
     }
     return ep.category.toLowerCase().includes(selectedFilter.toLowerCase());
   });
+
+  const dynamicCategoryTracks = allEpisodes.filter((ep) =>
+    selectedFilter === 'All' || selectedFilter === 'New podcasts'
+      ? ep.category.toLowerCase().includes('sport') || true
+      : ep.category.toLowerCase().includes(selectedFilter.toLowerCase())
+  );
+  const activeCategoryTracks = dynamicCategoryTracks.length > 0 ? dynamicCategoryTracks.slice(0, 5) : categoryTracks;
 
   const handleOpenBooking = (target) => {
     if (!user) {
@@ -628,7 +649,7 @@ export default function Discover() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {categoryTracks.map((track) => {
+          {activeCategoryTracks.map((track) => {
             const isPlayingThis = isPlaying && currentTrack?.id === track.id;
             return (
               <div

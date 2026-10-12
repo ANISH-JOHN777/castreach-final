@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Play, 
@@ -23,7 +23,7 @@ export default function Home() {
   const [showHowItWorksModal, setShowHowItWorksModal] = useState(false);
 
   // Top & Latest Podcasts matching Image 1
-  const topPodcasts = [
+  const initialPodcasts = [
     {
       id: 'track-9',
       title: 'Product Designer',
@@ -65,6 +65,33 @@ export default function Home() {
       description: 'Actionable insights for venture-backed founders building durable, high-growth technology companies.',
     },
   ];
+
+  const [podcasts, setPodcasts] = useState(initialPodcasts);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/podcasts/episodes/discover?limit=8')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (isMounted && data?.episodes?.length) {
+          const mapped = data.episodes.map((ep) => ({
+            id: ep.id || ep._id,
+            title: ep.title,
+            episodes: ep.podcast?.title || 'Premier Episode',
+            duration: `${Math.round((ep.duration || 1800) / 60)} minutes`,
+            category: ep.podcast?.category || ep.topics?.[0] || 'Technology',
+            host: ep.owner?.displayName || 'Host',
+            image: ep.podcast?.coverImage || 'https://images.unsplash.com/photo-1581291518655-9523c9320e6b?auto=format&fit=crop&w=600&q=80',
+            description: ep.description || ep.showNotes || 'CastReach premier podcast production episode.',
+          }));
+          setPodcasts(mapped);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handlePlayPodcast = (pod) => {
     playTrack({
@@ -290,7 +317,7 @@ export default function Home() {
             gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
             gap: 22,
           }}>
-            {topPodcasts.map((pod) => {
+            {podcasts.map((pod) => {
               const isThisPlaying = isPlaying && currentTrack?.id === pod.id;
               return (
                 <div

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Radio, 
@@ -37,7 +37,7 @@ export default function Layout({ children }) {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Top Podcasters matching Image 2 & 3
-  const topPodcasters = [
+  const initialPodcasters = [
     {
       id: 'podcaster-1',
       name: 'Anna Johnson',
@@ -71,6 +71,31 @@ export default function Layout({ children }) {
       topic: 'Health & Sports',
     },
   ];
+
+  const [podcasters, setPodcasters] = useState(initialPodcasters);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch('/api/discovery/hosts')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (mounted && data?.hosts?.length) {
+          const mapped = data.hosts.slice(0, 5).map((h) => ({
+            id: h._id || h.id,
+            name: h.name,
+            followers: `${Math.max(12, (h.totalReviews || 10) * 4)}k followers`,
+            avatar: h.profilePicture || h.avatar || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80',
+            role: 'Host',
+            topic: h.podcastName || h.expertise?.[0] || 'Podcast Host',
+          }));
+          setPodcasters(mapped);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -620,7 +645,7 @@ export default function Layout({ children }) {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {topPodcasters.map((podcaster) => {
+                {podcasters.map((podcaster) => {
                   const isFollowed = following.includes(podcaster.id);
                   return (
                     <div

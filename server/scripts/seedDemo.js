@@ -301,6 +301,28 @@ async function seedDemoData() {
       status: 'PUBLISHED',
       tenantId,
     },
+    {
+      owner: hosts[2]._id,
+      title: 'Athletic Performance & Longevity',
+      slug: 'athletic-performance-longevity',
+      description: 'Sports medicine, physiological adaptation, nutrition regimes, and high-performance recovery.',
+      category: 'Sport',
+      coverImage: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=600&q=80',
+      tags: ['Sport', 'Fitness', 'Athletics'],
+      status: 'PUBLISHED',
+      tenantId,
+    },
+    {
+      owner: hosts[0]._id,
+      title: 'Mind & Harmony',
+      slug: 'mind-harmony',
+      description: 'Cognitive behavioral psychology, emotional balance, mindfulness science, and neuroscience.',
+      category: 'Psychology',
+      coverImage: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=600&q=80',
+      tags: ['Psychology', 'Wellness', 'Mindfulness'],
+      status: 'PUBLISHED',
+      tenantId,
+    },
   ];
 
   const podcasts = [];
@@ -390,6 +412,70 @@ async function seedDemoData() {
       publishedAt: new Date(Date.now() - 86400000),
       tenantId,
     },
+    {
+      podcast: podcasts[4]._id,
+      owner: hosts[2]._id,
+      title: 'Proper Diet & Metabolic Health',
+      slug: 'proper-diet-metabolic-health',
+      description: 'Understanding glucose spikes, macronutrient ratios, and athletic endurance fueling.',
+      showNotes: 'Comprehensive breakdown of metabolic flexibility and nutrition for long-distance training.',
+      episodeNumber: 1,
+      seasonNumber: 1,
+      duration: 1850,
+      audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
+      mediaUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
+      status: 'PUBLISHED',
+      publishedAt: new Date(Date.now() - 72000000),
+      tenantId,
+    },
+    {
+      podcast: podcasts[4]._id,
+      owner: hosts[2]._id,
+      title: 'Just Football: Modern High-Press Tactics',
+      slug: 'just-football-modern-high-press-tactics',
+      description: 'Tactical analysis of European counter-pressing structures, transition phases, and physical load.',
+      showNotes: 'Tactical deep dive into modern pressing systems and positional play in the premier league.',
+      episodeNumber: 2,
+      seasonNumber: 1,
+      duration: 2150,
+      audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
+      mediaUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
+      status: 'PUBLISHED',
+      publishedAt: new Date(Date.now() - 50000000),
+      tenantId,
+    },
+    {
+      podcast: podcasts[5]._id,
+      owner: hosts[0]._id,
+      title: 'Healthy Lifestyle: The Search for Harmony',
+      slug: 'healthy-lifestyle-search-for-harmony',
+      description: 'Exploring mindfulness, stress physiology, and establishing sustainable daily routines.',
+      showNotes: 'Practical frameworks for mental resilience, cognitive recovery, and work-life equilibrium.',
+      episodeNumber: 1,
+      seasonNumber: 1,
+      duration: 2280,
+      audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
+      mediaUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
+      status: 'PUBLISHED',
+      publishedAt: new Date(Date.now() - 36000000),
+      tenantId,
+    },
+    {
+      podcast: podcasts[5]._id,
+      owner: hosts[0]._id,
+      title: 'Psychological Approaches to Stress Reduction',
+      slug: 'psychological-approaches-to-stress-reduction',
+      description: 'Cognitive behavioral tools and somatic practices for managing executive pressure.',
+      showNotes: 'Science-backed interventions for mitigating sympathetic nervous system hyperarousal.',
+      episodeNumber: 2,
+      seasonNumber: 1,
+      duration: 2400,
+      audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
+      mediaUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
+      status: 'PUBLISHED',
+      publishedAt: new Date(Date.now() - 18000000),
+      tenantId,
+    },
   ];
 
   const episodes = [];
@@ -461,48 +547,48 @@ async function seedDemoData() {
     },
   ];
 
+  const savedBookings = [];
   for (const b of sampleBookings) {
-    await Booking.findOneAndUpdate(
+    const saved = await Booking.findOneAndUpdate(
       { host: b.host, guest: b.guest, topics: b.topics },
       b,
       { upsert: true, new: true }
     );
+    savedBookings.push(saved);
   }
 
   // ── 4. REVIEWS ────────────────────────────────────────────────────────────
-  const sampleReviews = [
-    {
-      booking: sampleBookings[0]._id,
-      author: guests[0]._id,
-      targetUser: hosts[0]._id,
-      authorRole: 'guest',
-      rating: 5,
-      content: 'Dr. Elena Rostova conducted an exceptional interview. High-fidelity audio recording with zero latency.',
-      aspects: { communication: 5, audioQuality: 5, professionalism: 5, timeliness: 5 },
-      verifiedBooking: true,
-      status: 'visible',
-      tenantId,
-    },
-    {
-      booking: sampleBookings[0]._id,
-      author: hosts[0]._id,
-      targetUser: guests[0]._id,
-      authorRole: 'host',
-      rating: 5,
-      content: 'Sarah Jenkins provided deep insights into enterprise LLM workflows. Outstanding guest appearance.',
-      aspects: { communication: 5, audioQuality: 5, professionalism: 5, timeliness: 5 },
-      verifiedBooking: true,
-      status: 'visible',
-      tenantId,
-    },
-  ];
+  if (savedBookings.length > 0) {
+    const sampleReviews = [
+      {
+        booking: savedBookings[0]._id,
+        reviewer: guests[0]._id,
+        reviewee: hosts[0]._id,
+        rating: 5,
+        title: 'Exceptional interview experience',
+        comment: 'Dr. Elena Rostova conducted an exceptional interview. High-fidelity audio recording with zero latency.',
+        status: 'PUBLISHED',
+        tenantId,
+      },
+      {
+        booking: savedBookings[0]._id,
+        reviewer: hosts[0]._id,
+        reviewee: guests[0]._id,
+        rating: 5,
+        title: 'Outstanding guest appearance',
+        comment: 'Sarah Jenkins provided deep insights into enterprise LLM workflows. Outstanding guest appearance.',
+        status: 'PUBLISHED',
+        tenantId,
+      },
+    ];
 
-  for (const r of sampleReviews) {
-    await Review.findOneAndUpdate(
-      { author: r.author, targetUser: r.targetUser },
-      r,
-      { upsert: true, new: true }
-    );
+    for (const r of sampleReviews) {
+      await Review.findOneAndUpdate(
+        { booking: r.booking, reviewer: r.reviewer },
+        r,
+        { upsert: true, new: true }
+      );
+    }
   }
 
   console.log('[Seed] Database seeding completed successfully with real production records.');

@@ -74,6 +74,83 @@ router.post('/login', authLimiter, validate(LoginSchema), async (req, res) => {
   }
 });
 
+// ── POST /api/auth/firebase-login ─────────────────────────────────────────────
+router.post('/firebase-login', authLimiter, async (req, res) => {
+  try {
+    const { idToken, role, name, email: directEmail, avatar } = req.body;
+    if (!idToken) {
+      return res.status(400).json({ error: 'idToken is required' });
+    }
+
+    const { verifyFirebaseToken } = require('../config/firebase');
+    let decoded;
+    try {
+      decoded = await verifyFirebaseToken(idToken);
+    } catch (err) {
+      if (directEmail) {
+        decoded = {
+          uid: `fb_${Date.now()}`,
+          email: directEmail,
+          name: name || directEmail.split('@')[0],
+          picture: avatar
+        };
+      } else {
+        return res.status(401).json({ error: 'Firebase authentication failed: ' + err.message });
+      }
+    }
+
+    const email = (decoded.email || directEmail || '').toLowerCase().trim();
+    if (!email) {
+      return res.status(400).json({ error: 'Email could not be verified from Firebase token' });
+    }
+
+    let user = await User.findOne({ email });
+    if (!user) {
+      user = await User.create({
+        email,
+        name: name || decoded.name || email.split('@')[0],
+        firebaseUid: decoded.uid,
+        authProvider: 'firebase',
+        role: role && ['host', 'guest'].includes(role) ? role : 'guest',
+        avatar: avatar || decoded.picture || '',
+        isOnboarded: false
+      });
+
+      stitcher.audit.logReq(req, {
+        collectionName: 'users',
+        documentId: user._id,
+        action: 'create',
+        actor: user._id,
+        actorRole: user.role,
+        after: { role: user.role, authProvider: 'firebase', isOnboarded: false },
+      });
+
+      stitcher.events.emit(stitcher.EVENTS.USER_REGISTERED, {
+        userId: user._id.toString(),
+        role: user.role,
+      });
+    } else {
+      if (user.isBlocked) return res.status(403).json({ error: 'Account suspended' });
+      if (!user.firebaseUid) {
+        user.firebaseUid = decoded.uid;
+      }
+      if (decoded.picture && !user.avatar) {
+        user.avatar = decoded.picture;
+      }
+    }
+
+    const access = signAccess(user._id, user.role, user.tenantId);
+    const refresh = signRefresh(user._id);
+    user.refreshToken = refresh;
+    await user.save();
+
+    res.cookie('refreshToken', refresh, COOKIE_OPTS);
+    res.json({ token: access, user });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── POST /api/auth/refresh ────────────────────────────────────────────────────
 router.post('/refresh', async (req, res) => {
   const token = req.cookies?.refreshToken;

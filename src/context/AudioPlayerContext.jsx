@@ -138,6 +138,38 @@ export function AudioPlayerProvider({ children }) {
   const [favorites, setFavorites] = useState(['track-1', 'track-4']);
   const [following, setFollowing] = useState(['podcaster-1']);
 
+  // Populate playlist from backend API
+  useEffect(() => {
+    let mounted = true;
+    fetch('/api/podcasts/episodes/discover?limit=20')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (mounted && data?.episodes?.length) {
+          const mapped = data.episodes.map((ep, idx) => ({
+            id: ep.id || ep._id,
+            title: ep.title,
+            host: ep.owner?.displayName || ep.owner?.name || 'Podcast Host',
+            category: ep.podcast?.category || ep.topics?.[0] || 'Podcast',
+            duration: ep.duration || 1800,
+            currentTime: 0,
+            cover: ep.podcast?.coverImage || 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=400&q=80',
+            color: ['#3b82f6', '#2563eb', '#ec4899', '#8b5cf6', '#06b6d4', '#ea580c'][idx % 6],
+            audioUrl: ep.audioUrl || 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
+            episodes: ep.podcast?.title || 'Episode',
+          }));
+          setPlaylist(mapped);
+          if (mapped[0]) {
+            setCurrentTrack((curr) => curr && curr.id && !curr.id.startsWith('track-') ? curr : mapped[0]);
+            setDuration(mapped[0].duration);
+          }
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const audioRef = useRef(null);
 
   // Sync HTML5 audio playback

@@ -5,7 +5,9 @@ const userSchema = new mongoose.Schema(
   {
     name:       { type: String, required: true, trim: true },
     email:      { type: String, required: true, unique: true, lowercase: true, trim: true },
-    password:   { type: String, required: true, select: false },
+    password:   { type: String, select: false, required: function() { return !this.firebaseUid; } },
+    firebaseUid:{ type: String, sparse: true, index: true },
+    authProvider:{ type: String, enum: ['local', 'firebase', 'google'], default: 'local' },
     role:       { type: String, enum: ['host', 'guest', 'admin'], default: 'guest' },
     avatar:     { type: String, default: '' },
     bio:        { type: String, maxlength: 500, default: '' },
@@ -43,13 +45,14 @@ const userSchema = new mongoose.Schema(
 
 // Hash password before save
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
+  if (!this.password || !this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });
 
 // Instance method — compare plain password to hash
 userSchema.methods.comparePassword = function (plain) {
+  if (!this.password) return false;
   return bcrypt.compare(plain, this.password);
 };
 
