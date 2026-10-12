@@ -242,15 +242,7 @@ export default function Home() {
             {/* Bento Card 1: Google Meet & In-Person Dual Scheduling */}
             <div className="bento-card" style={{ padding: 28, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                  <span style={{ padding: '4px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 700, background: 'var(--color-success-bg)', color: 'var(--color-success)' }}>
-                    Virtual: Google Meet
-                  </span>
-                  <span style={{ padding: '4px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 700, background: 'rgba(59,130,246,0.15)', color: '#3b82f6' }}>
-                    Physical: Studio
-                  </span>
-                </div>
-                <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Dual-Mode Meeting Scheduling</h3>
+                <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8, marginTop: 4 }}>Dual-Mode Meeting Scheduling</h3>
                 <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                   Connect remotely with automatic Google Meet rooms and calendar synchronization, or schedule in-person studio tapings with physical directions.
                 </p>
@@ -265,10 +257,7 @@ export default function Home() {
             {/* Bento Card 2: Mutual Profile Transparency */}
             <div className="bento-card" style={{ padding: 28, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
-                <span style={{ padding: '4px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 700, background: 'rgba(124, 58, 237, 0.15)', color: 'var(--accent-purple)', display: 'inline-block', marginBottom: 16 }}>
-                  Real Data Transparency
-                </span>
-                <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Mutual Host & Guest Disclosure</h3>
+                <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8, marginTop: 4 }}>Mutual Host & Guest Disclosure</h3>
                 <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                   No mystery bookings. Guests see verified listener counts, show formats, and equipment. Hosts see speaker expertise, speaking topics, and past appearances.
                 </p>
@@ -282,10 +271,7 @@ export default function Home() {
             {/* Bento Card 3: Cloud Studio Recording & Editing */}
             <div className="bento-card" style={{ padding: 28, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
-                <span style={{ padding: '4px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 700, background: 'rgba(249, 115, 22, 0.15)', color: 'var(--accent-tangerine)', display: 'inline-block', marginBottom: 16 }}>
-                  Cloud Recording & Trimming
-                </span>
-                <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Post-Session Studio & Trimming</h3>
+                <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8, marginTop: 4 }}>Post-Session Studio & Trimming</h3>
                 <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                   Live multi-track audio capture, automated AI transcripts, and non-destructive EDL editing directly in your browser.
                 </p>

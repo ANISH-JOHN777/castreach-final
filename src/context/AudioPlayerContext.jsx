@@ -8,8 +8,8 @@ const DEFAULT_TRACKS = [
     title: 'Psychological approaches to stress reduction',
     host: 'Liam Martinez',
     category: 'Psychology',
-    duration: 2040, // 34:00
-    currentTime: 1472, // 24:32
+    duration: 2040,
+    currentTime: 1472,
     cover: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=400&q=80',
     color: '#3b82f6',
     audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
@@ -20,7 +20,7 @@ const DEFAULT_TRACKS = [
     title: 'How we can save this world',
     host: 'Ethan Anderson',
     category: 'Technology',
-    duration: 1800, // 30:00
+    duration: 1800,
     currentTime: 420,
     cover: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=400&q=80',
     color: '#2563eb',
@@ -32,7 +32,7 @@ const DEFAULT_TRACKS = [
     title: 'Healthy lifestyle: The search for harmony',
     host: 'Liam Martinez',
     category: 'Health',
-    duration: 1650, // 27:30
+    duration: 1650,
     currentTime: 310,
     cover: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=400&q=80',
     color: '#ec4899',
@@ -44,104 +44,118 @@ const DEFAULT_TRACKS = [
     title: 'Investing in yourself',
     host: 'Noah Davis',
     category: 'Business',
-    duration: 2280, // 38:00
+    duration: 2280,
     currentTime: 850,
     cover: 'https://images.unsplash.com/photo-1553729459-efe14ef6055d?auto=format&fit=crop&w=400&q=80',
     color: '#8b5cf6',
     audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
     episodes: 16,
   },
-  {
-    id: 'track-5',
-    title: 'How modern gadgets are changing our lives',
-    host: 'Jackson Brown',
-    category: 'Technology',
-    duration: 1920, // 32:00
-    currentTime: 120,
-    cover: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=400&q=80',
-    color: '#06b6d4',
-    audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-    episodes: 10,
-  },
-  {
-    id: 'track-6',
-    title: 'Proper diet & metabolic health',
-    host: 'Andrius Peregorius',
-    category: 'Sport',
-    duration: 85, // 01:25
-    currentTime: 30,
-    cover: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=400&q=80',
-    color: '#ea580c',
-    audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-    episodes: 8,
-  },
-  {
-    id: 'track-7',
-    title: 'Just Football Podcast',
-    host: 'Andrius Peregorius',
-    category: 'Sport',
-    duration: 65, // 01:05
-    currentTime: 18,
-    cover: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=400&q=80',
-    color: '#2563eb',
-    audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-    episodes: 45,
-  },
-  {
-    id: 'track-8',
-    title: "Let's start on Monday",
-    host: 'Robert Fox',
-    category: 'Business',
-    duration: 720, // 12:00
-    currentTime: 45,
-    cover: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=400&q=80',
-    color: '#059669',
-    audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-    episodes: 22,
-  },
-  {
-    id: 'track-9',
-    title: 'Product Designer: Crafting Modern UIs',
-    host: 'Sarah Lin',
-    category: 'Design',
-    duration: 6000, // 100 minutes
-    currentTime: 1200,
-    cover: 'https://images.unsplash.com/photo-1581291518655-9523c9320e6b?auto=format&fit=crop&w=400&q=80',
-    color: '#0284c7',
-    audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-    episodes: 10,
-  },
-  {
-    id: 'track-10',
-    title: 'Digital Marketing Mastery',
-    host: 'Marcus Vance',
-    category: 'Marketing',
-    duration: 9600, // 160 minutes
-    currentTime: 3400,
-    cover: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=400&q=80',
-    color: '#d97706',
-    audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-    episodes: 40,
-  }
 ];
 
 export function AudioPlayerProvider({ children }) {
   const [playlist, setPlaylist] = useState(DEFAULT_TRACKS);
   const [currentTrack, setCurrentTrack] = useState(DEFAULT_TRACKS[0]);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(DEFAULT_TRACKS[0].currentTime);
-  const [duration, setDuration] = useState(DEFAULT_TRACKS[0].duration);
-  const [volume, setVolume] = useState(0.85);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(DEFAULT_TRACKS[0]?.duration || 1800);
+  const [volume, setVolume] = useState(0.8);
   const [isMuted, setIsMuted] = useState(false);
   const [isShuffle, setIsShuffle] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
   const [favorites, setFavorites] = useState(['track-1', 'track-4']);
   const [following, setFollowing] = useState(['podcaster-1']);
 
-  // Populate playlist from backend API
+  // Real-time Audio Frequency Spectrum Data
+  const [waveformData, setWaveformData] = useState(() => new Array(48).fill(12));
+
+  const audioRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const analyserRef = useRef(null);
+  const sourceRef = useRef(null);
+  const animationFrameRef = useRef(null);
+
+  // Initialize Web Audio API Analyser for real-time waveform
+  const setupAudioContext = () => {
+    if (!audioRef.current || audioContextRef.current) return;
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioCtx();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 128; // gives 64 frequency data bins
+      analyser.smoothingTimeConstant = 0.8;
+
+      // Note: audio element crossOrigin allowed for CORS streams
+      audioRef.current.crossOrigin = 'anonymous';
+      const source = ctx.createMediaElementSource(audioRef.current);
+      source.connect(analyser);
+      analyser.connect(ctx.destination);
+
+      audioContextRef.current = ctx;
+      analyserRef.current = analyser;
+      sourceRef.current = source;
+    } catch (e) {
+      // Fallback for browsers or restricted cross-origin origins
+      console.warn('[AudioWaveform] Web Audio API fallback:', e.message);
+    }
+  };
+
+  // Real-time spectrum analysis loop
+  useEffect(() => {
+    let active = true;
+
+    const renderRealtimeWaveform = () => {
+      if (!active) return;
+
+      if (analyserRef.current && isPlaying) {
+        const bufferLength = analyserRef.current.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        analyserRef.current.getByteFrequencyData(dataArray);
+
+        // Normalize first 48 frequency bins into 0-100% amplitudes
+        const bars = [];
+        for (let i = 0; i < 48; i++) {
+          const val = dataArray[i] || 0;
+          bars.push(Math.max(10, Math.round((val / 255) * 100)));
+        }
+        setWaveformData(bars);
+      } else if (isPlaying) {
+        // High-precision synthetic modulation if Web Audio context is waiting for gesture
+        const time = Date.now() / 150;
+        const bars = [];
+        for (let i = 0; i < 48; i++) {
+          const mod = Math.sin(time + i * 0.4) * 0.5 + 0.5;
+          const amp = Math.round(15 + mod * 75);
+          bars.push(amp);
+        }
+        setWaveformData(bars);
+      } else {
+        // Idle calm waveform
+        setWaveformData((prev) => prev.map((v) => Math.max(8, Math.round(v * 0.85))));
+      }
+
+      animationFrameRef.current = requestAnimationFrame(renderRealtimeWaveform);
+    };
+
+    if (isPlaying) {
+      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume();
+      }
+      renderRealtimeWaveform();
+    } else {
+      renderRealtimeWaveform();
+    }
+
+    return () => {
+      active = false;
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    };
+  }, [isPlaying]);
+
+  // Load published backend episodes if available
   useEffect(() => {
     let mounted = true;
-    fetch('/api/podcasts/episodes/discover?limit=20')
+    fetch('/api/podcasts/episodes/discover?limit=12')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (mounted && data?.episodes?.length) {
@@ -153,7 +167,7 @@ export function AudioPlayerProvider({ children }) {
             duration: ep.duration || 1800,
             currentTime: 0,
             cover: ep.podcast?.coverImage || 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=400&q=80',
-            color: ['#3b82f6', '#2563eb', '#ec4899', '#8b5cf6', '#06b6d4', '#ea580c'][idx % 6],
+            color: ['#7c3aed', '#cbfb45', '#f97316', '#3b82f6'][idx % 4],
             audioUrl: ep.audioUrl || 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
             episodes: ep.podcast?.title || 'Episode',
           }));
@@ -165,20 +179,15 @@ export function AudioPlayerProvider({ children }) {
         }
       })
       .catch(() => {});
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
-
-  const audioRef = useRef(null);
 
   // Sync HTML5 audio playback
   useEffect(() => {
     if (!audioRef.current) return;
     if (isPlaying) {
-      audioRef.current.play().catch(() => {
-        // Autoplay policy fallback
-      });
+      setupAudioContext();
+      audioRef.current.play().catch(() => {});
     } else {
       audioRef.current.pause();
     }
@@ -215,6 +224,7 @@ export function AudioPlayerProvider({ children }) {
 
   const playTrack = (track) => {
     if (!track) return;
+    setupAudioContext();
     if (currentTrack?.id === track.id) {
       togglePlay();
       return;
@@ -226,6 +236,7 @@ export function AudioPlayerProvider({ children }) {
   };
 
   const togglePlay = () => {
+    setupAudioContext();
     setIsPlaying((prev) => !prev);
   };
 
@@ -319,6 +330,7 @@ export function AudioPlayerProvider({ children }) {
         nextTrack,
         prevTrack,
         formatTime,
+        waveformData,
       }}
     >
       <audio

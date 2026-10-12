@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { 
   Play, 
   Pause, 
@@ -9,8 +9,7 @@ import {
   Heart,
   Volume2,
   VolumeX,
-  Radio,
-  ExternalLink
+  Radio
 } from 'lucide-react';
 import { useAudioPlayer } from '../context/AudioPlayerContext';
 
@@ -35,47 +34,8 @@ export default function NowPlayingWidget() {
     setVolume,
     isMuted,
     setIsMuted,
+    waveformData,
   } = useAudioPlayer();
-
-  const [waveBars, setWaveBars] = useState(() => [
-    28, 45, 60, 80, 50, 35, 65, 85, 42, 30, 70, 90, 55, 38, 75, 95, 52, 34, 62, 80, 44, 28, 68, 84, 46, 26
-  ]);
-
-  useEffect(() => {
-    if (isPlaying) {
-      const interval = setInterval(() => {
-        setWaveBars([
-          Math.floor(Math.random() * 40) + 20,
-          Math.floor(Math.random() * 55) + 30,
-          Math.floor(Math.random() * 60) + 35,
-          Math.floor(Math.random() * 70) + 25,
-          Math.floor(Math.random() * 50) + 20,
-          Math.floor(Math.random() * 45) + 25,
-          Math.floor(Math.random() * 65) + 30,
-          Math.floor(Math.random() * 75) + 20,
-          Math.floor(Math.random() * 40) + 25,
-          Math.floor(Math.random() * 50) + 20,
-          Math.floor(Math.random() * 70) + 25,
-          Math.floor(Math.random() * 85) + 15,
-          Math.floor(Math.random() * 60) + 25,
-          Math.floor(Math.random() * 45) + 20,
-          Math.floor(Math.random() * 70) + 25,
-          Math.floor(Math.random() * 80) + 18,
-          Math.floor(Math.random() * 55) + 22,
-          Math.floor(Math.random() * 40) + 20,
-          Math.floor(Math.random() * 65) + 30,
-          Math.floor(Math.random() * 75) + 20,
-          Math.floor(Math.random() * 48) + 24,
-          Math.floor(Math.random() * 35) + 20,
-          Math.floor(Math.random() * 60) + 30,
-          Math.floor(Math.random() * 75) + 20,
-          Math.floor(Math.random() * 50) + 22,
-          Math.floor(Math.random() * 30) + 15,
-        ]);
-      }, 150);
-      return () => clearInterval(interval);
-    }
-  }, [isPlaying]);
 
   const activeTrack = currentTrack || {
     id: 'default',
@@ -85,8 +45,11 @@ export default function NowPlayingWidget() {
     category: 'Society & Culture'
   };
 
-  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 25;
+  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
   const isFav = favorites?.includes(activeTrack.id);
+
+  // Dynamic waveform bars from Web Audio API (or default 48-bar array)
+  const spectrumBars = waveformData && waveformData.length ? waveformData : new Array(48).fill(12);
 
   return (
     <div style={{
@@ -95,7 +58,7 @@ export default function NowPlayingWidget() {
       left: 0,
       right: 0,
       zIndex: 90,
-      background: 'rgba(14, 14, 18, 0.95)',
+      background: 'rgba(12, 13, 17, 0.96)',
       backdropFilter: 'blur(20px)',
       WebkitBackdropFilter: 'blur(20px)',
       borderTop: '1px solid var(--border-subtle)',
@@ -104,31 +67,30 @@ export default function NowPlayingWidget() {
       gridTemplateColumns: '300px 1fr 280px',
       alignItems: 'center',
       gap: 20,
-      boxShadow: '0 -4px 24px rgba(0, 0, 0, 0.6)',
+      boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.5)',
     }}>
-      {/* Track Identification (Image 4 bottom left) */}
+      {/* ── Left Track Identification ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
         <div style={{
-          width: 48,
-          height: 48,
-          borderRadius: 10,
-          background: 'var(--accent-tangerine)',
+          width: 46,
+          height: 46,
+          borderRadius: 8,
+          background: 'var(--accent-purple)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
-          boxShadow: '0 4px 12px rgba(255, 87, 34, 0.3)',
           overflow: 'hidden',
         }}>
           {activeTrack.coverImage ? (
             <img src={activeTrack.coverImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
-            <Radio size={22} color="#ffffff" />
+            <Radio size={20} color="#ffffff" />
           )}
         </div>
         <div style={{ minWidth: 0 }}>
           <div style={{
-            fontSize: 14,
+            fontSize: 13.5,
             fontWeight: 700,
             color: '#ffffff',
             textOverflow: 'ellipsis',
@@ -157,7 +119,7 @@ export default function NowPlayingWidget() {
             cursor: 'pointer',
             padding: 4,
             marginLeft: 4,
-            transition: 'transform 0.15s ease',
+            transition: 'transform 0.14s ease',
           }}
           onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.85)')}
           onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
@@ -166,8 +128,9 @@ export default function NowPlayingWidget() {
         </button>
       </div>
 
-      {/* Center Controls & Waveform Progress (Image 4 center) */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, maxWidth: 640, margin: '0 auto', width: '100%' }}>
+      {/* ── Center Controls & Interactive Real-Time Waveform ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, maxWidth: 620, margin: '0 auto', width: '100%' }}>
+        {/* Playback Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <button
             onClick={() => setIsShuffle && setIsShuffle(!isShuffle)}
@@ -204,8 +167,8 @@ export default function NowPlayingWidget() {
           <button
             onClick={togglePlay}
             style={{
-              width: 38,
-              height: 38,
+              width: 36,
+              height: 36,
               borderRadius: '50%',
               background: 'var(--accent-lime)',
               color: 'var(--text-dark)',
@@ -214,18 +177,17 @@ export default function NowPlayingWidget() {
               justifyContent: 'center',
               border: 'none',
               cursor: 'pointer',
-              boxShadow: 'var(--shadow-lime)',
-              transition: 'transform 0.15s ease, background-color 0.15s ease',
+              transition: 'transform 0.14s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.14s ease',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.08)')}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.06)')}
             onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
             onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.92)')}
             onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
           >
             {isPlaying ? (
-              <Pause size={17} strokeWidth={2.5} fill="var(--text-dark)" />
+              <Pause size={16} strokeWidth={2.5} fill="var(--text-dark)" />
             ) : (
-              <Play size={17} strokeWidth={2.5} fill="var(--text-dark)" style={{ marginLeft: 2 }} />
+              <Play size={16} strokeWidth={2.5} fill="var(--text-dark)" style={{ marginLeft: 2 }} />
             )}
           </button>
 
@@ -261,10 +223,10 @@ export default function NowPlayingWidget() {
           </button>
         </div>
 
-        {/* Progress bar + Waveform indicators */}
+        {/* ── REAL-TIME INTERACTIVE PODCAST WAVEFORM SCRUBBER ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
-          <span style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--text-muted)', minWidth: 36, textAlign: 'right' }}>
-            {formatTime ? formatTime(currentTime || 342) : '05:42'}
+          <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', minWidth: 36, textAlign: 'right' }}>
+            {formatTime ? formatTime(currentTime) : '00:00'}
           </span>
 
           <div
@@ -275,45 +237,54 @@ export default function NowPlayingWidget() {
             }}
             style={{
               flex: 1,
-              height: 4,
-              background: 'rgba(255, 255, 255, 0.12)',
-              borderRadius: 2,
+              height: 28,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2.5,
               cursor: 'pointer',
+              padding: '0 4px',
               position: 'relative',
-              overflow: 'hidden',
             }}
+            title="Click to seek in podcast"
           >
-            <div style={{
-              width: `${progressPercent}%`,
-              height: '100%',
-              background: 'linear-gradient(90deg, var(--accent-purple), var(--accent-lime))',
-              borderRadius: 2,
-              transition: 'width 0.1s linear',
-            }} />
+            {spectrumBars.map((heightPercent, index) => {
+              const barProgress = (index / spectrumBars.length) * 100;
+              const isPlayed = barProgress <= progressPercent;
+
+              return (
+                <div
+                  key={index}
+                  style={{
+                    flex: 1,
+                    height: `${Math.max(14, isPlaying ? heightPercent : (index % 3 === 0 ? 30 : index % 2 === 0 ? 45 : 20))}%`,
+                    minHeight: 3,
+                    borderRadius: 2,
+                    background: isPlayed ? 'var(--accent-lime)' : 'rgba(255, 255, 255, 0.16)',
+                    transition: 'height 0.08s ease, background-color 0.12s ease',
+                  }}
+                />
+              );
+            })}
           </div>
 
-          <span style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--text-muted)', minWidth: 36 }}>
-            {formatTime ? formatTime(duration || 1320) : '22:00'}
+          <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', minWidth: 36 }}>
+            {formatTime ? formatTime(duration) : '30:00'}
           </span>
         </div>
       </div>
 
-      {/* Right Waveform Spectrum & Volume (Image 4 bottom right) */}
+      {/* ── Right Spectrum Indicator & Volume Control ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 14 }}>
-        {/* Animated Audio Equalizer Bars */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 22 }}>
-          {waveBars.slice(0, 16).map((h, i) => (
-            <div
-              key={i}
-              style={{
-                width: 2.5,
-                height: `${isPlaying ? h : 20}%`,
-                background: i % 2 === 0 ? 'var(--accent-lime)' : 'var(--accent-purple)',
-                borderRadius: 1,
-                transition: 'height 0.15s ease',
-              }}
-            />
-          ))}
+        {/* Real-time VU Indicator Pulse */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: isPlaying ? 'var(--accent-lime)' : 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+          <span style={{
+            width: 7,
+            height: 7,
+            borderRadius: '50%',
+            background: isPlaying ? 'var(--accent-lime)' : 'var(--text-muted)',
+            display: 'inline-block',
+          }} />
+          <span>{isPlaying ? 'STREAMING' : 'READY'}</span>
         </div>
 
         {/* Volume Slider */}

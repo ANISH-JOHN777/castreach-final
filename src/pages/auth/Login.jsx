@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Radio, ShieldCheck, AlertCircle, ArrowRight, Lock, Mail } from 'lucide-react';
+import { Radio, ShieldCheck, AlertCircle, ArrowRight, Lock, Mail, Video, Headphones, Mic } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export default function Login() {
@@ -51,178 +51,281 @@ export default function Login() {
       style={{
         minHeight: '100vh',
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
-        background: '#0e0f13',
-        color: '#f3f4f6',
+        gridTemplateColumns: 'minmax(420px, 1.1fr) minmax(380px, 1fr)',
+        background: 'var(--bg-obsidian)',
+        color: 'var(--text-primary)',
       }}
     >
-      {/* Left Brand Panel */}
+      {/* ── LEFT SECTION: Video Background & Brand Ambience ── */}
       <div
         style={{
-          background: '#121318',
-          color: '#fff',
-          padding: '60px 48px',
+          position: 'relative',
+          overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          borderRight: '1px solid #1f222b',
+          padding: '48px',
+          borderRight: '1px solid var(--border-subtle)',
+          background: '#090a0f',
         }}
       >
-        <div>
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 48, textDecoration: 'none' }}>
+        {/* Ambient Video Background */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          poster="https://images.unsplash.com/photo-1590602847861-f357a9332bbc?auto=format&fit=crop&w=1200&q=80"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            opacity: 0.35,
+            pointerEvents: 'none',
+          }}
+        >
+          {/* Public studio broadcast loop video source */}
+          <source
+            src="https://assets.mixkit.co/videos/preview/mixkit-recording-studio-with-microphone-and-headphones-42861-large.mp4"
+            type="video/mp4"
+          />
+        </video>
+
+        {/* Subtle Dark Matte Overlay (Strictly zero neon glow) */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(180deg, rgba(8, 8, 10, 0.75) 0%, rgba(8, 8, 10, 0.95) 100%)',
+            pointerEvents: 'none',
+          }}
+        />
+
+        {/* Top Brand Logo: CastReach */}
+        <div style={{ position: 'relative', zIndex: 2 }}>
+          <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
             <div
               style={{
                 width: 42,
                 height: 42,
-                borderRadius: 12,
-                background: '#2563eb',
+                borderRadius: 10,
+                background: 'var(--accent-lime)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                boxShadow: 'var(--shadow-sm)',
               }}
             >
-              <Radio size={20} color="#fff" />
+              <Radio size={22} strokeWidth={2.5} color="var(--text-dark)" />
             </div>
             <div>
-              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 24, color: '#fff' }}>
-                Podcast
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 850, fontSize: 24, color: '#fff', letterSpacing: '-0.02em' }}>
+                CASTREACH
               </span>
               <span
                 style={{
                   display: 'inline-block',
                   marginLeft: 8,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: '#60a5fa',
-                  background: 'rgba(37, 99, 235, 0.2)',
+                  fontSize: 10,
+                  fontWeight: 800,
+                  color: 'var(--accent-lime)',
+                  background: 'rgba(203, 251, 69, 0.12)',
                   padding: '2px 8px',
                   borderRadius: 6,
+                  letterSpacing: '0.06em',
                 }}
               >
-                CastReach
+                PODCAST
               </span>
             </div>
           </Link>
+        </div>
 
-          <h2 style={{ fontSize: 36, fontWeight: 800, color: '#fff', lineHeight: 1.15, marginBottom: 18, letterSpacing: '-0.02em' }}>
-            Welcome back to <br />
-            the studio platform.
+        {/* Center Editorial Quote */}
+        <div style={{ position: 'relative', zIndex: 2, maxWidth: 460 }}>
+          <div style={{
+            fontSize: 12,
+            fontWeight: 700,
+            color: 'var(--accent-lime)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            marginBottom: 12,
+          }}>
+            CONNECTED PRODUCTION
+          </div>
+          <h2 style={{ fontSize: 'clamp(1.8rem, 3.2vw, 2.5rem)', fontWeight: 850, letterSpacing: '-0.03em', lineHeight: 1.15, marginBottom: 16 }}>
+            Speak Loud. Connect Deep.
           </h2>
-
-          <p style={{ color: '#9ca3af', fontSize: 15, lineHeight: 1.6, maxWidth: 440 }}>
-            Sign in to manage your recording calendar, review escrow holds, join browser-native audio sessions, and distribute episodes.
+          <p style={{ fontSize: 14.5, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            The verified network for podcast hosts and guest speakers. Book Google Meet sessions or physical studio tapings with complete data transparency.
           </p>
         </div>
 
-        <div
-          style={{
-            background: 'rgba(255, 255, 255, 0.03)',
-            borderRadius: 16,
-            padding: 22,
-            border: '1px solid rgba(255, 255, 255, 0.07)',
-          }}
-        >
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#60a5fa', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            <ShieldCheck size={15} /> Platform Security
-          </div>
-          <p style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.5 }}>
-            All sessions are encrypted end-to-end via WebRTC DTLS/SRTP with multi-track local WAV redundancy.
-          </p>
+        {/* Bottom Feature Tags */}
+        <div style={{ position: 'relative', zIndex: 2, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255, 255, 255, 0.08)', padding: '6px 12px', borderRadius: 'var(--radius-pill)', fontSize: 12, color: 'var(--text-secondary)' }}>
+            <Video size={13} color="var(--accent-lime)" /> Google Meet Virtual Rooms
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255, 255, 255, 0.08)', padding: '6px 12px', borderRadius: 'var(--radius-pill)', fontSize: 12, color: 'var(--text-secondary)' }}>
+            <Mic size={13} color="var(--accent-purple)" /> In-Person Studio Tapings
+          </span>
         </div>
       </div>
 
-      {/* Right Form Panel */}
+      {/* ── RIGHT SECTION: Login Boxes & Firebase Auth ── */}
       <div
         style={{
           display: 'flex',
-          alignItems: 'center',
+          flexDirection: 'column',
           justifyContent: 'center',
-          padding: '48px 24px',
-          background: '#0e0f13',
+          alignItems: 'center',
+          padding: '48px 32px',
+          background: 'var(--bg-carbon)',
         }}
       >
         <div style={{ width: '100%', maxWidth: 420 }}>
-          <div style={{ marginBottom: 28 }}>
-            <h1 style={{ fontSize: 28, fontWeight: 800, color: '#fff', marginBottom: 6 }}>Sign In</h1>
-            <p style={{ color: '#9ca3af', fontSize: 14 }}>
-              Enter your account credentials to access your studio workspace
+          <div style={{ marginBottom: 32 }}>
+            <h1 style={{ fontSize: 28, fontWeight: 850, letterSpacing: '-0.03em', marginBottom: 6, color: '#ffffff' }}>
+              Welcome back
+            </h1>
+            <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', margin: 0 }}>
+              Enter your credentials or continue with Google to access your CastReach dashboard.
             </p>
           </div>
 
           {error && (
             <div
               style={{
-                background: 'rgba(239, 68, 68, 0.12)',
-                color: '#ef4444',
-                border: '1px solid rgba(239, 68, 68, 0.25)',
-                padding: '12px 16px',
-                borderRadius: 12,
-                fontSize: 13,
                 marginBottom: 20,
+                padding: '12px 16px',
+                background: 'var(--color-danger-bg)',
+                border: '1px solid var(--border-medium)',
+                borderRadius: 'var(--radius-md)',
+                color: '#fca5a5',
+                fontSize: 13,
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
+                gap: 10,
               }}
             >
-              <AlertCircle size={16} /> {error}
+              <AlertCircle size={16} color="var(--color-danger)" style={{ flexShrink: 0 }} />
+              <span>{error}</span>
             </div>
           )}
 
-          <form onSubmit={submit}>
-            <div style={{ marginBottom: 18 }}>
-              <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#d1d5db', marginBottom: 6 }}>
-                Email Address
-              </label>
-              <div
+          {/* Continue with Google Popup Button */}
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={googleLoading || loading}
+            className="btn-ghost-dark"
+            style={{
+              width: '100%',
+              padding: '12px',
+              marginBottom: 20,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              fontWeight: 700,
+              fontSize: 13.5,
+              opacity: googleLoading ? 0.7 : 1,
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24">
+              <path
+                fill="#EA4335"
+                d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"
+              />
+              <path
+                fill="#4285F4"
+                d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3 0-.8.1-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15.2s.7 5.5 1.9 7.9l3.7-2.9z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2-6.4-4.8L1.9 17c1.8 3.7 5.6 6.5 10.1 6.5z"
+              />
+            </svg>
+            <span>{googleLoading ? 'Connecting to Google…' : 'Continue with Google'}</span>
+          </button>
+
+          {/* Divider */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 14,
+              marginBottom: 20,
+              color: 'var(--text-muted)',
+              fontSize: 12,
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+            }}
+          >
+            <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
+            <span>or email</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
+          </div>
+
+          {/* Login Form */}
+          <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <label
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  background: '#15161c',
-                  border: '1px solid #282a36',
-                  borderRadius: 12,
-                  padding: '0 14px',
+                  display: 'block',
+                  fontSize: 12.5,
+                  fontWeight: 650,
+                  marginBottom: 6,
+                  color: 'var(--text-secondary)',
                 }}
               >
-                <Mail size={16} color="#6b7280" />
+                Email Address
+              </label>
+              <div style={{ position: 'relative' }}>
+                <Mail size={15} color="var(--text-muted)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="creator@castreach.com"
+                  placeholder="your.email@example.com"
                   required
                   style={{
                     width: '100%',
-                    padding: '12px 10px',
-                    background: 'transparent',
-                    border: 'none',
+                    padding: '11px 14px 11px 38px',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-subtle)',
+                    background: 'var(--bg-surface)',
+                    color: 'var(--text-primary)',
+                    fontSize: 13.5,
                     outline: 'none',
-                    color: '#fff',
-                    fontSize: 14,
+                    transition: 'border-color 0.15s ease',
                   }}
+                  onFocus={(e) => (e.target.style.borderColor = 'var(--accent-lime)')}
+                  onBlur={(e) => (e.target.style.borderColor = 'var(--border-subtle)')}
                 />
               </div>
             </div>
 
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 600, color: '#d1d5db' }}>
-                  Password
-                </label>
-                <span style={{ fontSize: 12, color: '#3b82f6', cursor: 'pointer' }}>
-                  Forgot password?
-                </span>
-              </div>
-              <div
+            <div>
+              <label
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  background: '#15161c',
-                  border: '1px solid #282a36',
-                  borderRadius: 12,
-                  padding: '0 14px',
+                  display: 'block',
+                  fontSize: 12.5,
+                  fontWeight: 650,
+                  marginBottom: 6,
+                  color: 'var(--text-secondary)',
                 }}
               >
-                <Lock size={16} color="#6b7280" />
+                Password
+              </label>
+              <div style={{ position: 'relative' }}>
+                <Lock size={15} color="var(--text-muted)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
                 <input
                   type="password"
                   value={password}
@@ -231,83 +334,51 @@ export default function Login() {
                   required
                   style={{
                     width: '100%',
-                    padding: '12px 10px',
-                    background: 'transparent',
-                    border: 'none',
+                    padding: '11px 14px 11px 38px',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-subtle)',
+                    background: 'var(--bg-surface)',
+                    color: 'var(--text-primary)',
+                    fontSize: 13.5,
                     outline: 'none',
-                    color: '#fff',
-                    fontSize: 14,
+                    transition: 'border-color 0.15s ease',
                   }}
+                  onFocus={(e) => (e.target.style.borderColor = 'var(--accent-lime)')}
+                  onBlur={(e) => (e.target.style.borderColor = 'var(--border-subtle)')}
                 />
               </div>
             </div>
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || googleLoading}
+              className="btn-primary-lime"
               style={{
                 width: '100%',
-                padding: '13px 20px',
-                borderRadius: 9999,
-                background: '#2563eb',
-                color: '#ffffff',
-                fontWeight: 700,
+                padding: '12px',
+                marginTop: 6,
                 fontSize: 14,
-                border: 'none',
-                cursor: loading ? 'wait' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
+                opacity: loading ? 0.7 : 1,
               }}
             >
-              {loading ? 'Signing in...' : 'Sign In'}
-              <ArrowRight size={16} />
+              {loading ? 'Authenticating…' : 'Sign In to CastReach'}
             </button>
           </form>
 
-          <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0', gap: 12 }}>
-            <div style={{ flex: 1, height: 1, background: '#282a36' }} />
-            <span style={{ fontSize: 12, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>or</span>
-            <div style={{ flex: 1, height: 1, background: '#282a36' }} />
-          </div>
-
-          <button
-            type="button"
-            onClick={handleGoogleSignIn}
-            disabled={googleLoading || loading}
-            style={{
-              width: '100%',
-              padding: '12px 20px',
-              borderRadius: 9999,
-              background: '#15161c',
-              color: '#ffffff',
-              border: '1px solid #282a36',
-              fontWeight: 600,
-              fontSize: 14,
-              cursor: googleLoading ? 'wait' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 10,
-              transition: 'background 0.2s',
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-            </svg>
-            {googleLoading ? 'Connecting...' : 'Continue with Google'}
-          </button>
-
-          <p style={{ textAlign: 'center', marginTop: 24, fontSize: 13, color: '#9ca3af' }}>
-            Don't have an account?{' '}
-            <Link to="/register" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
-              Create an account
+          {/* Footer Navigation */}
+          <div style={{ marginTop: 28, textAlign: 'center', fontSize: 13, color: 'var(--text-secondary)' }}>
+            Don&apos;t have an account yet?{' '}
+            <Link
+              to="/register"
+              style={{
+                color: 'var(--accent-lime)',
+                fontWeight: 700,
+                textDecoration: 'none',
+              }}
+            >
+              Sign up for free
             </Link>
-          </p>
+          </div>
         </div>
       </div>
     </div>

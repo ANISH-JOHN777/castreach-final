@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import AudioWaveform from '../components/AudioWaveform';
 import { useAudioPlayer } from '../context/AudioPlayerContext';
 
 export default function Episodes() {
@@ -193,7 +194,7 @@ export default function Episodes() {
               </p>
 
               {selectedEpisode.topics?.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 20 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
                   {selectedEpisode.topics.map((t, idx) => (
                     <span key={idx} style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--bg-surface-elevated)', fontSize: 11, color: 'var(--text-secondary)' }}>
                       #{t}
@@ -201,6 +202,15 @@ export default function Episodes() {
                   ))}
                 </div>
               )}
+
+              {/* Real-time Interactive Waveform for active spotlight episode */}
+              <div style={{ marginBottom: 18, padding: '10px 14px', background: 'var(--bg-carbon)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
+                  <span>AUDIO FREQUENCY SPECTRUM</span>
+                  <span style={{ color: 'var(--accent-lime)' }}>LIVE WAVEFORM</span>
+                </div>
+                <AudioWaveform barCount={32} height={32} color="var(--accent-lime)" />
+              </div>
 
               <button
                 onClick={() => handlePlay(selectedEpisode)}
