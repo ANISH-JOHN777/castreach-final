@@ -10,19 +10,21 @@ import {
   onAuthStateChanged
 } from 'firebase/auth';
 
-// Firebase configuration from environment or fallback placeholder
+// Real Firebase Web App Configuration
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyCastReachDemoKey2026Secure001',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'castreach-app.firebaseapp.com',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'castreach-app',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'castreach-app.appspot.com',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '1029384756',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:1029384756:web:castreachapp001'
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDswBh7LwHLnb1wi_cGtjz673f_JZ_aZ_0",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "castreach.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "castreach",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "castreach.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "348216278901",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:348216278901:web:b7a7076e0221f3f4e2dd3c",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-YNFCFW88LQ"
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 export {
   signInWithEmailAndPassword,
