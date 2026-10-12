@@ -9,6 +9,20 @@ const bookingSchema = new mongoose.Schema(
     slotEnd:   { type: Date, required: true },
     topics:    [{ type: String }],
     message:   { type: String, maxlength: 500 },
+    // Meeting Mode & Location
+    meetingType: {
+      type: String,
+      enum: ['gmeet', 'physical'],
+      default: 'gmeet',
+    },
+    gmeetUrl: { type: String, default: '' },
+    physicalLocation: {
+      address:      { type: String, default: '' },
+      city:         { type: String, default: '' },
+      studioName:   { type: String, default: '' },
+      arrivalNotes: { type: String, default: '' },
+    },
+    agenda: { type: String, default: '' },
     status: {
       type: String,
       enum: ['pending', 'confirmed', 'cancelled', 'completed', 'disputed'],

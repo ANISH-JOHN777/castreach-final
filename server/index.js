@@ -55,15 +55,14 @@ async function startServer() {
   }
 
   try {
-    // Auto-seed demo environment dataset when database is empty in non-production environments
-    const isDemo = process.env.APP_ENV === 'demo' || (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test');
-    if (isDemo) {
+    // Only auto-seed if explicitly configured via AUTO_SEED=true
+    if (process.env.AUTO_SEED === 'true') {
       const User = require('./models/User');
       const userCount = await User.countDocuments();
       if (userCount === 0) {
         const { seedDemoData } = require('./scripts/seedDemo');
         await seedDemoData();
-        logger.info('Auto-seeded demo accounts into empty database on server startup.');
+        logger.info('Seeded initial accounts into database.');
       }
     }
 

@@ -64,9 +64,9 @@ router.get('/:id', verifyToken, async (req, res) => {
     }
 
     const booking = await Booking.findById(req.params.id)
-      .populate('host',  'name avatar podcastName')
-      .populate('guest', 'name avatar expertise')
-      .populate('createdBy', 'name avatar');
+      .populate('host',  'name email avatar bio podcastName podcastDescription podcastCategory studioLocation preferredMeetingMode equipment typicalFormat listenerCount avgRating totalReviews location socialLinks')
+      .populate('guest', 'name email avatar bio expertise speakingTopics priorAppearances location preferredMeetingMode portfolioUrl avgRating totalReviews socialLinks')
+      .populate('createdBy', 'name avatar role');
 
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
 
@@ -119,7 +119,18 @@ router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
   };
 
   try {
-    const { hostId, guestId, slotStart, slotEnd, topics, message } = req.body;
+    const { 
+      hostId, 
+      guestId, 
+      slotStart, 
+      slotEnd, 
+      topics, 
+      message, 
+      meetingType = 'gmeet',
+      gmeetUrl,
+      physicalLocation,
+      agenda 
+    } = req.body;
 
     let effectiveHostId = hostId;
     let effectiveGuestId = req.user.id;
@@ -139,7 +150,7 @@ router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
       return res.status(400).json({ error: 'You cannot book yourself' });
     }
 
-    let hostQuery = User.findById(effectiveHostId).select('role isBlocked sessionRateCents');
+    let hostQuery = User.findById(effectiveHostId).select('role isBlocked sessionRateCents studioLocation podcastName');
     if (session?.inTransaction()) hostQuery = hostQuery.session(session);
     const host = await hostQuery;
 
@@ -186,15 +197,33 @@ router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
       return res.status(409).json({ error: 'Slot already booked' });
     }
 
+    // Resolve meeting details
+    const resolvedGmeet = meetingType === 'gmeet'
+      ? (gmeetUrl && gmeetUrl.trim() ? gmeetUrl.trim() : `https://meet.google.com/cst-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`)
+      : '';
+
+    const resolvedPhysical = meetingType === 'physical'
+      ? {
+          address: physicalLocation?.address || host.studioLocation || '',
+          city: physicalLocation?.city || '',
+          studioName: physicalLocation?.studioName || (host.podcastName ? `${host.podcastName} Studio` : 'Main Studio'),
+          arrivalNotes: physicalLocation?.arrivalNotes || 'Please arrive 15 minutes before the session.',
+        }
+      : {};
+
     const bookingData = {
-      host:        effectiveHostId,
-      guest:       effectiveGuestId,
-      createdBy:   req.user.id,
-      slotStart:   start,
-      slotEnd:     end,
+      host:             effectiveHostId,
+      guest:            effectiveGuestId,
+      createdBy:        req.user.id,
+      slotStart:        start,
+      slotEnd:          end,
       topics,
       message,
-      amountCents: host.sessionRateCents || 0,
+      meetingType,
+      gmeetUrl:         resolvedGmeet,
+      physicalLocation: resolvedPhysical,
+      agenda:           agenda || '',
+      amountCents:      host.sessionRateCents || 0,
     };
 
     const [booking] = session?.inTransaction()

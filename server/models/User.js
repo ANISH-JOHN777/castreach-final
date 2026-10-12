@@ -22,11 +22,25 @@ const userSchema = new mongoose.Schema(
     },
     podcastName:{ type: String, default: '' },             // for hosts
     podcastUrl: { type: String, default: '' },
+    podcastDescription: { type: String, default: '' },
+    podcastCategory:    { type: String, default: '' },
+    studioLocation:     { type: String, default: '' },      // Physical recording studio address or city
+    preferredMeetingMode:{ type: String, enum: ['both', 'gmeet', 'physical'], default: 'both' },
+    equipment:          [{ type: String, trim: true }],     // e.g. ["Shure SM7B", "Sony FX3"]
+    typicalFormat:      { type: String, default: '' },      // e.g. "60-minute deep dive discussion"
+    targetAudience:     { type: String, default: '' },
+    listenerCount:      { type: Number, default: 0 },
+    // Guest specific fields
+    speakingTopics:     [{ type: String, trim: true }],     // specific topics guest can speak on
+    priorAppearances:   [{ type: String, trim: true }],     // links/names of previous podcasts
+    location:           { type: String, default: '' },      // City/Country for physical meetings
+    portfolioUrl:       { type: String, default: '' },
     sessionRateCents: { type: Number, default: 0, min: 0 }, // host's per-session price; 0 = free
     socialLinks:{
       twitter:   { type: String, default: '' },
       linkedin:  { type: String, default: '' },
       website:   { type: String, default: '' },
+      youtube:   { type: String, default: '' },
     },
     avgRating:      { type: Number, default: 0 },
     totalReviews:   { type: Number, default: 0 },

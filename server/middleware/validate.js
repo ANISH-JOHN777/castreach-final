@@ -31,12 +31,21 @@ const LoginSchema = z.object({
 });
 
 const BookingSchema = z.object({
-  hostId:    z.string().min(1),
-  guestId:   z.string().optional(),
-  slotStart: z.string().datetime(),
-  slotEnd:   z.string().datetime(),
-  topics:    z.array(z.string()).optional(),
-  message:   z.string().max(500).optional(),
+  hostId:           z.string().min(1),
+  guestId:          z.string().optional(),
+  slotStart:        z.string(),
+  slotEnd:          z.string(),
+  topics:           z.array(z.string()).optional(),
+  message:          z.string().max(500).optional(),
+  meetingType:      z.enum(['gmeet', 'physical']).optional(),
+  gmeetUrl:         z.string().optional(),
+  physicalLocation: z.object({
+    address:      z.string().optional(),
+    city:         z.string().optional(),
+    studioName:   z.string().optional(),
+    arrivalNotes: z.string().optional(),
+  }).optional(),
+  agenda:           z.string().optional(),
 });
 
 const MessageSchema = z.object({

@@ -1,7 +1,29 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { Elements } from '@stripe/react-stripe-js';
-import { Mic, CheckCircle, Star, Play, Download, Film, Scissors, RefreshCw, AlertCircle, Clock, ShieldAlert, MessageSquare } from 'lucide-react';
+import { 
+  Mic, 
+  CheckCircle, 
+  Star, 
+  Play, 
+  Download, 
+  Film, 
+  Scissors, 
+  RefreshCw, 
+  AlertCircle, 
+  Clock, 
+  ShieldAlert, 
+  MessageSquare,
+  Video,
+  MapPin,
+  ExternalLink,
+  Copy,
+  Check,
+  Globe,
+  Mail,
+  User as UserIcon,
+  Calendar as CalendarIcon
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useBooking } from '../hooks/useBooking';
 import { stripePromise, stripeConfigured } from '../lib/stripe';
@@ -18,6 +40,21 @@ const STATUS_COLOR = {
   completed: { bg: 'var(--color-background-success)', color: 'var(--color-text-success)' },
   cancelled: { bg: 'var(--color-background-danger)',  color: 'var(--color-text-danger)' },
 };
+
+function getGoogleCalendarUrl(booking) {
+  if (!booking?.slotStart || !booking?.slotEnd) return '#';
+  const start = new Date(booking.slotStart).toISOString().replace(/-|:|\.\d\d\d/g, '');
+  const end = new Date(booking.slotEnd).toISOString().replace(/-|:|\.\d\d\d/g, '');
+  const title = encodeURIComponent(booking.topics?.[0] ? `Podcast: ${booking.topics[0]}` : 'CastReach Podcast Recording Session');
+  const details = encodeURIComponent(
+    `CastReach Podcast Session\n` +
+    `Mode: ${booking.meetingType === 'physical' ? 'In-Person Studio' : 'Google Meet'}\n` +
+    (booking.meetingType === 'physical' ? `Location: ${booking.physicalLocation?.address || 'Studio'}\n` : `Meeting Link: ${booking.gmeetUrl}\n`) +
+    (booking.agenda ? `Agenda: ${booking.agenda}\n` : '')
+  );
+  const loc = encodeURIComponent(booking.meetingType === 'physical' ? (booking.physicalLocation?.address || 'Podcast Studio') : (booking.gmeetUrl || 'Google Meet'));
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${details}&location=${loc}`;
+}
 
 function formatSeconds(sec) {
   if (sec === undefined || sec === null || isNaN(sec)) return '00:00';
@@ -52,6 +89,14 @@ export default function BookingDetail() {
   const [renderLoading,    setRenderLoading]    = useState(false);
   const [storageLoading,   setStorageLoading]   = useState(false);
   const [fetchingUrl,      setFetchingUrl]      = useState(false);
+  const [copiedLink,       setCopiedLink]       = useState(false);
+
+  const handleCopyLink = (text) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
 
   // Auto-open editor modal if navigated from session end with autoEdit flag
   useEffect(() => {
@@ -441,6 +486,131 @@ export default function BookingDetail() {
                 </button>
               )}
             </div>
+          </div>
+
+          {/* ── MEETING CONNECTION & LOCATION CARD ── */}
+          <div style={card}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700 }}>
+                {booking.meetingType === 'physical' ? (
+                  <>
+                    <MapPin size={18} color="var(--color-accent)" />
+                    In-Person Studio Session
+                  </>
+                ) : (
+                  <>
+                    <Video size={18} color="var(--color-accent)" />
+                    Google Meet Video Call
+                  </>
+                )}
+              </div>
+              <span style={{
+                padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600,
+                background: booking.meetingType === 'physical' ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)',
+                color: booking.meetingType === 'physical' ? '#3b82f6' : '#10b981'
+              }}>
+                {booking.meetingType === 'physical' ? 'Physical Studio' : 'Virtual / GMeet'}
+              </span>
+            </div>
+
+            {booking.meetingType === 'physical' ? (
+              <div>
+                <div style={{ background: 'var(--color-background-secondary)', padding: '14px 16px', borderRadius: 8, marginBottom: 14 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>
+                    {booking.physicalLocation?.studioName || 'Podcast Studio Venue'}
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <MapPin size={14} />
+                    <span>{booking.physicalLocation?.address || 'Address provided upon confirmation'}</span>
+                  </div>
+                  {booking.physicalLocation?.city && (
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                      City / Region: {booking.physicalLocation.city}
+                    </div>
+                  )}
+                  {booking.physicalLocation?.arrivalNotes && (
+                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-subtle, rgba(231,221,232,0.15))', fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                      <strong style={{ color: 'var(--color-text-primary)' }}>Arrival & Check-in Notes:</strong>
+                      <p style={{ margin: '4px 0 0', lineHeight: 1.5 }}>{booking.physicalLocation.arrivalNotes}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  {booking.physicalLocation?.address && (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.physicalLocation.address)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ ...btn, background: 'var(--color-accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                    >
+                      <MapPin size={15} /> Open in Google Maps <ExternalLink size={13} />
+                    </a>
+                  )}
+                  <a
+                    href={getGoogleCalendarUrl(booking)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ ...btn, background: 'transparent', color: 'var(--color-text-primary)', border: '1px solid var(--color-border-tertiary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <CalendarIcon size={15} /> Add to Google Calendar
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 0, marginBottom: 12, lineHeight: 1.5 }}>
+                  This episode will be hosted over Google Meet. Both participants can join directly at the scheduled time.
+                </p>
+                <div style={{ background: 'var(--color-background-secondary)', padding: '12px 14px', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                    <Video size={16} color="var(--color-accent)" style={{ flexShrink: 0 }} />
+                    <span style={{ fontFamily: 'monospace', fontSize: 13, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                      {booking.gmeetUrl || 'https://meet.google.com/new'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleCopyLink(booking.gmeetUrl || 'https://meet.google.com/new')}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--color-accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, flexShrink: 0 }}
+                    title="Copy Meeting Link"
+                  >
+                    {copiedLink ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
+                    {copiedLink ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <a
+                    href={booking.gmeetUrl || 'https://meet.google.com/new'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ ...btn, background: '#10b981', color: '#fff', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+                  >
+                    <Video size={16} /> Join Google Meet <ExternalLink size={14} />
+                  </a>
+                  <a
+                    href={getGoogleCalendarUrl(booking)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ ...btn, background: 'transparent', color: 'var(--color-text-primary)', border: '1px solid var(--color-border-tertiary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <CalendarIcon size={15} /> Add to Google Calendar
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* Session Agenda & Discussion Guide */}
+            {booking.agenda && (
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border-subtle, rgba(231,221,232,0.15))' }}>
+                <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--color-text-secondary)', marginBottom: 6 }}>
+                  Session Agenda & Talking Points
+                </div>
+                <div style={{ padding: '10px 14px', background: 'var(--color-background-secondary)', borderRadius: 8, fontSize: 13, color: 'var(--color-text-primary)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                  {booking.agenda}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ── PHASE C4: POST-MEETING RECORDING EXPERIENCE ────────────────── */}
@@ -848,21 +1018,120 @@ export default function BookingDetail() {
 function ParticipantCard({ user, label, bookingId }) {
   const navigate = useNavigate();
   if (!user) return null;
+
+  const isHostRole = label.toLowerCase().includes('host') || user.role === 'host';
+
   return (
     <div style={card}>
-      <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--color-text-secondary)', marginBottom: 10 }}>{label}</div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-        <div style={{ width: 38, height: 38, borderRadius: 19, background: 'var(--color-accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, overflow: 'hidden', flexShrink: 0 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--color-text-secondary)' }}>
+          {label} Profile
+        </div>
+        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: isHostRole ? 'rgba(124,58,237,0.1)' : 'rgba(59,130,246,0.1)', color: isHostRole ? 'var(--color-accent)' : '#3b82f6', fontWeight: 600, textTransform: 'capitalize' }}>
+          {user.role || (isHostRole ? 'Host' : 'Guest')}
+        </span>
+      </div>
+
+      {/* Avatar & Main Identification */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+        <div style={{ width: 44, height: 44, borderRadius: 22, background: 'var(--color-accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 16, overflow: 'hidden', flexShrink: 0 }}>
           {user.avatar
-            ? <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ? <img src={user.avatar} alt={user.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             : user.name?.[0]?.toUpperCase()}
         </div>
-        <div>
-          <div style={{ fontWeight: 600, fontSize: 14 }}>{user.name}</div>
-          {user.podcastName && <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{user.podcastName}</div>}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+            {user.name}
+          </div>
+          {user.podcastName && (
+            <div style={{ fontSize: 12, color: 'var(--color-accent)', fontWeight: 600, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+              {user.podcastName}
+            </div>
+          )}
+          {user.email && (
+            <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+              <Mail size={12} /> {user.email}
+            </div>
+          )}
         </div>
       </div>
-      {user.bio && <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.5, marginBottom: 10 }}>{user.bio}</p>}
+
+      {/* Bio */}
+      {user.bio && (
+        <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.5, marginBottom: 12 }}>
+          {user.bio}
+        </p>
+      )}
+
+      {/* Host-specific details */}
+      {isHostRole && (
+        <div style={{ background: 'var(--color-background-secondary)', padding: '10px 12px', borderRadius: 8, fontSize: 12, marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {user.listenerCount !== undefined && user.listenerCount > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--color-text-secondary)' }}>Audience:</span>
+              <strong style={{ color: 'var(--color-text-primary)' }}>{user.listenerCount.toLocaleString()} listeners</strong>
+            </div>
+          )}
+          {user.typicalFormat && (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--color-text-secondary)' }}>Show Format:</span>
+              <span style={{ color: 'var(--color-text-primary)' }}>{user.typicalFormat}</span>
+            </div>
+          )}
+          {user.studioLocation && (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--color-text-secondary)' }}>Studio City:</span>
+              <span style={{ color: 'var(--color-text-primary)' }}>{user.studioLocation}</span>
+            </div>
+          )}
+          {user.equipment && (
+            <div style={{ marginTop: 2, paddingTop: 4, borderTop: '1px solid var(--border-subtle, rgba(231,221,232,0.1))' }}>
+              <span style={{ color: 'var(--color-text-secondary)', display: 'block', fontSize: 11 }}>Recording Gear:</span>
+              <span style={{ color: 'var(--color-text-primary)', fontSize: 11 }}>{user.equipment}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Guest-specific details */}
+      {!isHostRole && (
+        <div style={{ background: 'var(--color-background-secondary)', padding: '10px 12px', borderRadius: 8, fontSize: 12, marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {user.location && (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--color-text-secondary)' }}>Location:</span>
+              <span style={{ color: 'var(--color-text-primary)' }}>{user.location}</span>
+            </div>
+          )}
+          {user.speakingTopics?.length > 0 && (
+            <div style={{ marginTop: 2 }}>
+              <span style={{ color: 'var(--color-text-secondary)', display: 'block', fontSize: 11, marginBottom: 4 }}>Key Topics:</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {user.speakingTopics.map((topic, i) => (
+                  <span key={i} style={{ padding: '2px 6px', borderRadius: 6, background: 'var(--color-background-info)', color: 'var(--color-text-info)', fontSize: 10, fontWeight: 500 }}>
+                    {topic}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {user.portfolioUrl && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+              <Globe size={12} color="var(--color-accent)" />
+              <a href={user.portfolioUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)', textDecoration: 'none', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {user.portfolioUrl}
+              </a>
+            </div>
+          )}
+          {user.priorAppearances?.length > 0 && (
+            <div style={{ marginTop: 2, paddingTop: 4, borderTop: '1px solid var(--border-subtle, rgba(231,221,232,0.1))' }}>
+              <span style={{ color: 'var(--color-text-secondary)', display: 'block', fontSize: 11 }}>Prior Appearances:</span>
+              <span style={{ color: 'var(--color-text-primary)', fontSize: 11 }}>{user.priorAppearances.join(', ')}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Action buttons */}
       <div style={{ display: 'flex', gap: 8 }}>
         <button
           onClick={() => navigate(`/profile/${user._id}`)}

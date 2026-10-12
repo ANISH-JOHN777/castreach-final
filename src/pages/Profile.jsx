@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Star, Radio, CheckCircle2, ExternalLink, MessageSquare, X } from 'lucide-react';
+import { Star, Radio, CheckCircle2, ExternalLink, MessageSquare, X, Calendar, MapPin, Video, Globe, Mic, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AvailabilityPicker from '../components/AvailabilityPicker';
 import BadgeDisplay from '../components/BadgeDisplay';
+import CreateBookingModal from '../components/CreateBookingModal';
 
 export default function Profile() {
   const { id }           = useParams();
@@ -16,6 +17,7 @@ export default function Profile() {
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState('');
   const [showBook, setShowBook] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [booking,  setBooking]  = useState({ slotId: '', topics: '', message: '' });
   const [bookLoading, setBookLoading] = useState(false);
   const [bookError,   setBookError]   = useState('');
@@ -184,29 +186,51 @@ export default function Profile() {
                   Edit profile
                 </button>
               ) : (
-                <button
-                  onClick={handleMessageUser}
-                  disabled={msgLoading}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '8px 16px',
-                    borderRadius: 8,
-                    background: 'var(--plum-primary, #6366f1)',
-                    color: '#fff',
-                    border: 'none',
-                    fontWeight: 600,
-                    fontSize: 13,
-                    cursor: 'pointer',
-                    opacity: msgLoading ? 0.7 : 1,
-                    boxShadow: 'var(--shadow-xs)',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <MessageSquare size={15} />
-                  {msgLoading ? 'Opening...' : `Message ${profile.role === 'host' ? 'Host' : profile.role === 'guest' ? 'Guest' : 'User'}`}
-                </button>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    onClick={handleMessageUser}
+                    disabled={msgLoading}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '8px 16px',
+                      borderRadius: 8,
+                      background: 'var(--plum-primary, #6366f1)',
+                      color: '#fff',
+                      border: 'none',
+                      fontWeight: 600,
+                      fontSize: 13,
+                      cursor: 'pointer',
+                      opacity: msgLoading ? 0.7 : 1,
+                      boxShadow: 'var(--shadow-xs)',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <MessageSquare size={15} />
+                    {msgLoading ? 'Opening...' : `Message ${profile.role === 'host' ? 'Host' : profile.role === 'guest' ? 'Guest' : 'User'}`}
+                  </button>
+                  <button
+                    onClick={() => setShowScheduleModal(true)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '8px 16px',
+                      borderRadius: 8,
+                      background: 'var(--color-accent, #7c3aed)',
+                      color: '#fff',
+                      border: 'none',
+                      fontWeight: 600,
+                      fontSize: 13,
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 6px rgba(124,58,237,0.25)',
+                    }}
+                  >
+                    <Calendar size={15} />
+                    Schedule Session
+                  </button>
+                </div>
               )}
             </div>
 
@@ -227,6 +251,97 @@ export default function Profile() {
 
             {profile.bio && (
               <p style={{ marginTop: 14, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>{profile.bio}</p>
+            )}
+
+            {/* Host Specific Transparency Information */}
+            {profile.role === 'host' && (
+              <div style={{ marginTop: 16, padding: '14px', background: 'var(--color-background-secondary)', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--color-accent)' }}>
+                  Podcast & Studio Details
+                </div>
+                {profile.podcastDescription && (
+                  <div style={{ fontSize: 13, color: 'var(--color-text-primary)', lineHeight: 1.5 }}>
+                    {profile.podcastDescription}
+                  </div>
+                )}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, fontSize: 12 }}>
+                  {profile.listenerCount > 0 && (
+                    <div>
+                      <span style={{ color: 'var(--color-text-secondary)', display: 'block' }}>Audience Size:</span>
+                      <strong style={{ color: 'var(--color-text-primary)' }}>{profile.listenerCount.toLocaleString()} listeners</strong>
+                    </div>
+                  )}
+                  {profile.typicalFormat && (
+                    <div>
+                      <span style={{ color: 'var(--color-text-secondary)', display: 'block' }}>Typical Format:</span>
+                      <strong style={{ color: 'var(--color-text-primary)' }}>{profile.typicalFormat}</strong>
+                    </div>
+                  )}
+                  {profile.studioLocation && (
+                    <div>
+                      <span style={{ color: 'var(--color-text-secondary)', display: 'block' }}>Studio Location:</span>
+                      <strong style={{ color: 'var(--color-text-primary)' }}>{profile.studioLocation}</strong>
+                    </div>
+                  )}
+                  {profile.preferredMeetingMode && (
+                    <div>
+                      <span style={{ color: 'var(--color-text-secondary)', display: 'block' }}>Preferred Meeting Mode:</span>
+                      <strong style={{ color: 'var(--color-text-primary)', textTransform: 'capitalize' }}>
+                        {profile.preferredMeetingMode === 'both' ? 'Google Meet & In-Person' : profile.preferredMeetingMode === 'physical' ? 'In-Person Studio' : 'Google Meet (Virtual)'}
+                      </strong>
+                    </div>
+                  )}
+                </div>
+                {profile.equipment && (
+                  <div style={{ fontSize: 12, borderTop: '1px solid var(--border-subtle, rgba(231,221,232,0.15))', paddingTop: 8 }}>
+                    <span style={{ color: 'var(--color-text-secondary)' }}>Production Equipment: </span>
+                    <span style={{ color: 'var(--color-text-primary)' }}>{profile.equipment}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Guest Specific Transparency Information */}
+            {profile.role === 'guest' && (
+              <div style={{ marginTop: 16, padding: '14px', background: 'var(--color-background-secondary)', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--color-accent)' }}>
+                  Guest Background & Speaking Profile
+                </div>
+                {profile.location && (
+                  <div style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <MapPin size={14} color="var(--color-text-secondary)" />
+                    <span style={{ color: 'var(--color-text-secondary)' }}>Based in:</span>
+                    <strong style={{ color: 'var(--color-text-primary)' }}>{profile.location}</strong>
+                  </div>
+                )}
+                {profile.speakingTopics?.length > 0 && (
+                  <div>
+                    <span style={{ color: 'var(--color-text-secondary)', fontSize: 12, display: 'block', marginBottom: 6 }}>Prepared Speaking Topics:</span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {profile.speakingTopics.map((topic, i) => (
+                        <span key={i} style={{ padding: '3px 8px', borderRadius: 10, background: 'rgba(59,130,246,0.15)', color: '#3b82f6', fontSize: 11, fontWeight: 500 }}>
+                          {topic}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {profile.portfolioUrl && (
+                  <div style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Globe size={14} color="var(--color-accent)" />
+                    <span style={{ color: 'var(--color-text-secondary)' }}>Portfolio / Works:</span>
+                    <a href={profile.portfolioUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)', textDecoration: 'none' }}>
+                      {profile.portfolioUrl}
+                    </a>
+                  </div>
+                )}
+                {profile.priorAppearances?.length > 0 && (
+                  <div style={{ fontSize: 12, borderTop: '1px solid var(--border-subtle, rgba(231,221,232,0.15))', paddingTop: 8 }}>
+                    <span style={{ color: 'var(--color-text-secondary)' }}>Prior Podcasts & Features: </span>
+                    <span style={{ color: 'var(--color-text-primary)' }}>{profile.priorAppearances.join(', ')}</span>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Expertise */}
@@ -448,6 +563,19 @@ export default function Profile() {
           </div>
         </div>
       )}
+
+      {/* Create / Schedule Session Modal with GMeet / In-person options */}
+      <CreateBookingModal
+        isOpen={showScheduleModal}
+        onClose={() => setShowScheduleModal(false)}
+        recipientUser={profile}
+        onSuccess={(newBooking) => {
+          setShowScheduleModal(false);
+          if (newBooking?._id) {
+            navigate(`/bookings/${newBooking._id}`);
+          }
+        }}
+      />
     </div>
   );
 }
