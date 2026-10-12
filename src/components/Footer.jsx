@@ -1,116 +1,120 @@
 import { Link } from 'react-router-dom';
-import { Radio, ShieldCheck, Video, Headphones, Heart } from 'lucide-react';
+import { Radio, ShieldCheck, Video, Headphones, MapPin } from 'lucide-react';
 
 export default function Footer() {
   return (
     <footer style={{
-      background: '#090a0f',
-      color: '#94a3b8',
-      padding: '64px 24px 32px',
-      borderTop: '1px solid #1a1c24',
+      background: 'var(--bg-obsidian)',
+      color: 'var(--text-secondary)',
+      padding: '60px 24px 32px',
+      borderTop: '1px solid var(--border-subtle)',
     }}>
-      <div style={{ maxWidth: 1240, margin: '0 auto' }}>
+      <div style={{ maxWidth: 1360, margin: '0 auto' }}>
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: 48,
+          gap: 40,
           marginBottom: 48,
         }}>
           {/* Brand Column */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
               <div style={{
                 width: 32,
                 height: 32,
-                borderRadius: 10,
-                background: '#2563eb',
+                borderRadius: 8,
+                background: 'var(--accent-lime)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#fff',
+                color: 'var(--text-dark)',
               }}>
-                <Radio size={18} />
+                <Radio size={18} strokeWidth={2.5} />
               </div>
-              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 22, color: '#fff' }}>
-                Podcast
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 850, fontSize: 20, color: '#fff' }}>
+                CASTREACH
               </span>
               <span style={{
                 fontSize: 10,
                 fontWeight: 700,
-                color: '#38bdf8',
-                background: 'rgba(56, 189, 248, 0.12)',
+                color: 'var(--accent-lime)',
+                background: 'rgba(203, 251, 69, 0.1)',
                 padding: '2px 6px',
                 borderRadius: 6,
+                letterSpacing: '0.04em',
               }}>
-                CastReach
+                PODCAST
               </span>
             </div>
-            <p style={{ color: '#94a3b8', fontSize: 14, lineHeight: 1.6, marginBottom: 20 }}>
-              The all-in-one platform for podcast listeners, creators, and expert guests. Discover trending shows, stream episodes, and collaborate live in our WebRTC recording studio.
+            <p style={{ color: 'var(--text-secondary)', fontSize: 13.5, lineHeight: 1.6, marginBottom: 18 }}>
+              Modern podcast host & guest matchmaking. Connect over Google Meet virtual video rooms or physical in-person recording studios with verified real data transparency.
             </p>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#13151f', padding: '6px 12px', borderRadius: 20, fontSize: 12, color: '#e2e8f0' }}>
-                <ShieldCheck size={14} color="#10b981" /> Stripe Escrow
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--bg-surface)', padding: '5px 10px', borderRadius: 20, fontSize: 11.5, color: 'var(--text-primary)' }}>
+                <Video size={13} color="var(--accent-lime)" /> Google Meet
               </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#13151f', padding: '6px 12px', borderRadius: 20, fontSize: 12, color: '#e2e8f0' }}>
-                <Headphones size={14} color="#38bdf8" /> 48kHz Studio
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--bg-surface)', padding: '5px 10px', borderRadius: 20, fontSize: 11.5, color: 'var(--text-primary)' }}>
+                <MapPin size={13} color="var(--accent-purple)" /> In-Person Studio
               </span>
             </div>
           </div>
 
-          {/* Navigation */}
+          {/* Platform Links */}
           <div>
-            <h4 style={{ color: '#fff', fontSize: 15, fontWeight: 700, marginBottom: 18 }}>Navigation</h4>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13.5 }}>
-              <li><Link to="/discover" style={{ color: '#94a3b8' }}>Discover Podcasts</Link></li>
-              <li><Link to="/explore" style={{ color: '#94a3b8' }}>Featured Episodes</Link></li>
-              <li><Link to="/discover?tab=hosts" style={{ color: '#94a3b8' }}>Top Podcasters</Link></li>
-              <li><Link to="/about" style={{ color: '#94a3b8' }}>Pricing & Features</Link></li>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16 }}>
+              Platform
+            </div>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
+              <li><Link to="/discover" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Creator Directory</Link></li>
+              <li><Link to="/episodes" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Episodes & Broadcasts</Link></li>
+              <li><Link to="/pricing" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Pricing & Memberships</Link></li>
+              <li><Link to="/about" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Project Philosophy</Link></li>
             </ul>
           </div>
 
-          {/* Categories */}
+          {/* Creator Tools */}
           <div>
-            <h4 style={{ color: '#fff', fontSize: 15, fontWeight: 700, marginBottom: 18 }}>Popular Genres</h4>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13.5 }}>
-              <li><Link to="/discover?category=Technology" style={{ color: '#94a3b8' }}>Technology & AI</Link></li>
-              <li><Link to="/discover?category=Business" style={{ color: '#94a3b8' }}>Business & Startups</Link></li>
-              <li><Link to="/discover?category=Psychology" style={{ color: '#94a3b8' }}>Psychology & Mindset</Link></li>
-              <li><Link to="/discover?category=Sport" style={{ color: '#94a3b8' }}>Sport & Fitness</Link></li>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16 }}>
+              Creator Hub
+            </div>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
+              <li><Link to="/login" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Host Dashboard</Link></li>
+              <li><Link to="/login" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Guest Dashboard</Link></li>
+              <li><Link to="/bookings" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Session Schedules</Link></li>
+              <li><Link to="/settings" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Studio Settings</Link></li>
             </ul>
           </div>
 
-          {/* Security & Studio */}
+          {/* Standards & Transparency */}
           <div>
-            <h4 style={{ color: '#fff', fontSize: 15, fontWeight: 700, marginBottom: 18 }}>Studio Trust</h4>
-            <p style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.6, marginBottom: 16 }}>
-              Payments held in trust until guest interview verification. AI show notes and automated live multi-track backups.
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fff', fontWeight: 600, fontSize: 13 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
-              All Systems Operational (48kHz WebRTC)
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16 }}>
+              Data & Ethics
             </div>
+            <p style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+              CastReach operates on 100% real community accounts. Listener stats and guest credentials are verified directly on the platform without pre-seeded mock personas.
+            </p>
           </div>
         </div>
 
+        {/* Bottom Bar */}
         <div style={{
-          borderTop: '1px solid #1a1c24',
-          paddingTop: 24,
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          paddingTop: 24,
+          borderTop: '1px solid var(--border-subtle)',
           fontSize: 12,
-          color: '#64748b',
+          color: 'var(--text-muted)',
           flexWrap: 'wrap',
           gap: 12,
         }}>
           <div>
-            © {new Date().getFullYear()} CastReach Podcast Studio Platform. All rights reserved.
+            &copy; {new Date().getFullYear()} CastReach Podcast Platform. All rights reserved.
           </div>
           <div style={{ display: 'flex', gap: 20 }}>
-            <Link to="/about" style={{ color: '#64748b' }}>Privacy Policy</Link>
-            <Link to="/about" style={{ color: '#64748b' }}>Terms of Service</Link>
-            <Link to="/about" style={{ color: '#64748b' }}>Security Whitepaper</Link>
+            <span>Verified Real Data</span>
+            <span>·</span>
+            <span>Google Meet & Studio Scheduling</span>
           </div>
         </div>
       </div>

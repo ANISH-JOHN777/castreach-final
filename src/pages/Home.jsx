@@ -5,13 +5,18 @@ import {
   Pause, 
   Radio, 
   Users, 
-  ShieldCheck, 
   ArrowRight,
   Headphones,
   CheckCircle2,
   Calendar,
   Sparkles,
-  Volume2
+  Volume2,
+  Compass,
+  Mic,
+  MapPin,
+  Video,
+  Shield,
+  Layers
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -20,649 +25,368 @@ import { useAudioPlayer } from '../context/AudioPlayerContext';
 export default function Home() {
   const navigate = useNavigate();
   const { currentTrack, isPlaying, playTrack } = useAudioPlayer();
-  const [showHowItWorksModal, setShowHowItWorksModal] = useState(false);
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [episodes, setEpisodes] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Top & Latest Podcasts matching Image 1
-  const initialPodcasts = [
-    {
-      id: 'track-9',
-      title: 'Product Designer',
-      episodes: '10 Episode',
-      duration: '100 minutes',
-      category: 'Design & UX',
-      host: 'Sarah Lin',
-      image: 'https://images.unsplash.com/photo-1581291518655-9523c9320e6b?auto=format&fit=crop&w=600&q=80',
-      description: 'Human-centered design, UI system architectures, design tokens, and user experience leadership.',
-    },
-    {
-      id: 'track-10',
-      title: 'Digital Marketing',
-      episodes: '40 Episode',
-      duration: '160 minutes',
-      category: 'Growth & Business',
-      host: 'Marcus Vance',
-      image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80',
-      description: 'Customer acquisition, content distribution playbooks, analytics frameworks, and brand strategy.',
-    },
-    {
-      id: 'track-2',
-      title: 'The AI Frontier',
-      episodes: '24 Episode',
-      duration: '180 minutes',
-      category: 'Artificial Intelligence',
-      host: 'Dr. Elena Rostova',
-      image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80',
-      description: 'Deep dives into artificial intelligence, LLMs, and quantum algorithms with leading computer scientists.',
-    },
-    {
-      id: 'track-4',
-      title: 'Startup Scaling Playbook',
-      episodes: '18 Episode',
-      duration: '140 minutes',
-      category: 'Venture & Startups',
-      host: 'Sophia Chen',
-      image: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=600&q=80',
-      description: 'Actionable insights for venture-backed founders building durable, high-growth technology companies.',
-    },
-  ];
-
-  const [podcasts, setPodcasts] = useState(initialPodcasts);
-
+  // Fetch real episodes from backend
   useEffect(() => {
     let isMounted = true;
-    fetch('/api/podcasts/episodes/discover?limit=8')
+    fetch('/api/podcasts/episodes/discover?limit=6')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (isMounted && data?.episodes?.length) {
-          const mapped = data.episodes.map((ep) => ({
-            id: ep.id || ep._id,
-            title: ep.title,
-            episodes: ep.podcast?.title || 'Premier Episode',
-            duration: `${Math.round((ep.duration || 1800) / 60)} minutes`,
-            category: ep.podcast?.category || ep.topics?.[0] || 'Technology',
-            host: ep.owner?.displayName || 'Host',
-            image: ep.podcast?.coverImage || 'https://images.unsplash.com/photo-1581291518655-9523c9320e6b?auto=format&fit=crop&w=600&q=80',
-            description: ep.description || ep.showNotes || 'CastReach premier podcast production episode.',
-          }));
-          setPodcasts(mapped);
+        if (isMounted && data?.episodes) {
+          setEpisodes(data.episodes);
+          setLoading(false);
         }
       })
-      .catch(() => {});
-    return () => {
-      isMounted = false;
-    };
+      .catch(() => {
+        if (isMounted) setLoading(false);
+      });
+    return () => { isMounted = false; };
   }, []);
 
-  const handlePlayPodcast = (pod) => {
+  const handlePlayEpisode = (ep) => {
     playTrack({
-      id: pod.id,
-      title: pod.title,
-      host: pod.host,
-      category: pod.category,
-      cover: pod.image,
-      duration: 3600,
-      currentTime: 120,
+      id: ep.id,
+      title: ep.title,
+      host: ep.owner?.displayName || 'Podcast Host',
+      coverImage: ep.podcast?.coverImage || '',
+      category: ep.podcast?.category || ep.topics?.[0] || 'Podcast',
+      audioUrl: ep.audioUrl,
     });
   };
 
+  const categories = ['All', 'Technology', 'Venture & Startups', 'Culture & Society', 'Design', 'Science'];
+
   return (
-    <div style={{ background: '#ffffff', minHeight: '100vh', color: '#0f172a', fontFamily: 'var(--font-body)' }}>
+    <div style={{ background: 'var(--bg-obsidian)', minHeight: '100vh', color: 'var(--text-primary)' }}>
       <Navbar />
 
-      {/* ── SECTION 1: HERO (EXACTLY MATCHING IMAGE 1) ────────────────────── */}
-      <section style={{ maxWidth: 1240, margin: '0 auto', padding: '36px 24px 60px' }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
-          gap: 28,
-          alignItems: 'stretch',
+      <main>
+        {/* ── HERO SECTION: Stacked "PODCAST / PODCAST" & Electric Arch (Images 1, 2 & 3) ── */}
+        <section style={{
+          position: 'relative',
+          padding: '60px 24px 80px',
+          overflow: 'hidden',
+          borderBottom: '1px solid var(--border-subtle)',
         }}>
-          {/* LEFT HERO CARD: Soft Cyan / Sky Blue */}
-          <div style={{
-            background: '#dcf2fd',
-            borderRadius: 28,
-            padding: '56px 48px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            position: 'relative',
-            overflow: 'hidden',
-          }}>
-            <h1 style={{
-              fontSize: 'clamp(38px, 5.2vw, 56px)',
-              fontWeight: 900,
-              lineHeight: 1.1,
-              letterSpacing: '-0.03em',
-              color: '#0f172a',
-              marginBottom: 20,
-            }}>
-              Find and listen <br />
-              your favorite <br />
-              podcast!
-            </h1>
+          {/* Subtle Grid Background */}
+          <div className="bg-grid-pattern" style={{
+            position: 'absolute',
+            inset: 0,
+            opacity: 0.6,
+            pointerEvents: 'none',
+          }} />
 
-            <p style={{
-              fontSize: 16,
-              lineHeight: 1.6,
-              color: '#475569',
-              maxWidth: 420,
-              marginBottom: 36,
-            }}>
-              The best podcast websites communicate a feel and make it easy for visitors to discover your podcast.
-            </p>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-              <Link
-                to="/discover"
-                style={{
-                  background: '#0f172a',
-                  color: '#ffffff',
-                  padding: '14px 28px',
-                  borderRadius: 9999,
-                  fontWeight: 700,
-                  fontSize: 15,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8,
-                }}
-              >
-                Start Listening
-              </Link>
-
-              <button
-                type="button"
-                onClick={() => setShowHowItWorksModal(true)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: '#0f172a',
-                  cursor: 'pointer',
-                  padding: '10px 16px',
-                }}
-              >
-                <div style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: '50%',
-                  background: '#0f172a',
-                  color: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                  <Play size={18} fill="#ffffff" style={{ marginLeft: 2 }} />
-                </div>
-                <span>How it's work</span>
-              </button>
-            </div>
-          </div>
-
-          {/* RIGHT HERO CARD: Vibrant Warm Yellow Card (matching Image 1) */}
-          <div style={{
-            background: '#ffc83b',
-            borderRadius: 28,
-            overflow: 'hidden',
-            position: 'relative',
-            minHeight: 460,
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'center',
-          }}>
-            <img
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=900&q=85"
-              alt="Podcast Host and Listener"
-              style={{
-                width: '100%',
-                height: '100%',
-                maxHeight: 520,
-                objectFit: 'cover',
-                objectPosition: 'center top',
-              }}
-            />
-
-            {/* Bottom floating badge */}
+          <div style={{ maxWidth: 1360, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+            {/* Top Micro-label */}
             <div style={{
-              position: 'absolute',
-              bottom: 24,
-              left: 24,
-              right: 24,
-              background: '#0f172a',
-              borderRadius: 18,
-              padding: '14px 20px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              color: '#ffffff',
+              marginBottom: 20,
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: 'var(--text-secondary)',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: '50%',
-                  background: '#2563eb',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--accent-lime)' }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-lime)' }} />
+                REAL-TIME MATCHMAKING & BROADCAST PLATFORM
+              </span>
+              <span>HOSTS · GUESTS · GOOGLE MEET · IN-PERSON</span>
+            </div>
+
+            {/* Huge Stacked Headline matching Image 1: "PODCAST" solid fill + "PODCAST" stroke outline */}
+            <div style={{ textAlign: 'center', marginBottom: 28 }}>
+              <h1 className="headline-huge" style={{ fontSize: 'clamp(3.5rem, 11vw, 9.5rem)', color: 'var(--accent-purple)', marginBottom: -10 }}>
+                PODCAST
+              </h1>
+              <h1 className="headline-huge headline-stroke" style={{ fontSize: 'clamp(3.5rem, 11vw, 9.5rem)' }}>
+                PODCAST
+              </h1>
+            </div>
+
+            {/* Central Stage Visual (Arch Backdrop + Featured Creator + CTA Overlay) */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(280px, 1fr) auto minmax(280px, 1fr)',
+              gap: 32,
+              alignItems: 'center',
+              maxWidth: 1200,
+              margin: '0 auto',
+            }}>
+              {/* Left Statement */}
+              <div>
+                <p style={{
+                  fontSize: 16,
+                  lineHeight: 1.6,
+                  color: 'var(--text-secondary)',
+                  maxWidth: 320,
+                  marginBottom: 24,
                 }}>
-                  <Headphones size={18} color="#fff" />
-                </div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700 }}>Studio Quality Audio</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8' }}>48kHz uncompressed local recording</div>
+                  Honest talks with industry leaders, founders, and experts. Match, schedule physical studio sessions or Google Meet video calls with zero friction.
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <Link to="/discover" className="btn-primary-lime" style={{ alignSelf: 'flex-start' }}>
+                    <Compass size={16} /> Discover Creators
+                  </Link>
+                  <Link to="/episodes" className="btn-ghost-dark" style={{ alignSelf: 'flex-start' }}>
+                    <Headphones size={16} /> Listen to Episodes
+                  </Link>
                 </div>
               </div>
 
+              {/* Center Arch Card (Directly inspired by Image 1 & 2) */}
               <div style={{
-                background: '#10b981',
-                color: '#fff',
-                fontSize: 11,
-                fontWeight: 700,
-                padding: '4px 10px',
-                borderRadius: 12,
+                position: 'relative',
+                width: 320,
+                height: 400,
                 display: 'flex',
-                alignItems: 'center',
-                gap: 5,
+                alignItems: 'flex-end',
+                justifyContent: 'center',
               }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />
-                LIVE
+                {/* Electric Purple Arch Background */}
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  borderRadius: '160px 160px 24px 24px',
+                  background: 'var(--accent-purple)',
+                  overflow: 'hidden',
+                }} />
+
+                {/* Creator Silhouette Image */}
+                <img
+                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=700&q=80"
+                  alt="Podcast Host & Creator"
+                  style={{
+                    position: 'relative',
+                    zIndex: 2,
+                    width: '92%',
+                    height: '92%',
+                    objectFit: 'cover',
+                    borderRadius: '140px 140px 18px 18px',
+                    filter: 'grayscale(25%)',
+                  }}
+                />
+
+                {/* Floating "PLAY PODCAST" Action Pill (Image 1 bottom-right) */}
+                <button
+                  onClick={() => {
+                    if (episodes.length > 0) handlePlayEpisode(episodes[0]);
+                  }}
+                  className="btn-primary-lime"
+                  style={{
+                    position: 'absolute',
+                    bottom: 18,
+                    zIndex: 3,
+                    padding: '10px 20px',
+                    fontSize: 13,
+                    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)',
+                  }}
+                >
+                  <Play size={14} fill="var(--text-dark)" /> Play Latest Episode
+                </button>
+              </div>
+
+              {/* Right Value Box (Host / Guest Dual Pathway) */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div className="bento-card" style={{ padding: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--accent-lime)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Radio size={16} color="var(--text-dark)" />
+                    </div>
+                    <strong style={{ fontSize: 14 }}>For Podcast Hosts</strong>
+                  </div>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                    Find qualified guest speakers, review prior appearances, and book in-studio or virtual sessions instantly.
+                  </p>
+                </div>
+
+                <div className="bento-card" style={{ padding: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--accent-purple)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Mic size={16} color="#ffffff" />
+                    </div>
+                    <strong style={{ fontSize: 14 }}>For Guest Speakers</strong>
+                  </div>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                    Get featured on top shows. Transparent host listener counts, show formats, and gear disclosures.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* ── TOP & LATEST PODCAST SECTION (MATCHING IMAGE 1) ──────────────── */}
-        <div style={{ marginTop: 64 }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 28,
-          }}>
+        {/* ── BENTO HIGHLIGHTS & PLATFORM CAPABILITIES (Images 2, 4 & 5) ── */}
+        <section style={{ padding: '80px 24px', maxWidth: 1360, margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 36 }}>
             <div>
-              <h2 style={{
-                fontSize: 26,
-                fontWeight: 800,
-                letterSpacing: '-0.02em',
-                color: '#0f172a',
-              }}>
-                Top & Latest Podcast
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-lime)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
+                CONNECTED WORKFLOW
+              </div>
+              <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>
+                Everything Needed to Record & Publish
               </h2>
-              <p style={{ fontSize: 14, color: '#64748b', marginTop: 4 }}>
-                Featured shows and episodes ready to stream
-              </p>
             </div>
-
-            <Link
-              to="/discover"
-              style={{
-                background: '#0f172a',
-                color: '#ffffff',
-                padding: '9px 20px',
-                borderRadius: 9999,
-                fontSize: 13,
-                fontWeight: 600,
-              }}
-            >
-              View More
+            <Link to="/about" className="btn-ghost-dark" style={{ fontSize: 13 }}>
+              Explore Project Details <ArrowRight size={14} />
             </Link>
           </div>
 
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-            gap: 22,
-          }}>
-            {podcasts.map((pod) => {
-              const isThisPlaying = isPlaying && currentTrack?.id === pod.id;
-              return (
-                <div
-                  key={pod.id}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
+            {/* Bento Card 1: Google Meet & In-Person Dual Scheduling */}
+            <div className="bento-card" style={{ padding: 28, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                  <span style={{ padding: '4px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 700, background: 'var(--color-success-bg)', color: 'var(--color-success)' }}>
+                    Virtual: Google Meet
+                  </span>
+                  <span style={{ padding: '4px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 700, background: 'rgba(59,130,246,0.15)', color: '#3b82f6' }}>
+                    Physical: Studio
+                  </span>
+                </div>
+                <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Dual-Mode Meeting Scheduling</h3>
+                <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  Connect remotely with automatic Google Meet rooms and calendar synchronization, or schedule in-person studio tapings with physical directions.
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
+                <Video size={16} color="var(--accent-lime)" />
+                <MapPin size={16} color="var(--accent-purple)" />
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Synchronized across Google Calendar</span>
+              </div>
+            </div>
+
+            {/* Bento Card 2: Mutual Profile Transparency */}
+            <div className="bento-card" style={{ padding: 28, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div>
+                <span style={{ padding: '4px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 700, background: 'rgba(124, 58, 237, 0.15)', color: 'var(--accent-purple)', display: 'inline-block', marginBottom: 16 }}>
+                  Real Data Transparency
+                </span>
+                <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Mutual Host & Guest Disclosure</h3>
+                <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  No mystery bookings. Guests see verified listener counts, show formats, and equipment. Hosts see speaker expertise, speaking topics, and past appearances.
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border-subtle)', fontSize: 12, color: 'var(--text-muted)' }}>
+                <Shield size={15} color="var(--accent-lime)" />
+                <span>Verified creator profiles with zero mock data</span>
+              </div>
+            </div>
+
+            {/* Bento Card 3: Cloud Studio Recording & Editing */}
+            <div className="bento-card" style={{ padding: 28, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div>
+                <span style={{ padding: '4px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 700, background: 'rgba(249, 115, 22, 0.15)', color: 'var(--accent-tangerine)', display: 'inline-block', marginBottom: 16 }}>
+                  Cloud Recording & Trimming
+                </span>
+                <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Post-Session Studio & Trimming</h3>
+                <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  Live multi-track audio capture, automated AI transcripts, and non-destructive EDL editing directly in your browser.
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border-subtle)', fontSize: 12, color: 'var(--text-muted)' }}>
+                <Layers size={15} color="var(--accent-tangerine)" />
+                <span>FFmpeg lossless video & audio processing</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── LATEST PUBLISHED EPISODES BENTO LIST (Image 4 Inspiration) ── */}
+        <section style={{ padding: '40px 24px 100px', maxWidth: 1360, margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-lime)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
+                COMMUNITY RELEASES
+              </div>
+              <h2 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Featured Episodes</h2>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
                   style={{
-                    background: '#ffffff',
-                    borderRadius: 20,
-                    overflow: 'hidden',
-                    border: '1px solid #e2e8f0',
-                    display: 'flex',
-                    flexDirection: 'column',
+                    padding: '6px 14px',
+                    borderRadius: 9999,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    border: '1px solid',
+                    borderColor: activeCategory === cat ? 'var(--accent-lime)' : 'var(--border-subtle)',
+                    background: activeCategory === cat ? 'var(--accent-lime)' : 'transparent',
+                    color: activeCategory === cat ? 'var(--text-dark)' : 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
                   }}
                 >
-                  <div style={{ height: 160, position: 'relative', overflow: 'hidden' }}>
-                    <img
-                      src={pod.image}
-                      alt={pod.title}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                    <div style={{
-                      position: 'absolute',
-                      top: 12,
-                      left: 12,
-                      background: 'rgba(15, 23, 42, 0.85)',
-                      color: '#fff',
-                      fontSize: 11,
-                      fontWeight: 600,
-                      padding: '4px 10px',
-                      borderRadius: 12,
-                    }}>
-                      {pod.category}
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Episode Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 20 }}>
+            {episodes.length > 0 ? (
+              episodes.map((ep) => (
+                <div key={ep.id} className="bento-card" style={{ padding: 20, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-lime)', background: 'rgba(203, 251, 69, 0.1)', padding: '2px 8px', borderRadius: 6 }}>
+                        {ep.podcast?.category || ep.topics?.[0] || 'Podcast'}
+                      </span>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                        {ep.duration ? `${Math.round(ep.duration / 60)} min` : '42 min'}
+                      </span>
                     </div>
+
+                    <h4 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: '#ffffff' }}>
+                      {ep.title}
+                    </h4>
+                    <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 14 }}>
+                      {ep.description ? (ep.description.length > 120 ? `${ep.description.slice(0, 120)}…` : ep.description) : 'An in-depth conversational episode exploring ideas and industry perspectives.'}
+                    </p>
                   </div>
 
-                  <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                    <h3 style={{ fontSize: 17, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>
-                      {pod.title}
-                    </h3>
-
-                    <div style={{ fontSize: 13, color: '#64748b', fontWeight: 500, marginBottom: 16 }}>
-                      {pod.episodes} • {pod.duration}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--accent-purple)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>
+                        {ep.owner?.displayName?.[0] || 'H'}
+                      </div>
+                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                        {ep.owner?.displayName || 'Podcast Host'}
+                      </span>
                     </div>
 
-                    <p style={{
-                      fontSize: 13,
-                      color: '#475569',
-                      lineHeight: 1.5,
-                      marginBottom: 20,
-                      flex: 1,
-                    }}>
-                      {pod.description}
-                    </p>
-
                     <button
-                      type="button"
-                      onClick={() => handlePlayPodcast(pod)}
-                      style={{
-                        background: isThisPlaying ? '#2563eb' : '#f1f5f9',
-                        color: isThisPlaying ? '#ffffff' : '#0f172a',
-                        border: 'none',
-                        padding: '10px 18px',
-                        borderRadius: 9999,
-                        fontSize: 13,
-                        fontWeight: 700,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        cursor: 'pointer',
-                        width: 'fit-content',
-                      }}
+                      onClick={() => handlePlayEpisode(ep)}
+                      className="btn-primary-lime"
+                      style={{ padding: '6px 14px', fontSize: 12 }}
                     >
-                      {isThisPlaying ? (
-                        <>
-                          <Pause size={14} fill="#ffffff" />
-                          <span>Playing Now</span>
-                        </>
-                      ) : (
-                        <>
-                          <Play size={14} fill="#0f172a" />
-                          <span>Listen Now</span>
-                        </>
-                      )}
+                      <Play size={13} fill="var(--text-dark)" /> Play
                     </button>
                   </div>
                 </div>
-              );
-            })}
+              ))
+            ) : (
+              <div style={{ gridColumn: '1 / -1', padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', background: 'var(--bg-surface)', borderRadius: 16 }}>
+                <Headphones size={32} color="var(--accent-lime)" style={{ margin: '0 auto 12px' }} />
+                <p style={{ margin: 0, fontSize: 14 }}>No episodes published yet. Explore creator profiles to match and schedule the first session.</p>
+                <Link to="/discover" className="btn-primary-lime" style={{ marginTop: 16, display: 'inline-flex' }}>
+                  Explore Creators
+                </Link>
+              </div>
+            )}
           </div>
-        </div>
-      </section>
-
-      {/* ── SECTION 2: PLATFORM CAPABILITIES ──────────────────────────────── */}
-      <section style={{
-        background: '#f8fafc',
-        borderTop: '1px solid #e2e8f0',
-        borderBottom: '1px solid #e2e8f0',
-        padding: '72px 24px',
-      }}>
-        <div style={{ maxWidth: 1240, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', maxWidth: 680, margin: '0 auto 52px' }}>
-            <span style={{
-              fontSize: 12,
-              fontWeight: 800,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              color: '#2563eb',
-            }}>
-              Complete Ecosystem
-            </span>
-            <h2 style={{
-              fontSize: 34,
-              fontWeight: 800,
-              letterSpacing: '-0.02em',
-              color: '#0f172a',
-              marginTop: 8,
-              marginBottom: 14,
-            }}>
-              Built for Podcast Hosts, Guests & Avid Listeners
-            </h2>
-            <p style={{ fontSize: 16, color: '#64748b', lineHeight: 1.6 }}>
-              Whether discovering top episodes or booking expert guests for your next interview, CastReach handles matching, recording, payments, and publishing.
-            </p>
-          </div>
-
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-            gap: 28,
-          }}>
-            <div style={{
-              background: '#ffffff',
-              borderRadius: 24,
-              padding: 36,
-              border: '1px solid #e2e8f0',
-            }}>
-              <div style={{
-                width: 48,
-                height: 48,
-                borderRadius: 14,
-                background: '#eff6ff',
-                color: '#2563eb',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 20,
-              }}>
-                <Users size={24} />
-              </div>
-              <h3 style={{ fontSize: 19, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>
-                Host & Guest Matchmaking
-              </h3>
-              <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6, marginBottom: 20 }}>
-                Find verified domain experts and established show hosts. Filter by topics, language, audience reach, and calendar availability.
-              </p>
-              <Link
-                to="/discover?tab=hosts"
-                style={{
-                  color: '#2563eb',
-                  fontWeight: 600,
-                  fontSize: 14,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                Browse Hosts & Guests <ArrowRight size={15} />
-              </Link>
-            </div>
-
-            <div style={{
-              background: '#ffffff',
-              borderRadius: 24,
-              padding: 36,
-              border: '1px solid #e2e8f0',
-            }}>
-              <div style={{
-                width: 48,
-                height: 48,
-                borderRadius: 14,
-                background: '#fef3c7',
-                color: '#d97706',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 20,
-              }}>
-                <Headphones size={24} />
-              </div>
-              <h3 style={{ fontSize: 19, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>
-                Studio Recording Room
-              </h3>
-              <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6, marginBottom: 20 }}>
-                Broadcast-grade WebRTC recording studio with separate participant tracks, real-time live captions, and automatic audio cloud backups.
-              </p>
-              <Link
-                to="/register"
-                style={{
-                  color: '#d97706',
-                  fontWeight: 600,
-                  fontSize: 14,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                Try Recording Studio <ArrowRight size={15} />
-              </Link>
-            </div>
-
-            <div style={{
-              background: '#ffffff',
-              borderRadius: 24,
-              padding: 36,
-              border: '1px solid #e2e8f0',
-            }}>
-              <div style={{
-                width: 48,
-                height: 48,
-                borderRadius: 14,
-                background: '#ecfdf5',
-                color: '#059669',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 20,
-              }}>
-                <ShieldCheck size={24} />
-              </div>
-              <h3 style={{ fontSize: 19, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>
-                Escrow Security & Reviews
-              </h3>
-              <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6, marginBottom: 20 }}>
-                Session fees are held in secure Stripe escrow until both parties finish recording. Verified reputation badges and authentic reviews.
-              </p>
-              <Link
-                to="/about"
-                style={{
-                  color: '#059669',
-                  fontWeight: 600,
-                  fontSize: 14,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                Learn How Escrow Works <ArrowRight size={15} />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── HOW IT WORKS MODAL ────────────────────────────────────────────── */}
-      {showHowItWorksModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.65)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: 24,
-        }}>
-          <div style={{
-            background: '#ffffff',
-            borderRadius: 28,
-            maxWidth: 580,
-            width: '100%',
-            padding: 36,
-            boxShadow: '0 24px 60px rgba(0, 0, 0, 0.25)',
-            position: 'relative',
-          }}>
-            <h3 style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', marginBottom: 12 }}>
-              How CastReach Works
-            </h3>
-            <p style={{ fontSize: 14, color: '#64748b', marginBottom: 24 }}>
-              Production workflow for podcast creators, guests, and listeners:
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 28 }}>
-              <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#0f172a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
-                  1
-                </div>
-                <div>
-                  <h4 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Discover or Match</h4>
-                  <p style={{ fontSize: 13, color: '#64748b' }}>Explore podcasts and stream episodes, or search verified hosts and guests by expertise.</p>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#0f172a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
-                  2
-                </div>
-                <div>
-                  <h4 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Schedule with Escrow</h4>
-                  <p style={{ fontSize: 13, color: '#64748b' }}>Pick an open time slot. Booking payments are securely escrowed with zero risk.</p>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#0f172a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
-                  3
-                </div>
-                <div>
-                  <h4 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Record in the Studio</h4>
-                  <p style={{ fontSize: 13, color: '#64748b' }}>Join the high-fidelity recording room with automated live captions and individual multi-track capture.</p>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#0f172a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
-                  4
-                </div>
-                <div>
-                  <h4 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Publish & Stream</h4>
-                  <p style={{ fontSize: 13, color: '#64748b' }}>Generate AI show notes, export RSS feeds, and stream directly to listeners.</p>
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setShowHowItWorksModal(false)}
-              style={{
-                width: '100%',
-                background: '#0f172a',
-                color: '#ffffff',
-                padding: '12px 24px',
-                borderRadius: 9999,
-                fontWeight: 700,
-                fontSize: 14,
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+        </section>
+      </main>
 
       <Footer />
     </div>

@@ -8,7 +8,9 @@ import {
   Repeat, 
   Heart,
   Volume2,
-  VolumeX
+  VolumeX,
+  Radio,
+  ExternalLink
 } from 'lucide-react';
 import { useAudioPlayer } from '../context/AudioPlayerContext';
 
@@ -35,10 +37,9 @@ export default function NowPlayingWidget() {
     setIsMuted,
   } = useAudioPlayer();
 
-  // Waveform amplitude bars (26 bars)
-  const [waveBars, setWaveBars] = useState(() =>
-    [24, 38, 52, 68, 45, 30, 60, 75, 40, 28, 65, 82, 50, 35, 70, 85, 48, 32, 58, 74, 42, 26, 62, 78, 44, 25]
-  );
+  const [waveBars, setWaveBars] = useState(() => [
+    28, 45, 60, 80, 50, 35, 65, 85, 42, 30, 70, 90, 55, 38, 75, 95, 52, 34, 62, 80, 44, 28, 68, 84, 46, 26
+  ]);
 
   useEffect(() => {
     if (isPlaying) {
@@ -68,267 +69,276 @@ export default function NowPlayingWidget() {
           Math.floor(Math.random() * 35) + 20,
           Math.floor(Math.random() * 60) + 30,
           Math.floor(Math.random() * 75) + 20,
-          Math.floor(Math.random() * 45) + 20,
-          Math.floor(Math.random() * 30) + 20,
+          Math.floor(Math.random() * 50) + 22,
+          Math.floor(Math.random() * 30) + 15,
         ]);
-      }, 140);
+      }, 150);
       return () => clearInterval(interval);
-    } else {
-      setWaveBars([
-        20, 30, 42, 50, 35, 25, 45, 55, 30, 22, 48, 60, 38, 28, 52, 62, 36, 26, 44, 54, 32, 22, 46, 56, 34, 20
-      ]);
     }
   }, [isPlaying]);
 
-  if (!currentTrack) return null;
-
-  const isFav = favorites.includes(currentTrack.id);
-  const progressRatio = duration > 0 ? currentTime / duration : 0;
-  const progressPercent = progressRatio * 100;
-
-  const handleSeek = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    seek(ratio * duration);
+  const activeTrack = currentTrack || {
+    id: 'default',
+    title: 'The Daily Recap',
+    host: 'Daily News Podcast',
+    coverImage: '',
+    category: 'Society & Culture'
   };
 
+  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 25;
+  const isFav = favorites?.includes(activeTrack.id);
+
   return (
-    <div
-      style={{
-        background: '#15161c',
-        borderRadius: 20,
-        padding: '18px 18px',
-        border: '1px solid #23252e',
-        color: '#f3f4f6',
-      }}
-    >
-      {/* Header */}
-      <div
-        style={{
+    <div style={{
+      position: 'fixed',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      zIndex: 90,
+      background: 'rgba(14, 14, 18, 0.95)',
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
+      borderTop: '1px solid var(--border-subtle)',
+      padding: '10px 24px',
+      display: 'grid',
+      gridTemplateColumns: '300px 1fr 280px',
+      alignItems: 'center',
+      gap: 20,
+      boxShadow: '0 -4px 24px rgba(0, 0, 0, 0.6)',
+    }}>
+      {/* Track Identification (Image 4 bottom left) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
+        <div style={{
+          width: 48,
+          height: 48,
+          borderRadius: 10,
+          background: 'var(--accent-tangerine)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 14,
-        }}
-      >
-        <span
-          style={{
-            fontSize: 11,
+          justifyContent: 'center',
+          flexShrink: 0,
+          boxShadow: '0 4px 12px rgba(255, 87, 34, 0.3)',
+          overflow: 'hidden',
+        }}>
+          {activeTrack.coverImage ? (
+            <img src={activeTrack.coverImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <Radio size={22} color="#ffffff" />
+          )}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{
+            fontSize: 14,
             fontWeight: 700,
-            letterSpacing: '0.08em',
-            color: '#6b7280',
-            textTransform: 'uppercase',
-          }}
-        >
-          NOW PLAYING
-        </span>
+            color: '#ffffff',
+            textOverflow: 'ellipsis',
+            overflow: 'hidden',
+            whiteSpace: 'nowrap',
+          }}>
+            {activeTrack.title}
+          </div>
+          <div style={{
+            fontSize: 12,
+            color: 'var(--text-secondary)',
+            textOverflow: 'ellipsis',
+            overflow: 'hidden',
+            whiteSpace: 'nowrap',
+          }}>
+            {activeTrack.host}
+          </div>
+        </div>
+
         <button
-          type="button"
-          onClick={() => toggleFavorite(currentTrack.id)}
+          onClick={() => toggleFavorite && toggleFavorite(activeTrack.id)}
           style={{
-            background: 'transparent',
+            background: 'none',
             border: 'none',
-            color: isFav ? '#ef4444' : '#6b7280',
+            color: isFav ? 'var(--accent-tangerine)' : 'var(--text-muted)',
             cursor: 'pointer',
             padding: 4,
-            display: 'flex',
-            alignItems: 'center',
+            marginLeft: 4,
+            transition: 'transform 0.15s ease',
           }}
-          title={isFav ? 'Remove from favorites' : 'Add to favorites'}
+          onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.85)')}
+          onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
         >
-          <Heart size={16} fill={isFav ? '#ef4444' : 'none'} />
+          <Heart size={16} fill={isFav ? 'var(--accent-tangerine)' : 'none'} />
         </button>
       </div>
 
-      {/* Track Artwork and Meta */}
-      <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 16 }}>
-        <div
-          style={{
-            width: 58,
-            height: 58,
-            borderRadius: 14,
-            overflow: 'hidden',
-            flexShrink: 0,
-            background: '#1e2029',
-          }}
-        >
-          <img
-            src={currentTrack.cover}
-            alt={currentTrack.title}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          />
+      {/* Center Controls & Waveform Progress (Image 4 center) */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, maxWidth: 640, margin: '0 auto', width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <button
+            onClick={() => setIsShuffle && setIsShuffle(!isShuffle)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: isShuffle ? 'var(--accent-lime)' : 'var(--text-muted)',
+              cursor: 'pointer',
+              padding: 4,
+            }}
+          >
+            <Shuffle size={14} />
+          </button>
+
+          <button
+            onClick={prevTrack}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              padding: 4,
+              transition: 'color 0.15s ease, transform 0.15s ease',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
+            onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.9)')}
+            onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+          >
+            <SkipBack size={16} />
+          </button>
+
+          {/* Central Play/Pause button */}
+          <button
+            onClick={togglePlay}
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: '50%',
+              background: 'var(--accent-lime)',
+              color: 'var(--text-dark)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: 'var(--shadow-lime)',
+              transition: 'transform 0.15s ease, background-color 0.15s ease',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.08)')}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+            onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.92)')}
+            onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+          >
+            {isPlaying ? (
+              <Pause size={17} strokeWidth={2.5} fill="var(--text-dark)" />
+            ) : (
+              <Play size={17} strokeWidth={2.5} fill="var(--text-dark)" style={{ marginLeft: 2 }} />
+            )}
+          </button>
+
+          <button
+            onClick={nextTrack}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              padding: 4,
+              transition: 'color 0.15s ease, transform 0.15s ease',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
+            onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.9)')}
+            onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+          >
+            <SkipForward size={16} />
+          </button>
+
+          <button
+            onClick={() => setIsRepeat && setIsRepeat(!isRepeat)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: isRepeat ? 'var(--accent-lime)' : 'var(--text-muted)',
+              cursor: 'pointer',
+              padding: 4,
+            }}
+          >
+            <Repeat size={14} />
+          </button>
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h4
+
+        {/* Progress bar + Waveform indicators */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
+          <span style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--text-muted)', minWidth: 36, textAlign: 'right' }}>
+            {formatTime ? formatTime(currentTime || 342) : '05:42'}
+          </span>
+
+          <div
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const pos = (e.clientX - rect.left) / rect.width;
+              if (seek && duration) seek(pos * duration);
+            }}
             style={{
-              fontSize: 13.5,
-              fontWeight: 600,
-              color: '#f3f4f6',
-              whiteSpace: 'nowrap',
+              flex: 1,
+              height: 4,
+              background: 'rgba(255, 255, 255, 0.12)',
+              borderRadius: 2,
+              cursor: 'pointer',
+              position: 'relative',
               overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              marginBottom: 4,
             }}
           >
-            {currentTrack.title}
-          </h4>
-          <p
-            style={{
-              fontSize: 12,
-              color: '#9ca3af',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            {currentTrack.host}
-          </p>
+            <div style={{
+              width: `${progressPercent}%`,
+              height: '100%',
+              background: 'linear-gradient(90deg, var(--accent-purple), var(--accent-lime))',
+              borderRadius: 2,
+              transition: 'width 0.1s linear',
+            }} />
+          </div>
+
+          <span style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--text-muted)', minWidth: 36 }}>
+            {formatTime ? formatTime(duration || 1320) : '22:00'}
+          </span>
         </div>
       </div>
 
-      {/* Waveform Audio Visualizer (matching Image 3) */}
-      <div
-        onClick={handleSeek}
-        style={{
-          height: 38,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 2.5,
-          cursor: 'pointer',
-          padding: '6px 0',
-          marginBottom: 6,
-        }}
-        title="Click anywhere to scrub playback"
-      >
-        {waveBars.map((height, i) => {
-          const barFraction = (i / waveBars.length) * 100;
-          const isPassed = barFraction <= progressPercent;
-          return (
+      {/* Right Waveform Spectrum & Volume (Image 4 bottom right) */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 14 }}>
+        {/* Animated Audio Equalizer Bars */}
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 22 }}>
+          {waveBars.slice(0, 16).map((h, i) => (
             <div
               key={i}
               style={{
-                flex: 1,
-                height: `${height}%`,
-                maxHeight: '100%',
-                background: isPassed ? '#3b82f6' : '#282a36',
-                borderRadius: 2,
-                transition: 'height 0.12s ease',
+                width: 2.5,
+                height: `${isPlaying ? h : 20}%`,
+                background: i % 2 === 0 ? 'var(--accent-lime)' : 'var(--accent-purple)',
+                borderRadius: 1,
+                transition: 'height 0.15s ease',
               }}
             />
-          );
-        })}
-      </div>
+          ))}
+        </div>
 
-      {/* Time indicators */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          fontSize: 11,
-          fontFamily: 'monospace',
-          color: '#6b7280',
-          marginBottom: 16,
-        }}
-      >
-        <span>{formatTime(currentTime)}</span>
-        <span>{formatTime(duration)}</span>
-      </div>
-
-      {/* Controls row matching Image 3 */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 4px',
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => setIsShuffle(!isShuffle)}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: isShuffle ? '#3b82f6' : '#6b7280',
-            cursor: 'pointer',
-            padding: 6,
-          }}
-          title="Shuffle"
-        >
-          <Shuffle size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={prevTrack}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: '#d1d5db',
-            cursor: 'pointer',
-            padding: 6,
-          }}
-          title="Previous"
-        >
-          <SkipBack size={18} />
-        </button>
-
-        {/* Clean solid circular Play/Pause button */}
-        <button
-          type="button"
-          onClick={togglePlay}
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: '50%',
-            background: '#ffffff',
-            color: '#0f1013',
-            border: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4)',
-          }}
-          title={isPlaying ? 'Pause' : 'Play'}
-        >
-          {isPlaying ? (
-            <Pause size={18} fill="#0f1013" />
-          ) : (
-            <Play size={18} fill="#0f1013" style={{ marginLeft: 2 }} />
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={nextTrack}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: '#d1d5db',
-            cursor: 'pointer',
-            padding: 6,
-          }}
-          title="Next"
-        >
-          <SkipForward size={18} />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setIsRepeat(!isRepeat)}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: isRepeat ? '#3b82f6' : '#6b7280',
-            cursor: 'pointer',
-            padding: 6,
-          }}
-          title="Repeat"
-        >
-          <Repeat size={15} />
-        </button>
+        {/* Volume Slider */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            onClick={() => setIsMuted && setIsMuted(!isMuted)}
+            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 2 }}
+          >
+            {isMuted || volume === 0 ? <VolumeX size={15} /> : <Volume2 size={15} />}
+          </button>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value={isMuted ? 0 : volume || 0.8}
+            onChange={(e) => setVolume && setVolume(parseFloat(e.target.value))}
+            style={{
+              width: 70,
+              accentColor: 'var(--accent-lime)',
+              cursor: 'pointer',
+              height: 3,
+            }}
+          />
+        </div>
       </div>
     </div>
   );

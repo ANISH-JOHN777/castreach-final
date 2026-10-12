@@ -9,6 +9,8 @@ const Home = lazy(() => import('./pages/Home'));
 const Explore = lazy(() => import('./pages/Explore'));
 const Shorts = lazy(() => import('./pages/Shorts'));
 const About = lazy(() => import('./pages/About'));
+const Episodes = lazy(() => import('./pages/Episodes'));
+const Pricing = lazy(() => import('./pages/Pricing'));
 const Login = lazy(() => import('./pages/auth/Login'));
 const Register = lazy(() => import('./pages/auth/Register'));
 
@@ -50,6 +52,8 @@ export default function App() {
       <Routes>
         {/* Public Experience Pages */}
         <Route path="/" element={<Home />} />
+        <Route path="/episodes" element={<Episodes />} />
+        <Route path="/pricing" element={<Pricing />} />
         <Route path="/explore" element={<Explore />} />
         <Route path="/shorts" element={<Shorts />} />
         <Route path="/about" element={<About />} />

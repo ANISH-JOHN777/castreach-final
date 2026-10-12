@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Radio, Mic, Headphones, LogOut, LayoutDashboard, User } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Radio, Mic, Headphones, LogOut, LayoutDashboard, User, Sparkles, Compass } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const getDashboardPath = () => {
     if (!user) return '/login';
@@ -14,182 +14,184 @@ export default function Navbar() {
     return '/guest';
   };
 
+  const navLinks = [
+    { label: 'HOME', to: '/' },
+    { label: 'EPISODES', to: '/episodes' },
+    { label: 'DISCOVER', to: '/discover' },
+    { label: 'ABOUT PROJECT', to: '/about' },
+    { label: 'PRICING', to: '/pricing' },
+  ];
+
   return (
     <header style={{
       position: 'sticky',
       top: 0,
       zIndex: 100,
-      background: 'rgba(255, 255, 255, 0.94)',
-      backdropFilter: 'blur(16px)',
-      borderBottom: '1px solid #eef2f6',
-      transition: 'all 0.2s',
+      background: 'rgba(8, 8, 10, 0.88)',
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
+      borderBottom: '1px solid var(--border-subtle)',
+      transition: 'all 0.2s ease',
     }}>
       <div style={{
-        maxWidth: 1240,
+        maxWidth: 1360,
         margin: '0 auto',
         padding: '0 24px',
-        height: 70,
+        height: 72,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
       }}>
-        {/* Brand Logo matching Image 1: Podcast antenna icon + "Podcast" */}
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+        {/* Brand Logo matching Image 1: Minimalist typography with Lime & Purple accents */}
+        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
           <div style={{
             width: 38,
             height: 38,
-            borderRadius: 12,
-            background: '#0f172a',
-            color: '#fff',
+            borderRadius: 10,
+            background: 'var(--accent-lime)',
+            color: 'var(--text-dark)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(15, 23, 42, 0.15)',
+            fontWeight: 900,
+            fontFamily: 'var(--font-display)',
+            fontSize: 20,
+            boxShadow: 'var(--shadow-lime)',
+            transition: 'transform 0.15s ease',
           }}>
-            <Radio size={20} color="#fff" />
+            <Radio size={20} strokeWidth={2.5} color="#08080a" />
           </div>
-          <div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
             <span style={{
               fontFamily: 'var(--font-display)',
-              fontWeight: 800,
-              fontSize: 21,
-              letterSpacing: '-0.02em',
-              color: '#0f172a',
+              fontWeight: 900,
+              fontSize: 22,
+              letterSpacing: '-0.03em',
+              color: '#ffffff',
             }}>
-              Podcast
+              CASTREACH
             </span>
             <span style={{
-              display: 'inline-block',
-              marginLeft: 6,
               fontSize: 10,
-              fontWeight: 700,
-              color: '#0284c7',
-              background: '#e0f2fe',
-              padding: '2px 6px',
-              borderRadius: 6,
-              verticalAlign: 'middle',
-              letterSpacing: '0.04em',
+              fontWeight: 800,
+              color: 'var(--accent-lime)',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
             }}>
-              CastReach
+              PODCAST
             </span>
           </div>
         </Link>
 
-        {/* Center Nav links matching Image 1: Features, Pricing, Blog, Support */}
+        {/* Center Nav links matching Image 1 header: HOME, EPISODES, ABOUT PROJECT, CLUB, PRICING */}
         <nav style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 32,
+          gap: 28,
         }}>
-          <Link
-            to="/discover"
-            style={{ fontWeight: 500, color: '#475569', fontSize: 14, transition: 'color 0.2s' }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = '#0f172a')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = '#475569')}
-          >
-            Features
-          </Link>
-          <Link
-            to="/about"
-            style={{ fontWeight: 500, color: '#475569', fontSize: 14, transition: 'color 0.2s' }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = '#0f172a')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = '#475569')}
-          >
-            Pricing
-          </Link>
-          <Link
-            to="/explore"
-            style={{ fontWeight: 500, color: '#475569', fontSize: 14, transition: 'color 0.2s' }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = '#0f172a')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = '#475569')}
-          >
-            Blog
-          </Link>
-          <Link
-            to="/shorts"
-            style={{ fontWeight: 500, color: '#475569', fontSize: 14, transition: 'color 0.2s' }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = '#0f172a')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = '#475569')}
-          >
-            Support
-          </Link>
+          {navLinks.map((item) => {
+            const isActive = location.pathname === item.to;
+            return (
+              <Link
+                key={item.label}
+                to={item.to}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  color: isActive ? 'var(--accent-lime)' : 'var(--text-secondary)',
+                  textDecoration: 'none',
+                  padding: '6px 0',
+                  position: 'relative',
+                  transition: 'color 0.15s ease',
+                }}
+                onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.color = '#ffffff'; }}
+                onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.color = 'var(--text-secondary)'; }}
+              >
+                {item.label}
+                {isActive && (
+                  <span style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: 2,
+                    background: 'var(--accent-lime)',
+                    borderRadius: 2,
+                  }} />
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
-        {/* Right Auth buttons matching Image 1: "Sign up" and "Log in" black pill button */}
+        {/* Right Action buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           {user ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <button
-                type="button"
-                onClick={() => navigate(getDashboardPath())}
-                style={{
-                  background: '#0f172a',
-                  color: '#fff',
-                  padding: '9px 18px',
-                  borderRadius: 9999,
-                  fontWeight: 600,
-                  fontSize: 13,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  boxShadow: '0 4px 14px rgba(15, 23, 42, 0.2)',
-                }}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Link
+                to={getDashboardPath()}
+                className="btn-ghost-dark"
+                style={{ padding: '8px 16px', fontSize: 13 }}
               >
                 <LayoutDashboard size={15} />
-                <span>Dashboard ({user.role})</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => logout().then(() => navigate('/'))}
+                Dashboard
+              </Link>
+
+              <Link
+                to={`/profile/${user._id || user.id}`}
                 style={{
-                  background: 'transparent',
-                  color: '#64748b',
-                  border: '1px solid #cbd5e1',
-                  padding: '8px 14px',
-                  borderRadius: 9999,
-                  fontWeight: 500,
-                  fontSize: 13,
-                  cursor: 'pointer',
+                  width: 38,
+                  height: 38,
+                  borderRadius: '50%',
+                  background: 'var(--accent-purple)',
+                  color: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 700,
+                  fontSize: 14,
+                  textDecoration: 'none',
+                  border: '2px solid rgba(255, 255, 255, 0.2)',
+                  overflow: 'hidden',
                 }}
-                title="Sign out"
+                title={user.name}
               >
-                <LogOut size={15} />
+                {user.avatar ? (
+                  <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  user.name?.[0]?.toUpperCase() || 'U'
+                )}
+              </Link>
+
+              <button
+                onClick={logout}
+                className="btn-ghost-dark"
+                style={{ padding: '8px', borderRadius: '50%', minWidth: 38, height: 38, justifyContent: 'center' }}
+                title="Log out"
+              >
+                <LogOut size={16} />
               </button>
             </div>
           ) : (
-            <>
-              <Link
-                to="/register"
-                style={{
-                  color: '#334155',
-                  fontWeight: 600,
-                  fontSize: 14,
-                  padding: '8px 16px',
-                  transition: 'color 0.2s',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = '#0f172a')}
-                onMouseLeave={(e) => (e.currentTarget.style.color = '#334155')}
-              >
-                Sign up
-              </Link>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <Link
                 to="/login"
-                style={{
-                  background: '#0f172a',
-                  color: '#ffffff',
-                  padding: '9px 22px',
-                  borderRadius: 9999,
-                  fontWeight: 700,
-                  fontSize: 14,
-                  boxShadow: '0 4px 14px rgba(15, 23, 42, 0.25)',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-1px)')}
-                onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
+                className="btn-ghost-dark"
+                style={{ padding: '8px 18px', fontSize: 13 }}
               >
-                Log in
+                Sign In
               </Link>
-            </>
+
+              <Link
+                to="/register"
+                className="btn-primary-lime"
+                style={{ padding: '9px 20px', fontSize: 13 }}
+              >
+                Get Started
+              </Link>
+            </div>
           )}
         </div>
       </div>
