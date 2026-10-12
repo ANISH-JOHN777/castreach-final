@@ -1,19 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Play, 
   Pause, 
-  Sparkles, 
-  Mic, 
-  Users, 
   Radio, 
-  Volume2, 
-  Calendar, 
+  Users, 
   ShieldCheck, 
-  Star, 
   ArrowRight,
   Headphones,
-  CheckCircle2
+  CheckCircle2,
+  Calendar,
+  Sparkles,
+  Volume2
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -21,7 +19,7 @@ import { useAudioPlayer } from '../context/AudioPlayerContext';
 
 export default function Home() {
   const navigate = useNavigate();
-  const { currentTrack, isPlaying, playTrack, togglePlay } = useAudioPlayer();
+  const { currentTrack, isPlaying, playTrack } = useAudioPlayer();
   const [showHowItWorksModal, setShowHowItWorksModal] = useState(false);
 
   // Top & Latest Podcasts matching Image 1
@@ -34,7 +32,7 @@ export default function Home() {
       category: 'Design & UX',
       host: 'Sarah Lin',
       image: 'https://images.unsplash.com/photo-1581291518655-9523c9320e6b?auto=format&fit=crop&w=600&q=80',
-      description: 'Human-centered design, UI system architectures, and design career growth.',
+      description: 'Human-centered design, UI system architectures, design tokens, and user experience leadership.',
     },
     {
       id: 'track-10',
@@ -44,7 +42,7 @@ export default function Home() {
       category: 'Growth & Business',
       host: 'Marcus Vance',
       image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80',
-      description: 'B2B SaaS growth tactics, demand generation, and organic inbound playbooks.',
+      description: 'Customer acquisition, content distribution playbooks, analytics frameworks, and brand strategy.',
     },
     {
       id: 'track-2',
@@ -54,7 +52,7 @@ export default function Home() {
       category: 'Artificial Intelligence',
       host: 'Dr. Elena Rostova',
       image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80',
-      description: 'Conversations with top neural engineers, LLM researchers, and quantum physicists.',
+      description: 'Deep dives into artificial intelligence, LLMs, and quantum algorithms with leading computer scientists.',
     },
     {
       id: 'track-4',
@@ -64,7 +62,7 @@ export default function Home() {
       category: 'Venture & Startups',
       host: 'Sophia Chen',
       image: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=600&q=80',
-      description: 'Zero to one milestones, venture funding secrets, and executive hiring lessons.',
+      description: 'Actionable insights for venture-backed founders building durable, high-growth technology companies.',
     },
   ];
 
@@ -81,11 +79,11 @@ export default function Home() {
   };
 
   return (
-    <div style={{ background: '#fdfdfd', minHeight: '100vh', color: '#111827', fontFamily: 'var(--font-body)' }}>
+    <div style={{ background: '#ffffff', minHeight: '100vh', color: '#0f172a', fontFamily: 'var(--font-body)' }}>
       <Navbar />
 
       {/* ── SECTION 1: HERO (EXACTLY MATCHING IMAGE 1) ────────────────────── */}
-      <section style={{ maxWidth: 1240, margin: '0 auto', padding: '40px 24px 60px' }}>
+      <section style={{ maxWidth: 1240, margin: '0 auto', padding: '36px 24px 60px' }}>
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
@@ -100,29 +98,11 @@ export default function Home() {
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
-            boxShadow: '0 10px 30px rgba(186, 230, 253, 0.45)',
             position: 'relative',
             overflow: 'hidden',
           }}>
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              background: 'rgba(255, 255, 255, 0.85)',
-              padding: '6px 14px',
-              borderRadius: 20,
-              fontSize: 12,
-              fontWeight: 700,
-              color: '#0284c7',
-              marginBottom: 28,
-              width: 'fit-content',
-              letterSpacing: '0.04em',
-            }}>
-              <Radio size={14} /> LIVE PODCAST MARKETPLACE & STUDIO
-            </div>
-
             <h1 style={{
-              fontSize: 'clamp(36px, 5vw, 56px)',
+              fontSize: 'clamp(38px, 5.2vw, 56px)',
               fontWeight: 900,
               lineHeight: 1.1,
               letterSpacing: '-0.03em',
@@ -157,11 +137,7 @@ export default function Home() {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 8,
-                  boxShadow: '0 8px 20px rgba(15, 23, 42, 0.25)',
-                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-2px)')}
-                onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
               >
                 Start Listening
               </Link>
@@ -191,8 +167,6 @@ export default function Home() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 4px 12px rgba(15, 23, 42, 0.2)',
-                  transition: 'transform 0.2s',
                 }}>
                   <Play size={18} fill="#ffffff" style={{ marginLeft: 2 }} />
                 </div>
@@ -201,7 +175,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* RIGHT HERO CARD: Vibrant Sunny Warm Yellow Card */}
+          {/* RIGHT HERO CARD: Vibrant Warm Yellow Card (matching Image 1) */}
           <div style={{
             background: '#ffc83b',
             borderRadius: 28,
@@ -211,12 +185,10 @@ export default function Home() {
             display: 'flex',
             alignItems: 'flex-end',
             justifyContent: 'center',
-            boxShadow: '0 12px 36px rgba(255, 200, 59, 0.4)',
           }}>
-            {/* Creator Photo with Headphones & Mug matching Image 1 */}
             <img
               src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=900&q=85"
-              alt="Podcast Host Listener"
+              alt="Podcast Host and Listener"
               style={{
                 width: '100%',
                 height: '100%',
@@ -226,21 +198,19 @@ export default function Home() {
               }}
             />
 
-            {/* Floating Live Indicator Badge */}
+            {/* Bottom floating badge */}
             <div style={{
               position: 'absolute',
               bottom: 24,
               left: 24,
               right: 24,
-              background: 'rgba(15, 23, 42, 0.85)',
-              backdropFilter: 'blur(12px)',
+              background: '#0f172a',
               borderRadius: 18,
               padding: '14px 20px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               color: '#ffffff',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{
@@ -256,7 +226,7 @@ export default function Home() {
                 </div>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 700 }}>Studio Quality Audio</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8' }}>48kHz uncompressed local tracks</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8' }}>48kHz uncompressed local recording</div>
                 </div>
               </div>
 
@@ -296,7 +266,7 @@ export default function Home() {
                 Top & Latest Podcast
               </h2>
               <p style={{ fontSize: 14, color: '#64748b', marginTop: 4 }}>
-                Curated episodes and professional interview sessions ready to stream
+                Featured shows and episodes ready to stream
               </p>
             </div>
 
@@ -309,7 +279,6 @@ export default function Home() {
                 borderRadius: 9999,
                 fontSize: 13,
                 fontWeight: 600,
-                transition: 'background 0.2s',
               }}
             >
               View More
@@ -331,18 +300,8 @@ export default function Home() {
                     borderRadius: 20,
                     overflow: 'hidden',
                     border: '1px solid #e2e8f0',
-                    boxShadow: '0 4px 18px rgba(0, 0, 0, 0.04)',
-                    transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                     display: 'flex',
                     flexDirection: 'column',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-4px)';
-                    e.currentTarget.style.boxShadow = '0 12px 28px rgba(0, 0, 0, 0.08)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 4px 18px rgba(0, 0, 0, 0.04)';
                   }}
                 >
                   <div style={{ height: 160, position: 'relative', overflow: 'hidden' }}>
@@ -355,8 +314,7 @@ export default function Home() {
                       position: 'absolute',
                       top: 12,
                       left: 12,
-                      background: 'rgba(15, 23, 42, 0.8)',
-                      backdropFilter: 'blur(8px)',
+                      background: 'rgba(15, 23, 42, 0.85)',
                       color: '#fff',
                       fontSize: 11,
                       fontWeight: 600,
@@ -393,7 +351,7 @@ export default function Home() {
                         background: isThisPlaying ? '#2563eb' : '#f1f5f9',
                         color: isThisPlaying ? '#ffffff' : '#0f172a',
                         border: 'none',
-                        padding: '10px 16px',
+                        padding: '10px 18px',
                         borderRadius: 9999,
                         fontSize: 13,
                         fontWeight: 700,
@@ -402,7 +360,6 @@ export default function Home() {
                         gap: 8,
                         cursor: 'pointer',
                         width: 'fit-content',
-                        transition: 'all 0.2s',
                       }}
                     >
                       {isThisPlaying ? (
@@ -425,15 +382,15 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── SECTION 2: DUAL MARKETPLACE & STUDIO SHOWCASE ─────────────────── */}
+      {/* ── SECTION 2: PLATFORM CAPABILITIES ──────────────────────────────── */}
       <section style={{
         background: '#f8fafc',
         borderTop: '1px solid #e2e8f0',
         borderBottom: '1px solid #e2e8f0',
-        padding: '80px 24px',
+        padding: '72px 24px',
       }}>
         <div style={{ maxWidth: 1240, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', maxWidth: 680, margin: '0 auto 56px' }}>
+          <div style={{ textAlign: 'center', maxWidth: 680, margin: '0 auto 52px' }}>
             <span style={{
               fontSize: 12,
               fontWeight: 800,
@@ -454,7 +411,7 @@ export default function Home() {
               Built for Podcast Hosts, Guests & Avid Listeners
             </h2>
             <p style={{ fontSize: 16, color: '#64748b', lineHeight: 1.6 }}>
-              Whether you want to discover trending audio or find expert guests for your next blockbuster show, CastReach handles matching, recording, payments, and publishing.
+              Whether discovering top episodes or booking expert guests for your next interview, CastReach handles matching, recording, payments, and publishing.
             </p>
           </div>
 
@@ -463,18 +420,16 @@ export default function Home() {
             gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
             gap: 28,
           }}>
-            {/* Pillar 1 */}
             <div style={{
               background: '#ffffff',
               borderRadius: 24,
               padding: 36,
               border: '1px solid #e2e8f0',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
             }}>
               <div style={{
-                width: 52,
-                height: 52,
-                borderRadius: 16,
+                width: 48,
+                height: 48,
+                borderRadius: 14,
                 background: '#eff6ff',
                 color: '#2563eb',
                 display: 'flex',
@@ -482,16 +437,16 @@ export default function Home() {
                 justifyContent: 'center',
                 marginBottom: 20,
               }}>
-                <Users size={26} />
+                <Users size={24} />
               </div>
-              <h3 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>
+              <h3 style={{ fontSize: 19, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>
                 Host & Guest Matchmaking
               </h3>
               <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6, marginBottom: 20 }}>
-                Find verified domain experts and top podcasters. Filter by topics, language, follower reach, and instant availability.
+                Find verified domain experts and established show hosts. Filter by topics, language, audience reach, and calendar availability.
               </p>
               <Link
-                to="/discover"
+                to="/discover?tab=hosts"
                 style={{
                   color: '#2563eb',
                   fontWeight: 600,
@@ -501,22 +456,20 @@ export default function Home() {
                   gap: 6,
                 }}
               >
-                Browse Podcasters & Guests <ArrowRight size={16} />
+                Browse Hosts & Guests <ArrowRight size={15} />
               </Link>
             </div>
 
-            {/* Pillar 2 */}
             <div style={{
               background: '#ffffff',
               borderRadius: 24,
               padding: 36,
               border: '1px solid #e2e8f0',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
             }}>
               <div style={{
-                width: 52,
-                height: 52,
-                borderRadius: 16,
+                width: 48,
+                height: 48,
+                borderRadius: 14,
                 background: '#fef3c7',
                 color: '#d97706',
                 display: 'flex',
@@ -524,9 +477,9 @@ export default function Home() {
                 justifyContent: 'center',
                 marginBottom: 20,
               }}>
-                <Mic size={26} />
+                <Headphones size={24} />
               </div>
-              <h3 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>
+              <h3 style={{ fontSize: 19, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>
                 Studio Recording Room
               </h3>
               <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6, marginBottom: 20 }}>
@@ -543,22 +496,20 @@ export default function Home() {
                   gap: 6,
                 }}
               >
-                Try Recording Studio <ArrowRight size={16} />
+                Try Recording Studio <ArrowRight size={15} />
               </Link>
             </div>
 
-            {/* Pillar 3 */}
             <div style={{
               background: '#ffffff',
               borderRadius: 24,
               padding: 36,
               border: '1px solid #e2e8f0',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
             }}>
               <div style={{
-                width: 52,
-                height: 52,
-                borderRadius: 16,
+                width: 48,
+                height: 48,
+                borderRadius: 14,
                 background: '#ecfdf5',
                 color: '#059669',
                 display: 'flex',
@@ -566,9 +517,9 @@ export default function Home() {
                 justifyContent: 'center',
                 marginBottom: 20,
               }}>
-                <ShieldCheck size={26} />
+                <ShieldCheck size={24} />
               </div>
-              <h3 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>
+              <h3 style={{ fontSize: 19, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>
                 Escrow Security & Reviews
               </h3>
               <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6, marginBottom: 20 }}>
@@ -585,14 +536,14 @@ export default function Home() {
                   gap: 6,
                 }}
               >
-                Learn How Escrow Works <ArrowRight size={16} />
+                Learn How Escrow Works <ArrowRight size={15} />
               </Link>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── SECTION 3: HOW IT WORKS MODAL ─────────────────────────────────── */}
+      {/* ── HOW IT WORKS MODAL ────────────────────────────────────────────── */}
       {showHowItWorksModal && (
         <div style={{
           position: 'fixed',
@@ -601,7 +552,7 @@ export default function Home() {
           right: 0,
           bottom: 0,
           background: 'rgba(0, 0, 0, 0.65)',
-          backdropFilter: 'blur(8px)',
+          backdropFilter: 'blur(4px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -614,19 +565,19 @@ export default function Home() {
             maxWidth: 580,
             width: '100%',
             padding: 36,
-            boxShadow: '0 24px 60px rgba(0, 0, 0, 0.3)',
+            boxShadow: '0 24px 60px rgba(0, 0, 0, 0.25)',
             position: 'relative',
           }}>
             <h3 style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', marginBottom: 12 }}>
               How CastReach Works
             </h3>
             <p style={{ fontSize: 14, color: '#64748b', marginBottom: 24 }}>
-              Step-by-step workflow for podcast creation and audio streaming:
+              Production workflow for podcast creators, guests, and listeners:
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 28 }}>
               <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#2563eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#0f172a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
                   1
                 </div>
                 <div>
@@ -636,7 +587,7 @@ export default function Home() {
               </div>
 
               <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#2563eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#0f172a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
                   2
                 </div>
                 <div>
@@ -646,7 +597,7 @@ export default function Home() {
               </div>
 
               <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#2563eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#0f172a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
                   3
                 </div>
                 <div>
@@ -656,12 +607,12 @@ export default function Home() {
               </div>
 
               <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#2563eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#0f172a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
                   4
                 </div>
                 <div>
                   <h4 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Publish & Stream</h4>
-                  <p style={{ fontSize: 13, color: '#64748b' }}>Generate AI show notes, export RSS feeds, and stream directly to thousands of listeners.</p>
+                  <p style={{ fontSize: 13, color: '#64748b' }}>Generate AI show notes, export RSS feeds, and stream directly to listeners.</p>
                 </div>
               </div>
             </div>
@@ -680,7 +631,7 @@ export default function Home() {
                 cursor: 'pointer',
               }}
             >
-              Got it, Let's Explore
+              Close
             </button>
           </div>
         </div>

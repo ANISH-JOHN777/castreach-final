@@ -280,13 +280,13 @@ export default function AIIntelligencePanel({
                     </span>
                   )}
                   {status === 'READY' && (
-                    <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 12, background: 'var(--color-success-bg)', color: 'var(--color-success)' }}>
-                      ✓ Ready
+                    <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 12, background: 'var(--color-success-bg)', color: 'var(--color-success)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <CheckCircle size={11} /> Ready
                     </span>
                   )}
                   {status === 'FAILED' && (
                     <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 12, background: 'var(--color-error-bg)', color: 'var(--color-error)' }}>
-                      ⚠️ Failed
+                      Failed
                     </span>
                   )}
                 </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Play, 
@@ -7,18 +7,17 @@ import {
   MoreVertical, 
   Share2, 
   Search, 
-  Sparkles, 
-  Mic2, 
   Calendar, 
-  Star, 
+  Clock, 
   Users, 
   Radio, 
-  Clock, 
-  Check, 
-  ExternalLink,
-  ChevronRight,
-  Flame,
-  Award
+  Activity,
+  Layers,
+  Sparkles,
+  Compass,
+  ArrowRight,
+  Headphones,
+  CheckCircle2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useAudioPlayer } from '../context/AudioPlayerContext';
@@ -30,23 +29,18 @@ export default function Discover() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { currentTrack, isPlaying, playTrack, favorites, toggleFavorite } = useAudioPlayer();
 
-  // Active filter state
   const initialCategory = searchParams.get('category') || 'New podcasts';
   const [selectedFilter, setSelectedFilter] = useState(initialCategory);
-  const [activeViewTab, setActiveViewTab] = useState(searchParams.get('tab') || 'episodes'); // 'episodes' | 'hosts' | 'trending'
 
-  // Booking Modal State
+  // Booking Modal
   const [selectedRecipient, setSelectedRecipient] = useState(null);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
 
-  // Server data state
+  // Live database data
   const [episodes, setEpisodes] = useState([]);
   const [hosts, setHosts] = useState([]);
   const [guests, setGuests] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  // Trending slide index
-  const [trendingSlide, setTrendingSlide] = useState(0);
 
   const filterTabs = [
     'New podcasts',
@@ -59,65 +53,63 @@ export default function Discover() {
     'All'
   ];
 
-  // Static rich episodes matching Images 2 & 3
-  const staticFeaturedEpisodes = [
+  // Professional Curated Episodes with real cover photography
+  const curatedEpisodes = [
     {
       id: 'track-3',
-      title: 'Healthy lifestyle: The search for harmony',
+      title: 'Healthy Lifestyle: The Search for Harmony',
       host: 'Liam Martinez',
       episodes: '12 episodes',
       category: 'Psychology',
-      iconType: 'heart',
-      color: '#ec4899',
-      duration: 1650,
       cover: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=400&q=80',
+      duration: 1650,
+      durationStr: '27:30',
+      themeColor: '#e11d48',
     },
     {
       id: 'track-4',
-      title: 'Investing in yourself',
+      title: 'Investing in Yourself',
       host: 'Noah Davis',
       episodes: '16 episodes',
       category: 'Business',
-      iconType: 'clock',
-      color: '#8b5cf6',
-      duration: 2280,
       cover: 'https://images.unsplash.com/photo-1553729459-efe14ef6055d?auto=format&fit=crop&w=400&q=80',
+      duration: 2280,
+      durationStr: '38:00',
+      themeColor: '#7c3aed',
     },
     {
       id: 'track-5',
-      title: 'How modern gadgets are changing our lives',
+      title: 'How Modern Gadgets Are Changing Our Lives',
       host: 'Jackson Brown',
       episodes: '10 episodes',
       category: 'Technology',
-      iconType: 'camera',
-      color: '#06b6d4',
-      duration: 1920,
       cover: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=400&q=80',
+      duration: 1920,
+      durationStr: '32:00',
+      themeColor: '#0284c7',
     },
     {
       id: 'track-1',
-      title: 'Psychological approaches to stress reduction',
+      title: 'Psychological Approaches to Stress Reduction',
       host: 'Liam Martinez',
       episodes: '8 episodes',
       category: 'Psychology',
-      iconType: 'heart',
-      color: '#3b82f6',
-      duration: 2040,
       cover: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=400&q=80',
+      duration: 2040,
+      durationStr: '34:00',
+      themeColor: '#2563eb',
     },
   ];
 
-  // Sport tracks from Image 2
-  const sportTracks = [
+  // Featured Category Tracks (matching Image 2)
+  const categoryTracks = [
     {
       id: 'track-6',
-      title: 'Proper diet',
+      title: 'Proper Diet & Metabolic Health',
       host: 'Andrius Peregorius',
       durationStr: '01:25',
       duration: 85,
       category: 'Sport',
-      icon: '🍎',
-      color: '#ea580c',
       cover: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=400&q=80',
     },
     {
@@ -127,52 +119,45 @@ export default function Discover() {
       durationStr: '01:05',
       duration: 65,
       category: 'Sport',
-      icon: '⚽',
-      color: '#2563eb',
       cover: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=400&q=80',
     },
     {
       id: 'track-8',
-      title: "Let's start on Monday",
+      title: "Let's Start on Monday",
       host: 'Robert Fox',
       durationStr: '00:12',
       duration: 720,
       category: 'Business',
-      icon: '📓',
-      color: '#059669',
       cover: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=400&q=80',
     },
   ];
 
-  // Featured 3 Cards from Image 2
+  // Featured 3 Cards (matching Image 2)
   const featuredCards = [
     {
       id: 'card-1',
       title: 'Sleep Magic',
       creator: 'Jessica Porter',
-      bg: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-      illustration: '🌙',
-      color: '#3b82f6',
+      bg: '#1e3a8a',
+      cover: 'https://images.unsplash.com/photo-1511295742362-92c96b124e52?auto=format&fit=crop&w=600&q=80',
     },
     {
       id: 'card-2',
       title: 'Work Appropriate',
-      creator: 'Crooked media',
-      bg: 'linear-gradient(135deg, #fbcfe8, #f472b6)',
-      illustration: '💻',
-      color: '#f43f5e',
+      creator: 'Crooked Media',
+      bg: '#831843',
+      cover: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=600&q=80',
     },
     {
       id: 'card-3',
-      title: 'Elizabeth the first',
+      title: 'Elizabeth the First',
       creator: 'Imperative Entertainment',
-      bg: 'linear-gradient(135deg, #bae6fd, #60a5fa)',
-      illustration: '⭐',
-      color: '#0284c7',
+      bg: '#0c4a6e',
+      cover: 'https://images.unsplash.com/photo-1447069387593-a5de0862481e?auto=format&fit=crop&w=600&q=80',
     },
   ];
 
-  // Fetch server data
+  // Fetch real data from server
   useEffect(() => {
     let isMounted = true;
     async function loadData() {
@@ -197,7 +182,7 @@ export default function Discover() {
           if (isMounted && guestData.guests) setGuests(guestData.guests);
         }
       } catch (err) {
-        console.warn('Discovery data fetch error:', err);
+        console.warn('Discovery fetch error:', err);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -208,8 +193,7 @@ export default function Discover() {
     };
   }, []);
 
-  // Filter episodes
-  const displayEpisodes = staticFeaturedEpisodes.filter((ep) => {
+  const displayEpisodes = curatedEpisodes.filter((ep) => {
     if (selectedFilter === 'All' || selectedFilter === 'New podcasts' || selectedFilter === 'Popular') {
       return true;
     }
@@ -227,31 +211,30 @@ export default function Discover() {
 
   return (
     <div style={{ maxWidth: 1040, margin: '0 auto', color: '#f3f4f6' }}>
-      {/* ── TOP SECTION: TRENDING HERO BANNER (MATCHING IMAGE 3) ────────── */}
+      {/* ── TRENDING PODCAST HERO (MATCHING IMAGE 3) ──────────────────────── */}
       <div style={{ marginBottom: 36 }}>
         <span
           style={{
             fontSize: 11,
             fontWeight: 700,
             letterSpacing: '0.08em',
-            color: '#9ca3af',
+            color: '#6b7280',
             textTransform: 'uppercase',
             display: 'block',
             marginBottom: 12,
           }}
         >
-          Trending Podcast
+          TRENDING PODCAST
         </span>
 
         <div
           style={{
-            background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 60%, #3b82f6 100%)',
+            background: '#1d4ed8',
             borderRadius: 24,
             padding: '36px 40px',
             color: '#fff',
             position: 'relative',
             overflow: 'hidden',
-            boxShadow: '0 16px 40px rgba(37, 99, 235, 0.35)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -262,13 +245,12 @@ export default function Discover() {
             <div
               style={{
                 display: 'inline-block',
-                background: 'rgba(255, 255, 255, 0.2)',
-                backdropFilter: 'blur(8px)',
+                background: 'rgba(255, 255, 255, 0.16)',
                 padding: '4px 12px',
                 borderRadius: 20,
                 fontSize: 11,
                 fontWeight: 600,
-                marginBottom: 16,
+                marginBottom: 14,
                 letterSpacing: '0.02em',
               }}
             >
@@ -277,10 +259,10 @@ export default function Discover() {
 
             <h2
               style={{
-                fontSize: 'clamp(24px, 3.5vw, 36px)',
+                fontSize: 'clamp(26px, 3.5vw, 36px)',
                 fontWeight: 800,
                 lineHeight: 1.15,
-                marginBottom: 14,
+                marginBottom: 10,
                 letterSpacing: '-0.02em',
               }}
             >
@@ -289,7 +271,7 @@ export default function Discover() {
             </h2>
 
             <p style={{ fontSize: 13, color: 'rgba(255, 255, 255, 0.85)', marginBottom: 20 }}>
-              Ethan Anderson • Global perspectives & deep tech transformations
+              Ethan Anderson • Global perspectives & technological solutions
             </p>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -318,7 +300,6 @@ export default function Discover() {
                   gap: 8,
                   cursor: 'pointer',
                   border: 'none',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
                 }}
               >
                 <Play size={14} fill="#0f1013" /> Play Now
@@ -334,9 +315,9 @@ export default function Discover() {
                   })
                 }
                 style={{
-                  background: 'rgba(255, 255, 255, 0.15)',
+                  background: 'rgba(255, 255, 255, 0.12)',
                   color: '#ffffff',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
                   padding: '9px 18px',
                   borderRadius: 9999,
                   fontWeight: 600,
@@ -348,38 +329,31 @@ export default function Discover() {
               </button>
             </div>
 
-            {/* Slider Dots matching Image 3 */}
-            <div style={{ display: 'flex', gap: 6, marginTop: 24 }}>
-              <span style={{ width: 22, height: 4, borderRadius: 2, background: '#ffffff' }} />
+            {/* Slider Dots */}
+            <div style={{ display: 'flex', gap: 6, marginTop: 22 }}>
+              <span style={{ width: 20, height: 4, borderRadius: 2, background: '#ffffff' }} />
               <span style={{ width: 6, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.4)' }} />
               <span style={{ width: 6, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.4)' }} />
             </div>
           </div>
 
-          {/* Right illustration / graphic */}
+          {/* Right artwork image */}
           <div
             style={{
+              width: 170,
+              height: 170,
+              borderRadius: 20,
+              overflow: 'hidden',
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
               position: 'relative',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              paddingRight: 20,
+              flexShrink: 0,
             }}
           >
-            <div
-              style={{
-                width: 180,
-                height: 180,
-                borderRadius: '50%',
-                background: 'rgba(255, 255, 255, 0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 72,
-              }}
-            >
-              🎙️
-            </div>
+            <img
+              src="https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=400&q=80"
+              alt="Episode Cover"
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
           </div>
         </div>
       </div>
@@ -402,48 +376,56 @@ export default function Discover() {
                   title: card.title,
                   host: card.creator,
                   category: 'Featured',
-                  cover: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=400&q=80',
+                  cover: card.cover,
                   duration: 1800,
-                  currentTime: 100,
+                  currentTime: 0,
                 })
               }
               style={{
                 background: card.bg,
                 borderRadius: 22,
-                padding: '24px 26px',
+                padding: '24px 24px',
                 minHeight: 180,
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
                 cursor: 'pointer',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                position: 'relative',
+                overflow: 'hidden',
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-4px)')}
-              onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <span style={{ fontSize: 32 }}>{card.illustration}</span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    color: 'rgba(255, 255, 255, 0.75)',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  Featured Show
+                </span>
                 <div
                   style={{
-                    width: 32,
-                    height: 32,
+                    width: 34,
+                    height: 34,
                     borderRadius: '50%',
-                    background: 'rgba(255,255,255,0.2)',
+                    background: 'rgba(255, 255, 255, 0.2)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Play size={14} fill="#fff" color="#fff" />
+                  <Play size={14} fill="#fff" color="#fff" style={{ marginLeft: 2 }} />
                 </div>
               </div>
 
               <div>
-                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>
+                <span style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.8)', fontWeight: 500 }}>
                   {card.creator}
                 </span>
-                <h3 style={{ fontSize: 20, fontWeight: 800, color: '#fff', marginTop: 2 }}>
+                <h3 style={{ fontSize: 19, fontWeight: 800, color: '#fff', marginTop: 3 }}>
                   {card.title}
                 </h3>
               </div>
@@ -452,14 +434,14 @@ export default function Discover() {
         </div>
       </div>
 
-      {/* ── SECTION: YOU MIGHT LIKE (MATCHING IMAGE 2 & 3) ────────────────── */}
+      {/* ── YOU MIGHT LIKE (MATCHING IMAGES 2 & 3) ───────────────────────── */}
       <div style={{ marginBottom: 44 }}>
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            marginBottom: 18,
+            marginBottom: 16,
           }}
         >
           <h3 style={{ fontSize: 18, fontWeight: 700, color: '#f3f4f6' }}>You might like</h3>
@@ -470,7 +452,7 @@ export default function Discover() {
               background: 'transparent',
               border: 'none',
               fontSize: 12,
-              color: '#9ca3af',
+              color: '#6b7280',
               cursor: 'pointer',
             }}
           >
@@ -478,11 +460,11 @@ export default function Discover() {
           </button>
         </div>
 
-        {/* Filter Pills Tabs (matching Image 2 & 3) */}
+        {/* Clean Filter Pills Tabs */}
         <div
           style={{
             display: 'flex',
-            gap: 10,
+            gap: 8,
             overflowX: 'auto',
             paddingBottom: 6,
             marginBottom: 20,
@@ -497,17 +479,17 @@ export default function Discover() {
                 type="button"
                 onClick={() => setSelectedFilter(tab)}
                 style={{
-                  background: isActive ? '#ffffff' : '#1c1d24',
+                  background: isActive ? '#ffffff' : '#181920',
                   color: isActive ? '#0f1013' : '#9ca3af',
                   padding: '7px 16px',
                   borderRadius: 9999,
                   fontSize: 12.5,
                   fontWeight: 600,
-                  border: 'none',
+                  border: '1px solid',
+                  borderColor: isActive ? '#ffffff' : '#23252e',
                   cursor: 'pointer',
                   whiteSpace: 'nowrap',
                   transition: 'all 0.15s ease',
-                  boxShadow: isActive ? '0 2px 8px rgba(255,255,255,0.2)' : 'none',
                 }}
               >
                 {tab}
@@ -526,86 +508,33 @@ export default function Discover() {
               <div
                 key={ep.id}
                 style={{
-                  background: '#16171d',
+                  background: '#15161c',
                   borderRadius: 18,
                   padding: '14px 20px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   border: '1px solid #23252e',
-                  transition: 'background 0.2s, transform 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#1c1e26';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#16171d';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  transition: 'background 0.2s',
                 }}
               >
-                {/* Left: Custom Illustration Icon + Titles */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0, flex: 1 }}>
-                  {/* Icon Card matching Image 3 (Pink heart, Purple clock, Camera) */}
+                  {/* Clean Artwork Thumbnail */}
                   <div
                     style={{
                       width: 52,
                       height: 52,
                       borderRadius: 14,
                       background: '#23252e',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                      position: 'relative',
                       overflow: 'hidden',
+                      flexShrink: 0,
                     }}
                   >
-                    {ep.iconType === 'heart' && (
-                      <div
-                        style={{
-                          width: 34,
-                          height: 34,
-                          borderRadius: 8,
-                          background: '#ec4899',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <Heart size={18} fill="#fff" color="#fff" />
-                      </div>
-                    )}
-                    {ep.iconType === 'clock' && (
-                      <div
-                        style={{
-                          width: 34,
-                          height: 34,
-                          borderRadius: 8,
-                          background: '#8b5cf6',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <Clock size={18} color="#fff" />
-                      </div>
-                    )}
-                    {ep.iconType === 'camera' && (
-                      <div
-                        style={{
-                          width: 34,
-                          height: 34,
-                          borderRadius: 8,
-                          background: '#06b6d4',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <Radio size={18} color="#fff" />
-                      </div>
-                    )}
+                    <img
+                      src={ep.cover}
+                      alt={ep.title}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
                   </div>
 
                   <div style={{ minWidth: 0, flex: 1 }}>
@@ -628,8 +557,8 @@ export default function Discover() {
                   </div>
                 </div>
 
-                {/* Right Actions: Play, Like, More */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                {/* Right Actions */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <button
                     type="button"
                     onClick={() =>
@@ -647,14 +576,13 @@ export default function Discover() {
                       width: 36,
                       height: 36,
                       borderRadius: '50%',
-                      background: isPlayingThis ? '#3b82f6' : '#23252e',
+                      background: isPlayingThis ? '#2563eb' : '#23252e',
                       color: '#fff',
                       border: 'none',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: 'pointer',
-                      transition: 'all 0.15s',
                     }}
                     title={isPlayingThis ? 'Pause' : 'Play'}
                   >
@@ -675,22 +603,8 @@ export default function Discover() {
                       cursor: 'pointer',
                       padding: 6,
                     }}
-                    title="Like"
                   >
                     <Heart size={18} fill={isFav ? '#ef4444' : 'none'} />
-                  </button>
-
-                  <button
-                    type="button"
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#6b7280',
-                      cursor: 'pointer',
-                      padding: 6,
-                    }}
-                  >
-                    <MoreVertical size={16} />
                   </button>
                 </div>
               </div>
@@ -699,7 +613,7 @@ export default function Discover() {
         </div>
       </div>
 
-      {/* ── SECTION: SPORT / TRACK LIST (MATCHING IMAGE 2) ────────────────── */}
+      {/* ── SPORT & RECENT TRACKS (MATCHING IMAGE 2) ──────────────────────── */}
       <div style={{ marginBottom: 44 }}>
         <div
           style={{
@@ -709,18 +623,18 @@ export default function Discover() {
             marginBottom: 16,
           }}
         >
-          <h3 style={{ fontSize: 18, fontWeight: 700, color: '#f3f4f6' }}>Sport & Fitness</h3>
-          <span style={{ fontSize: 12, color: '#9ca3af' }}>See all</span>
+          <h3 style={{ fontSize: 18, fontWeight: 700, color: '#f3f4f6' }}>Sport</h3>
+          <span style={{ fontSize: 12, color: '#6b7280' }}>See all</span>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {sportTracks.map((track) => {
+          {categoryTracks.map((track) => {
             const isPlayingThis = isPlaying && currentTrack?.id === track.id;
             return (
               <div
                 key={track.id}
                 style={{
-                  background: '#16171d',
+                  background: '#15161c',
                   borderRadius: 16,
                   padding: '12px 18px',
                   display: 'flex',
@@ -761,17 +675,18 @@ export default function Discover() {
 
                   <div
                     style={{
-                      width: 42,
-                      height: 42,
+                      width: 40,
+                      height: 40,
                       borderRadius: 10,
+                      overflow: 'hidden',
                       background: '#23252e',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 20,
                     }}
                   >
-                    {track.icon}
+                    <img
+                      src={track.cover}
+                      alt={track.title}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
                   </div>
 
                   <div>
@@ -803,7 +718,7 @@ export default function Discover() {
         </div>
       </div>
 
-      {/* ── SECTION: HOST & GUEST MATCHING MARKETPLACE ───────────────────── */}
+      {/* ── PODCAST HOSTS & GUESTS (REAL DATA) ────────────────────────────── */}
       <div style={{ marginBottom: 40 }}>
         <div
           style={{
@@ -815,10 +730,10 @@ export default function Discover() {
         >
           <div>
             <h3 style={{ fontSize: 18, fontWeight: 700, color: '#f3f4f6' }}>
-              🎙️ Podcast Hosts & Guests to Book
+              Podcast Hosts & Guests
             </h3>
-            <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>
-              Connect directly with verified show hosts and guest speakers for upcoming recordings
+            <p style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+              Verified show hosts and guest speakers ready for recording sessions
             </p>
           </div>
         </div>
@@ -834,7 +749,7 @@ export default function Discover() {
             <div
               key={h.id}
               style={{
-                background: '#16171d',
+                background: '#15161c',
                 borderRadius: 20,
                 padding: '20px',
                 border: '1px solid #23252e',
@@ -847,14 +762,11 @@ export default function Discover() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
                   <div
                     style={{
-                      width: 50,
-                      height: 50,
+                      width: 48,
+                      height: 48,
                       borderRadius: '50%',
                       background: '#2563eb',
                       overflow: 'hidden',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
                     }}
                   >
                     <img
@@ -873,8 +785,8 @@ export default function Discover() {
                     <span
                       style={{
                         fontSize: 11,
-                        color: '#3b82f6',
-                        background: 'rgba(59, 130, 246, 0.12)',
+                        color: '#60a5fa',
+                        background: 'rgba(37, 99, 235, 0.15)',
                         padding: '2px 8px',
                         borderRadius: 10,
                         fontWeight: 600,
@@ -886,7 +798,7 @@ export default function Discover() {
                 </div>
 
                 <p style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.5, marginBottom: 16 }}>
-                  {h.bio || 'Experienced podcast host and tech interviewer.'}
+                  {h.bio || 'Verified podcast host and technology interviewer.'}
                 </p>
 
                 {h.expertise && h.expertise.length > 0 && (
@@ -896,7 +808,7 @@ export default function Discover() {
                         key={idx}
                         style={{
                           fontSize: 11,
-                          background: '#23252e',
+                          background: '#1f2129',
                           color: '#d1d5db',
                           padding: '3px 8px',
                           borderRadius: 6,
@@ -954,7 +866,7 @@ export default function Discover() {
         </div>
       </div>
 
-      {/* ── CREATE BOOKING MODAL ─────────────────────────────────────────── */}
+      {/* Booking Modal */}
       {isBookingOpen && (
         <CreateBookingModal
           isOpen={isBookingOpen}

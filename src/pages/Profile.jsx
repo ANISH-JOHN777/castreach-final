@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Star, Radio, CheckCircle2, ExternalLink, MessageSquare } from 'lucide-react';
+import { Star, Radio, CheckCircle2, ExternalLink, MessageSquare, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AvailabilityPicker from '../components/AvailabilityPicker';
 import BadgeDisplay from '../components/BadgeDisplay';
@@ -213,7 +213,9 @@ export default function Profile() {
             {msgNotice && (
               <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'var(--lavender-mist)', border: '1px solid var(--border-subtle)', color: 'var(--plum-deep)', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span>{msgNotice}</span>
-                <button onClick={() => setMsgNotice('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 14, padding: '0 4px' }}>✕</button>
+                <button onClick={() => setMsgNotice('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', padding: '0 4px' }}>
+                  <X size={14} />
+                </button>
               </div>
             )}
 

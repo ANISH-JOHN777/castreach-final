@@ -337,7 +337,9 @@ export default function AdminDashboard() {
           justify: 'space-between',
         }}>
           <span>{actionMessage.text}</span>
-          <button onClick={() => setActionMessage({ type: '', text: '' })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}>✕</button>
+          <button onClick={() => setActionMessage({ type: '', text: '' })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', display: 'flex', alignItems: 'center' }}>
+            <X size={16} />
+          </button>
         </div>
       )}
 
@@ -690,7 +692,7 @@ function PaymentsTab({ bookings, onRelease, onRefund, actionLoading }) {
                   </span>
                 </td>
                 <td style={{ padding: '10px 12px', fontSize: 11, color: 'var(--color-text-secondary)' }}>
-                  Host: {b.hostConfirmedCompletion ? '✓' : '✗'} | Guest: {b.guestConfirmedCompletion ? '✓' : '✗'}
+                  Host: {b.hostConfirmedCompletion ? 'Yes' : 'No'} | Guest: {b.guestConfirmedCompletion ? 'Yes' : 'No'}
                 </td>
                 <td style={{ padding: '10px 12px', textAlign: 'right' }}>
                   {b.paymentStatus === 'held' && (

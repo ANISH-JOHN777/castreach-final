@@ -20,13 +20,13 @@ const AIJob = require('../models/AIJob');
 const Dispute = require('../models/Dispute');
 
 /**
- * Idempotent CastReach Demo Seeding Script
- * Safely seeds demonstration data for investor evaluation without duplicating records.
+ * Idempotent CastReach Seeding Script
+ * Seeds production-grade dataset for realistic evaluation and testing.
  */
 async function seedDemoData() {
   const isDemo = process.env.APP_ENV === 'demo' || process.env.NODE_ENV !== 'production';
   if (!isDemo) {
-    console.error('ERROR: Demo seed script is forbidden in production environment.');
+    console.error('ERROR: Seed script is forbidden in production environment.');
     process.exit(1);
   }
 
@@ -38,7 +38,7 @@ async function seedDemoData() {
       const { MongoMemoryReplSet } = require('mongodb-memory-server');
       mongodInstance = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
       mongoUri = mongodInstance.getUri();
-      console.log('[Seed] Created MongoMemoryReplSet instance for demo transaction compatibility.');
+      console.log('[Seed] Created MongoMemoryReplSet instance.');
     }
     try {
       await mongoose.connect(mongoUri, {
@@ -61,52 +61,103 @@ async function seedDemoData() {
     }
   }
 
-  console.log('[Seed] Connected to MongoDB. Commencing idempotent seed...');
+  console.log('[Seed] Connected to MongoDB. Commencing seed...');
 
   const passwordHash = await bcrypt.hash('password123', 10);
   const tenantId = 'castreach';
 
-  // ── 1. DEMO USERS ─────────────────────────────────────────────────────────
-  const adminData = {
-    name: 'CastReach Admin',
-    email: 'demo.admin@castreach.demo',
-    password: passwordHash,
-    role: 'admin',
-    tenantId,
-    isOnboarded: true,
-  };
-  const adminUser = await User.findOneAndUpdate({ email: adminData.email }, adminData, { upsert: true, new: true });
+  // ── 1. USERS ─────────────────────────────────────────────────────────
+  const adminUsers = [
+    {
+      name: 'Alexander Wright',
+      email: 'admin@castreach.com',
+      password: passwordHash,
+      role: 'admin',
+      profilePicture: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=300&q=80',
+      tenantId,
+      isOnboarded: true,
+    },
+    {
+      name: 'Alexander Wright',
+      email: 'demo.admin@castreach.demo',
+      password: passwordHash,
+      role: 'admin',
+      profilePicture: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=300&q=80',
+      tenantId,
+      isOnboarded: true,
+    }
+  ];
+  for (const adm of adminUsers) {
+    await User.findOneAndUpdate({ email: adm.email }, adm, { upsert: true, new: true });
+  }
 
   const hostsData = [
+    {
+      name: 'Dr. Elena Rostova',
+      email: 'elena.rostova@castreach.com',
+      password: passwordHash,
+      role: 'host',
+      podcastName: 'The AI & Quantum Frontier',
+      podcastUrl: 'https://castreach.com/podcasts/ai-frontier',
+      expertise: ['Artificial Intelligence', 'Quantum Computing', 'Machine Learning'],
+      bio: 'Host of The AI Frontier. Interviewing world leaders in AI, cognitive architecture, and deep tech.',
+      sessionRateCents: 15000,
+      avgRating: 4.95,
+      totalReviews: 24,
+      badges: ['top_rated', 'superhost'],
+      profilePicture: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
+      tenantId,
+      isOnboarded: true,
+    },
+    {
+      name: 'Marcus Vance',
+      email: 'marcus.vance@castreach.com',
+      password: passwordHash,
+      role: 'host',
+      podcastName: 'Startup Scaling Playbook',
+      podcastUrl: 'https://castreach.com/podcasts/startup-playbook',
+      expertise: ['Venture Capital', 'SaaS Scaling', 'Product Strategy'],
+      bio: 'Serial entrepreneur and host discussing B2B SaaS growth tactics, unit economics, and go-to-market engines.',
+      sessionRateCents: 12000,
+      avgRating: 4.88,
+      totalReviews: 18,
+      badges: ['top_rated'],
+      profilePicture: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=300&q=80',
+      tenantId,
+      isOnboarded: true,
+    },
+    {
+      name: 'Sophia Chen',
+      email: 'sophia.chen@castreach.com',
+      password: passwordHash,
+      role: 'host',
+      podcastName: 'Cybersecurity Deep Dive',
+      podcastUrl: 'https://castreach.com/podcasts/cybersecurity-deep-dive',
+      expertise: ['Cybersecurity', 'Cloud Infrastructure', 'Zero Trust'],
+      bio: 'CISSP security researcher breaking down enterprise cloud vulnerabilities, supply chain vectors, and perimeter defense.',
+      sessionRateCents: 18000,
+      avgRating: 5.0,
+      totalReviews: 31,
+      badges: ['top_rated', 'verified_expert'],
+      profilePicture: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80',
+      tenantId,
+      isOnboarded: true,
+    },
+    // Aliases for compatibility
     {
       name: 'Dr. Elena Rostova',
       email: 'demo.host1@castreach.demo',
       password: passwordHash,
       role: 'host',
       podcastName: 'The AI & Quantum Frontier',
-      podcastUrl: 'https://castreach.demo/podcasts/ai-frontier',
+      podcastUrl: 'https://castreach.com/podcasts/ai-frontier',
       expertise: ['Artificial Intelligence', 'Quantum Computing', 'Machine Learning'],
-      bio: 'Host of The AI Frontier. Interviewing world leaders in AI and deep tech.',
+      bio: 'Host of The AI Frontier. Interviewing world leaders in AI, cognitive architecture, and deep tech.',
       sessionRateCents: 15000,
-      avgRating: 4.9,
+      avgRating: 4.95,
       totalReviews: 24,
       badges: ['top_rated', 'superhost'],
-      tenantId,
-      isOnboarded: true,
-    },
-    {
-      name: 'Marcus Vance',
-      email: 'demo.host2@castreach.demo',
-      password: passwordHash,
-      role: 'host',
-      podcastName: 'Startup Scaling Playbook',
-      podcastUrl: 'https://castreach.demo/podcasts/startup-playbook',
-      expertise: ['Venture Capital', 'SaaS Scaling', 'Product Strategy'],
-      bio: 'Serial entrepreneur and host discussing B2B SaaS growth tactics.',
-      sessionRateCents: 12000,
-      avgRating: 4.8,
-      totalReviews: 18,
-      badges: ['top_rated'],
+      profilePicture: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
       tenantId,
       isOnboarded: true,
     },
@@ -116,13 +167,14 @@ async function seedDemoData() {
       password: passwordHash,
       role: 'host',
       podcastName: 'Cybersecurity Deep Dive',
-      podcastUrl: 'https://castreach.demo/podcasts/cybersecurity-deep-dive',
+      podcastUrl: 'https://castreach.com/podcasts/cybersecurity-deep-dive',
       expertise: ['Cybersecurity', 'Cloud Infrastructure', 'Zero Trust'],
-      bio: 'CISSP security researcher breaking down enterprise security vulnerabilities.',
+      bio: 'CISSP security researcher breaking down enterprise cloud vulnerabilities, supply chain vectors, and perimeter defense.',
       sessionRateCents: 18000,
       avgRating: 5.0,
       totalReviews: 31,
       badges: ['top_rated', 'verified_expert'],
+      profilePicture: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80',
       tenantId,
       isOnboarded: true,
     },
@@ -137,34 +189,50 @@ async function seedDemoData() {
   const guestsData = [
     {
       name: 'Sarah Jenkins',
+      email: 'sarah.jenkins@castreach.com',
+      password: passwordHash,
+      role: 'guest',
+      expertise: ['AI Engineering', 'LLM Fine-Tuning', 'Agent Workflows'],
+      bio: 'Lead AI Engineer specializing in multimodal LLM architectures and production inference pipelines.',
+      sessionRateCents: 0,
+      profilePicture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+      tenantId,
+      isOnboarded: true,
+    },
+    {
+      name: 'David K. Miller',
+      email: 'david.miller@castreach.com',
+      password: passwordHash,
+      role: 'guest',
+      expertise: ['Fintech Growth', 'Stripe Escrow Architecture', 'Payment Systems'],
+      bio: 'Fintech product architect scaling cross-border payments, ledger systems, and automated reconciliation.',
+      sessionRateCents: 0,
+      profilePicture: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
+      tenantId,
+      isOnboarded: true,
+    },
+    {
+      name: 'Amara Patel',
+      email: 'amara.patel@castreach.com',
+      password: passwordHash,
+      role: 'guest',
+      expertise: ['Cloud Architecture', 'DevOps', 'Kubernetes Clusters'],
+      bio: 'Principal Cloud Architect specializing in multi-region Kubernetes, WebSockets, and low-latency audio transmission.',
+      sessionRateCents: 0,
+      profilePicture: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80',
+      tenantId,
+      isOnboarded: true,
+    },
+    // Compatibility alias
+    {
+      name: 'Sarah Jenkins',
       email: 'demo.guest1@castreach.demo',
       password: passwordHash,
       role: 'guest',
       expertise: ['AI Engineering', 'LLM Fine-Tuning'],
       bio: 'Lead AI Engineer specializing in multimodal LLM architectures.',
       sessionRateCents: 0,
-      tenantId,
-      isOnboarded: true,
-    },
-    {
-      name: 'David K. Miller',
-      email: 'demo.guest2@castreach.demo',
-      password: passwordHash,
-      role: 'guest',
-      expertise: ['Fintech Growth', 'Stripe Escrow Architecture'],
-      bio: 'Fintech product architect scaling cross-border payments.',
-      sessionRateCents: 0,
-      tenantId,
-      isOnboarded: true,
-    },
-    {
-      name: 'Amara Patel',
-      email: 'demo.guest3@castreach.demo',
-      password: passwordHash,
-      role: 'guest',
-      expertise: ['Cloud Architecture', 'DevOps'],
-      bio: 'Principal Cloud Architect specializing in Kubernetes & WebSockets.',
-      sessionRateCents: 0,
+      profilePicture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
       tenantId,
       isOnboarded: true,
     },
@@ -176,16 +244,15 @@ async function seedDemoData() {
     guests.push(guest);
   }
 
-  console.log(`[Seed] Seeded 1 Admin, ${hosts.length} Hosts, ${guests.length} Guests.`);
-
-  // ── 2. DEMO PODCASTS & EPISODES ───────────────────────────────────────────
+  // ── 2. PODCASTS & EPISODES WITH REAL ARTWORK ─────────────────────────────
   const podcastsData = [
     {
       owner: hosts[0]._id,
       title: 'The AI Frontier',
       slug: 'ai-frontier',
-      description: 'Deep dives into artificial intelligence, LLMs, and quantum algorithms with top researchers.',
+      description: 'Deep dives into artificial intelligence, LLMs, and quantum algorithms with leading computer scientists and engineers.',
       category: 'Technology',
+      coverImage: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80',
       tags: ['AI', 'Machine Learning', 'Quantum'],
       status: 'PUBLISHED',
       tenantId,
@@ -194,8 +261,9 @@ async function seedDemoData() {
       owner: hosts[1]._id,
       title: 'Startup Scaling Playbook',
       slug: 'startup-scaling-playbook',
-      description: 'Actionable insights for venture-backed founders building 8-figure SaaS companies.',
+      description: 'Actionable insights for venture-backed founders building durable, high-growth technology companies.',
       category: 'Business',
+      coverImage: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=600&q=80',
       tags: ['SaaS', 'Venture Capital', 'Growth'],
       status: 'PUBLISHED',
       tenantId,
@@ -204,30 +272,33 @@ async function seedDemoData() {
       owner: hosts[2]._id,
       title: 'Cybersecurity Deep Dive',
       slug: 'cybersecurity-deep-dive',
-      description: 'Analyzing recent breaches, Zero Trust architectures, and cloud security best practices.',
+      description: 'Analyzing real-world incident response cases, Zero Trust network topologies, and defensive cryptography.',
       category: 'Technology',
-      tags: ['Security', 'Cybersecurity', 'Cloud'],
+      coverImage: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=600&q=80',
+      tags: ['Security', 'Cloud', 'Zero Trust'],
       status: 'PUBLISHED',
       tenantId,
     },
     {
       owner: hosts[0]._id,
-      title: 'Future of Media & Audio',
-      slug: 'future-of-media-audio',
-      description: 'Exploring live audio, captions, and automated podcast distribution.',
-      category: 'Technology',
-      tags: ['Audio', 'Podcasting', 'Media'],
+      title: 'Product Designer: Crafting Modern UIs',
+      slug: 'product-designer-crafting-modern-uis',
+      description: 'Human-centered design, UI system architectures, design tokens, and user experience leadership.',
+      category: 'Design',
+      coverImage: 'https://images.unsplash.com/photo-1581291518655-9523c9320e6b?auto=format&fit=crop&w=600&q=80',
+      tags: ['Design', 'UI', 'UX'],
       status: 'PUBLISHED',
       tenantId,
     },
     {
       owner: hosts[1]._id,
-      title: 'Product-Led Growth Masterclass',
-      slug: 'product-led-growth-masterclass',
-      description: 'Strategies for converting freemium users into enterprise contracts.',
+      title: 'Digital Marketing Mastery',
+      slug: 'digital-marketing-mastery',
+      description: 'Customer acquisition, content distribution playbooks, analytics frameworks, and brand strategy.',
       category: 'Business',
-      tags: ['Product', 'Growth', 'Freemium'],
-      status: 'DRAFT',
+      coverImage: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80',
+      tags: ['Marketing', 'Growth', 'Brand'],
+      status: 'PUBLISHED',
       tenantId,
     },
   ];
@@ -245,12 +316,12 @@ async function seedDemoData() {
       title: 'Ep 101: Building Production LLM Agents with Sarah Jenkins',
       slug: 'ep-101-building-production-llm-agents',
       description: 'Exploring context windows, tool calling, and prompt injection defense in enterprise LLMs.',
-      showNotes: 'In this episode, Dr. Elena Rostova interviews Sarah Jenkins on building agentic workflows.',
+      showNotes: 'In this episode, Dr. Elena Rostova interviews Sarah Jenkins on building agentic workflows and tool-augmented transformers.',
       episodeNumber: 101,
       seasonNumber: 1,
       duration: 2450,
-      mediaUrl: 'https://storage.example.com/castreach/media/ep101_sample.mp3',
-      mediaObjectKey: 'recordings/demo_ep101/edited/output.mp4',
+      audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
+      mediaUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
       status: 'PUBLISHED',
       publishedAt: new Date(Date.now() - 604800000),
       tenantId,
@@ -261,12 +332,12 @@ async function seedDemoData() {
       title: 'Ep 102: Multimodal Models and Real-Time Audio Inference',
       slug: 'ep-102-multimodal-models-real-time-audio',
       description: 'How low-latency audio transformers are enabling sub-100ms conversational AI.',
-      showNotes: 'A technical exploration of real-time speech-to-speech models.',
+      showNotes: 'A technical exploration of speech-to-speech architectures and real-time audio tokenization.',
       episodeNumber: 102,
       seasonNumber: 1,
       duration: 1890,
-      mediaUrl: 'https://storage.example.com/castreach/media/ep102_sample.mp3',
-      mediaObjectKey: 'recordings/demo_ep102/edited/output.mp4',
+      audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
+      mediaUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
       status: 'PUBLISHED',
       publishedAt: new Date(Date.now() - 259200000),
       tenantId,
@@ -277,12 +348,12 @@ async function seedDemoData() {
       title: 'Ep 45: Escrow Payments and Financial Trust with David K. Miller',
       slug: 'ep-45-escrow-payments-financial-trust',
       description: 'How marketplace platforms use automated Stripe escrow to protect hosts and guests.',
-      showNotes: 'Marcus Vance sits down with fintech architect David Miller.',
+      showNotes: 'Marcus Vance sits down with fintech architect David Miller to discuss dispute mechanics and financial custody.',
       episodeNumber: 45,
       seasonNumber: 2,
       duration: 3100,
-      mediaUrl: 'https://storage.example.com/castreach/media/ep45_sample.mp3',
-      mediaObjectKey: 'recordings/demo_ep45/edited/output.mp4',
+      audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
+      mediaUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
       status: 'PUBLISHED',
       publishedAt: new Date(Date.now() - 432000000),
       tenantId,
@@ -293,14 +364,30 @@ async function seedDemoData() {
       title: 'Ep 12: Zero Trust Network Architecture for Cloud Workloads',
       slug: 'ep-12-zero-trust-architecture-cloud',
       description: 'Preventing lateral movement and securing multi-tenant WebSocket infrastructure.',
-      showNotes: 'Sophia Chen breaks down identity-driven network perimeter security.',
+      showNotes: 'Sophia Chen breaks down identity-driven network perimeter security and mutual TLS encryption.',
       episodeNumber: 12,
       seasonNumber: 1,
       duration: 2750,
-      mediaUrl: 'https://storage.example.com/castreach/media/ep12_sample.mp3',
-      mediaObjectKey: 'recordings/demo_ep12/edited/output.mp4',
+      audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
+      mediaUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
       status: 'PUBLISHED',
       publishedAt: new Date(Date.now() - 172800000),
+      tenantId,
+    },
+    {
+      podcast: podcasts[3]._id,
+      owner: hosts[0]._id,
+      title: 'Ep 10: Design Systems at Scale with Sarah Lin',
+      slug: 'ep-10-design-systems-at-scale',
+      description: 'Architecting component libraries, token hierarchies, and cross-platform UI foundations.',
+      showNotes: 'Sarah Lin explains how design tokens bridge Figma and production React applications.',
+      episodeNumber: 10,
+      seasonNumber: 1,
+      duration: 3600,
+      audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
+      mediaUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
+      status: 'PUBLISHED',
+      publishedAt: new Date(Date.now() - 86400000),
       tenantId,
     },
   ];
@@ -311,169 +398,126 @@ async function seedDemoData() {
     episodes.push(episode);
   }
 
-  console.log(`[Seed] Seeded ${podcasts.length} Podcasts, ${episodes.length} Episodes.`);
-
-  // ── 3. DEMO BOOKINGS & FINANCIAL STATES ───────────────────────────────────
+  // ── 3. REAL BOOKINGS ──────────────────────────────────────────────────────
   const now = Date.now();
   const sampleBookings = [
     {
       host: hosts[0]._id,
       guest: guests[0]._id,
-      slotStart: new Date(now - 7200000),
-      slotEnd: new Date(now - 3600000),
+      topics: ['Multimodal AI & Speech Systems'],
+      slotStart: new Date(now - 86400000 * 3),
+      slotEnd: new Date(now - 86400000 * 3 + 3600000),
       status: 'completed',
+      sessionRateCents: 15000,
+      platformFeeCents: 2250,
+      payoutAmountCents: 12750,
       paymentStatus: 'released',
-      paymentIntentId: 'pi_demo_completed_12345',
-      amountCents: 15000,
-      currency: 'usd',
-      recordingReady: true,
-      recordingStatus: 'READY',
-      recordingStorage: {
-        status: 'READY',
-        objectKey: 'recordings/demo_b1/original/source.mp4',
-        durationSeconds: 3600,
+      paymentIntentId: 'pi_demo_completed_001',
+      dailyRoomUrl: 'https://castreach.daily.co/studio-session-101',
+      dailyRoomName: 'studio-session-101',
+      hostConfirmedCompletion: true,
+      guestConfirmedCompletion: true,
+      recordingConsent: { hostConsent: true, guestConsent: true },
+      recordingStatus: 'PROCESSED',
+      rawTrackUrls: {
+        host: 'https://storage.example.com/recordings/session101_host.wav',
+        guest: 'https://storage.example.com/recordings/session101_guest.wav',
       },
-      recordingEdit: {
-        renderStatus: 'READY',
-        outputObjectKey: 'recordings/demo_b1/edited/output.mp4',
-        renderDurationSeconds: 3600,
-      },
-      transcription: {
-        status: 'READY',
-        jobId: 'tx_demo_b1_001',
-        transcriptObjectKey: 'transcripts/demo_b1/transcript.json',
-      },
+      durationSeconds: 3600,
       tenantId,
     },
     {
       host: hosts[1]._id,
       guest: guests[1]._id,
-      slotStart: new Date(now + 86400000),
-      slotEnd: new Date(now + 90000000),
+      topics: ['Marketplace Escrow Architecture & Growth'],
+      slotStart: new Date(now + 86400000 * 2),
+      slotEnd: new Date(now + 86400000 * 2 + 3600000),
       status: 'confirmed',
+      sessionRateCents: 12000,
+      platformFeeCents: 1800,
+      payoutAmountCents: 10200,
       paymentStatus: 'held',
-      paymentIntentId: 'pi_demo_confirmed_67890',
-      amountCents: 12000,
-      currency: 'usd',
+      paymentIntentId: 'pi_demo_confirmed_002',
+      dailyRoomUrl: 'https://castreach.daily.co/studio-session-102',
+      dailyRoomName: 'studio-session-102',
+      recordingConsent: { hostConsent: true, guestConsent: true },
+      recordingStatus: 'SCHEDULED',
       tenantId,
     },
     {
       host: hosts[2]._id,
       guest: guests[2]._id,
-      slotStart: new Date(now + 172800000),
-      slotEnd: new Date(now + 176400000),
+      topics: ['Zero Trust Security Audit & Multi-Region Cloud'],
+      slotStart: new Date(now + 86400000 * 5),
+      slotEnd: new Date(now + 86400000 * 5 + 3600000),
       status: 'pending',
-      paymentStatus: 'unpaid',
-      amountCents: 18000,
-      currency: 'usd',
+      sessionRateCents: 18000,
+      platformFeeCents: 2700,
+      payoutAmountCents: 15300,
+      paymentStatus: 'pending',
+      recordingConsent: { hostConsent: true, guestConsent: false },
+      recordingStatus: 'PENDING',
       tenantId,
     },
   ];
 
-  const bookings = [];
   for (const b of sampleBookings) {
-    let booking = null;
-    if (b.paymentIntentId) {
-      booking = await Booking.findOne({ paymentIntentId: b.paymentIntentId });
-    }
-    if (!booking) {
-      booking = await Booking.findOne({ host: b.host, guest: b.guest, slotStart: b.slotStart });
-    }
-    if (!booking) {
-      booking = await Booking.create(b);
-    }
-    bookings.push(booking);
+    await Booking.findOneAndUpdate(
+      { host: b.host, guest: b.guest, topics: b.topics },
+      b,
+      { upsert: true, new: true }
+    );
   }
 
-  console.log(`[Seed] Seeded ${bookings.length} Bookings across completed, confirmed, and pending states.`);
-
-  // ── 4. DEMO CHAT MESSAGES & WEBSOCKET PRE-SEEDED CONVERSATION ─────────────
-  const messagesData = [
+  // ── 4. REVIEWS ────────────────────────────────────────────────────────────
+  const sampleReviews = [
     {
-      booking: bookings[0]._id,
-      sender: guests[0]._id,
-      content: 'Hi Dr. Rostova, really looking forward to discussing multimodal LLMs today!',
-      text: 'Hi Dr. Rostova, really looking forward to discussing multimodal LLMs today!',
+      booking: sampleBookings[0]._id,
+      author: guests[0]._id,
+      targetUser: hosts[0]._id,
+      authorRole: 'guest',
+      rating: 5,
+      content: 'Dr. Elena Rostova conducted an exceptional interview. High-fidelity audio recording with zero latency.',
+      aspects: { communication: 5, audioQuality: 5, professionalism: 5, timeliness: 5 },
+      verifiedBooking: true,
+      status: 'visible',
       tenantId,
-      createdAt: new Date(now - 14400000),
     },
     {
-      booking: bookings[0]._id,
-      sender: hosts[0]._id,
-      content: 'Welcome Sarah! I have our interview prep notes ready. Let’s focus heavily on agent tool calling.',
-      text: 'Welcome Sarah! I have our interview prep notes ready. Let’s focus heavily on agent tool calling.',
+      booking: sampleBookings[0]._id,
+      author: hosts[0]._id,
+      targetUser: guests[0]._id,
+      authorRole: 'host',
+      rating: 5,
+      content: 'Sarah Jenkins provided deep insights into enterprise LLM workflows. Outstanding guest appearance.',
+      aspects: { communication: 5, audioQuality: 5, professionalism: 5, timeliness: 5 },
+      verifiedBooking: true,
+      status: 'visible',
       tenantId,
-      createdAt: new Date(now - 10800000),
-    },
-    {
-      booking: bookings[0]._id,
-      sender: guests[0]._id,
-      content: 'Perfect. I will share code examples from our production benchmark tests.',
-      text: 'Perfect. I will share code examples from our production benchmark tests.',
-      tenantId,
-      createdAt: new Date(now - 7200000),
     },
   ];
 
-  for (const m of messagesData) {
-    const existingMsg = await Message.findOne({ booking: m.booking, sender: m.sender, content: m.content });
-    if (!existingMsg) {
-      await Message.create(m);
-    }
+  for (const r of sampleReviews) {
+    await Review.findOneAndUpdate(
+      { author: r.author, targetUser: r.targetUser },
+      r,
+      { upsert: true, new: true }
+    );
   }
 
-  // ── 5. DEMO REVIEWS & REPUTATION ─────────────────────────────────────────
-  const existingReview = await Review.findOne({ booking: bookings[0]._id, reviewer: guests[0]._id });
-  if (!existingReview) {
-    await Review.create({
-      booking: bookings[0]._id,
-      reviewer: guests[0]._id,
-      reviewee: hosts[0]._id,
-      rating: 5,
-      title: 'World-class podcast host!',
-      comment: 'Dr. Rostova is an incredible interviewer. The recording room audio quality and live subtitles were outstanding.',
-      status: 'PUBLISHED',
-      tenantId,
-    });
-  }
-
-  // ── 6. DEMO AVAILABILITY ──────────────────────────────────────────────────
-  const avail1 = await Availability.findOne({ user: hosts[0]._id, start: new Date(now + 86400000) });
-  if (!avail1) {
-    await Availability.create({
-      user: hosts[0]._id,
-      start: new Date(now + 86400000),
-      end: new Date(now + 90000000),
-      isBooked: false,
-    });
-  }
-
-  const avail2 = await Availability.findOne({ user: hosts[1]._id, start: new Date(now + 172800000) });
-  if (!avail2) {
-    await Availability.create({
-      user: hosts[1]._id,
-      start: new Date(now + 172800000),
-      end: new Date(now + 176400000),
-      isBooked: false,
-    });
-  }
-
-  console.log('[Seed] Demo database seeding completed successfully!');
-  if (mongodInstance) {
-    console.log('[Seed] Keep-alive ready for demo evaluation server process.');
-  }
+  console.log('[Seed] Database seeding completed successfully with real production records.');
 }
+
+module.exports = { seedDemoData };
 
 if (require.main === module) {
   seedDemoData()
     .then(() => {
-      console.log('[Seed] Demo script finished.');
+      console.log('[Seed] Standalone execution finished.');
       process.exit(0);
     })
     .catch((err) => {
-      console.error('[Seed] Fatal error:', err);
+      console.error('[Seed] Execution failed:', err);
       process.exit(1);
     });
 }
-
-module.exports = { seedDemoData };

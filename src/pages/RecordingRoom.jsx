@@ -1193,7 +1193,7 @@ export default function RecordingRoom() {
                 >
                   {audioDevices.map((d) => (
                     <option key={d.deviceId} value={d.deviceId}>
-                      🎙️ {d.label || `Microphone ${d.deviceId.slice(0, 5)}`}
+                      {d.label || `Microphone ${d.deviceId.slice(0, 5)}`}
                     </option>
                   ))}
                   {audioDevices.length === 0 && <option value="">Default Microphone</option>}
@@ -1209,7 +1209,7 @@ export default function RecordingRoom() {
                 >
                   {speakerDevices.map((d) => (
                     <option key={d.deviceId} value={d.deviceId}>
-                      🔊 {d.label || `Speaker / Headphones ${d.deviceId.slice(0, 5)}`}
+                      {d.label || `Speaker / Headphones ${d.deviceId.slice(0, 5)}`}
                     </option>
                   ))}
                   {speakerDevices.length === 0 && <option value="">Default System Speaker</option>}
@@ -1225,7 +1225,7 @@ export default function RecordingRoom() {
                 >
                   {videoDevices.map((d) => (
                     <option key={d.deviceId} value={d.deviceId}>
-                      📷 {d.label || `Camera ${d.deviceId.slice(0, 5)}`}
+                      {d.label || `Camera ${d.deviceId.slice(0, 5)}`}
                     </option>
                   ))}
                   {videoDevices.length === 0 && <option value="">Default Camera</option>}
@@ -1318,25 +1318,25 @@ export default function RecordingRoom() {
           {serverRecordingStatus === 'RECORDING' && (
             <div style={recordingActiveBadgeStyle}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', animation: 'pulse 1.5s infinite' }} />
-              <span style={{ fontSize: 12, color: '#f87171', fontWeight: 600 }}>● Recording</span>
+              <span style={{ fontSize: 12, color: '#f87171', fontWeight: 600 }}>Recording</span>
             </div>
           )}
 
           {serverRecordingStatus === 'PROCESSING' && (
             <div style={recordingStatusBadgeStyle}>
-              <span style={{ fontSize: 12, color: '#f59e0b', fontWeight: 600 }}>⏳ Processing Recording…</span>
+              <span style={{ fontSize: 12, color: '#f59e0b', fontWeight: 600 }}>Processing Recording...</span>
             </div>
           )}
 
           {serverRecordingStatus === 'READY' && (
             <div style={recordingStatusBadgeStyle}>
-              <span style={{ fontSize: 12, color: '#10b981', fontWeight: 600 }}>✓ Recording Saved</span>
+              <span style={{ fontSize: 12, color: '#10b981', fontWeight: 600 }}>Recording Saved</span>
             </div>
           )}
 
           {serverRecordingStatus === 'FAILED' && (
             <div style={recordingStatusBadgeStyle}>
-              <span style={{ fontSize: 12, color: '#ef4444', fontWeight: 600 }}>⚠️ Recording Failed</span>
+              <span style={{ fontSize: 12, color: '#ef4444', fontWeight: 600 }}>Recording Failed</span>
             </div>
           )}
 

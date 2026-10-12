@@ -88,7 +88,7 @@ export default function BookingChatThread({ bookingId, booking, onBookingCreated
           method: 'POST',
           body: JSON.stringify({
             bookingId: targetId,
-            content: `🎉 ${user?.name || 'Participant'} accepted the session booking request for ${dateStr} at ${timeStr}. Stored in My Bookings!`,
+            content: `${user?.name || 'Participant'} accepted the session booking request for ${dateStr} at ${timeStr}. Stored in My Bookings!`,
           }),
         });
       }
@@ -114,7 +114,7 @@ export default function BookingChatThread({ bookingId, booking, onBookingCreated
           method: 'POST',
           body: JSON.stringify({
             bookingId: targetId,
-            content: `❌ Session Booking Request declined.`,
+            content: `Session Booking Request declined.`,
           }),
         });
       }
@@ -302,7 +302,7 @@ export default function BookingChatThread({ bookingId, booking, onBookingCreated
                 background: liveStatus === 'confirmed' ? 'var(--color-success-bg, #ecfdf5)' : liveStatus === 'cancelled' ? 'var(--color-error-bg, #fef2f2)' : 'var(--color-warning-bg, #fffbeb)',
                 color: liveStatus === 'confirmed' ? 'var(--color-success, #10b981)' : liveStatus === 'cancelled' ? 'var(--color-error, #ef4444)' : 'var(--color-warning, #f59e0b)',
               }}>
-                {liveStatus === 'pending' ? (isInitiator ? '● Proposal Sent' : '● Action Required') : liveStatus === 'confirmed' ? '✓ Confirmed & Booked' : liveStatus}
+                {liveStatus === 'pending' ? (isInitiator ? 'Proposal Sent' : 'Action Required') : liveStatus === 'confirmed' ? 'Confirmed & Booked' : liveStatus}
               </span>
             </div>
 
@@ -381,7 +381,7 @@ export default function BookingChatThread({ bookingId, booking, onBookingCreated
 
             {liveStatus === 'confirmed' && (
               <div style={{ fontSize: 12, color: 'var(--color-success, #10b981)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border-subtle, #e2e8f0)' }}>
-                <Check size={14} /> {isInitiator ? `🎉 ${otherUser?.name || 'Participant'} accepted your booking request!` : '✓ You accepted this booking request.'} Stored in My Bookings.
+                <Check size={14} /> {isInitiator ? `${otherUser?.name || 'Participant'} accepted your booking request!` : 'You accepted this booking request.'} Stored in My Bookings.
               </div>
             )}
           </div>

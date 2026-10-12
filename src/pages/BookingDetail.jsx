@@ -392,13 +392,13 @@ export default function BookingDetail() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Host Consent:</span>
                 <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: booking.status !== 'pending' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: booking.status !== 'pending' ? '#10b981' : '#f59e0b' }}>
-                  {booking.status !== 'pending' ? '✓ Consent Verified' : '⏳ Confirmation Pending'}
+                  {booking.status !== 'pending' ? 'Consent Verified' : 'Confirmation Pending'}
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Guest Consent:</span>
                 <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: 'rgba(16,185,129,0.15)', color: '#10b981' }}>
-                  ✓ Consent Verified
+                  Consent Verified
                 </span>
               </div>
             </div>
@@ -457,10 +457,10 @@ export default function BookingDetail() {
                 background: isOriginalReady ? 'rgba(16,185,129,0.15)' : booking.recordingStatus === 'RECORDING' ? 'rgba(239,68,68,0.15)' : booking.recordingStatus === 'PROCESSING' ? 'rgba(245,158,11,0.15)' : 'var(--color-background-secondary)',
                 color: isOriginalReady ? '#10b981' : booking.recordingStatus === 'RECORDING' ? '#ef4444' : booking.recordingStatus === 'PROCESSING' ? '#f59e0b' : 'var(--color-text-secondary)'
               }}>
-                {booking.recordingStatus === 'RECORDING' && '● Recording in Progress'}
-                {booking.recordingStatus === 'PROCESSING' && '⏳ Processing Recording…'}
-                {isOriginalReady && '✓ Ready'}
-                {booking.recordingStatus === 'FAILED' && '⚠️ Recording Failed'}
+                {booking.recordingStatus === 'RECORDING' && 'Recording in Progress'}
+                {booking.recordingStatus === 'PROCESSING' && 'Processing Recording...'}
+                {isOriginalReady && 'Ready'}
+                {booking.recordingStatus === 'FAILED' && 'Recording Failed'}
                 {(!booking.recordingStatus || booking.recordingStatus === 'NOT_STARTED') && !booking.recordingReady && 'Not Started'}
               </span>
             </div>
@@ -534,10 +534,10 @@ export default function BookingDetail() {
                 color: renderEditStatus === 'READY' ? '#10b981' : renderEditStatus === 'FAILED' ? '#ef4444' : ['QUEUED', 'PROCESSING'].includes(renderEditStatus) ? '#f59e0b' : 'var(--color-text-secondary)'
               }}>
                 {renderEditStatus === 'NOT_REQUESTED' && 'Not Rendered'}
-                {renderEditStatus === 'QUEUED' && '⏳ Render Queued'}
-                {renderEditStatus === 'PROCESSING' && '⚙️ Rendering Video…'}
-                {renderEditStatus === 'READY' && '✓ Rendered Ready'}
-                {renderEditStatus === 'FAILED' && '⚠️ Rendering Failed'}
+                {renderEditStatus === 'QUEUED' && 'Render Queued'}
+                {renderEditStatus === 'PROCESSING' && 'Rendering Video...'}
+                {renderEditStatus === 'READY' && 'Rendered Ready'}
+                {renderEditStatus === 'FAILED' && 'Rendering Failed'}
               </span>
             </div>
 
@@ -779,11 +779,11 @@ export default function BookingDetail() {
                   background: booking.paymentStatus === 'released' ? 'rgba(16,185,129,0.15)' : booking.paymentStatus === 'refunded' ? 'rgba(239,68,68,0.15)' : booking.paymentStatus === 'disputed' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.15)',
                   color: booking.paymentStatus === 'released' ? '#10b981' : booking.paymentStatus === 'refunded' ? '#ef4444' : booking.paymentStatus === 'disputed' ? '#ef4444' : '#f59e0b',
                 }}>
-                  {booking.paymentStatus === 'held' ? '🔒 Held in Escrow' :
-                   booking.paymentStatus === 'release_pending' ? '⏳ Release Pending' :
-                   booking.paymentStatus === 'released' ? '✓ Released' :
-                   booking.paymentStatus === 'refunded' ? '↩ Refunded' :
-                   booking.paymentStatus === 'disputed' ? '⚠️ Disputed' :
+                  {booking.paymentStatus === 'held' ? 'Held in Escrow' :
+                   booking.paymentStatus === 'release_pending' ? 'Release Pending' :
+                   booking.paymentStatus === 'released' ? 'Released' :
+                   booking.paymentStatus === 'refunded' ? 'Refunded' :
+                   booking.paymentStatus === 'disputed' ? 'Disputed' :
                    booking.paymentStatus}
                 </span>
               </div>
@@ -794,13 +794,13 @@ export default function BookingDetail() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                   <span>Host:</span>
                   <span style={{ fontWeight: 600, color: booking.hostConfirmedCompletion ? '#10b981' : 'var(--color-text-secondary)' }}>
-                    {booking.hostConfirmedCompletion ? '✓ Confirmed' : 'Pending'}
+                    {booking.hostConfirmedCompletion ? 'Confirmed' : 'Pending'}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>Guest:</span>
                   <span style={{ fontWeight: 600, color: booking.guestConfirmedCompletion ? '#10b981' : 'var(--color-text-secondary)' }}>
-                    {booking.guestConfirmedCompletion ? '✓ Confirmed' : 'Pending'}
+                    {booking.guestConfirmedCompletion ? 'Confirmed' : 'Pending'}
                   </span>
                 </div>
               </div>

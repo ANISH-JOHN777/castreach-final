@@ -12,6 +12,7 @@ const DEFAULT_TRACKS = [
     currentTime: 1472, // 24:32
     cover: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=400&q=80',
     color: '#3b82f6',
+    audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
     episodes: 12,
   },
   {
@@ -23,6 +24,7 @@ const DEFAULT_TRACKS = [
     currentTime: 420,
     cover: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=400&q=80',
     color: '#2563eb',
+    audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
     episodes: 28,
   },
   {
@@ -34,6 +36,7 @@ const DEFAULT_TRACKS = [
     currentTime: 310,
     cover: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=400&q=80',
     color: '#ec4899',
+    audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
     episodes: 12,
   },
   {
@@ -45,6 +48,7 @@ const DEFAULT_TRACKS = [
     currentTime: 850,
     cover: 'https://images.unsplash.com/photo-1553729459-efe14ef6055d?auto=format&fit=crop&w=400&q=80',
     color: '#8b5cf6',
+    audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
     episodes: 16,
   },
   {
@@ -56,6 +60,7 @@ const DEFAULT_TRACKS = [
     currentTime: 120,
     cover: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=400&q=80',
     color: '#06b6d4',
+    audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
     episodes: 10,
   },
   {
@@ -66,7 +71,8 @@ const DEFAULT_TRACKS = [
     duration: 85, // 01:25
     currentTime: 30,
     cover: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=400&q=80',
-    color: '#f97316',
+    color: '#ea580c',
+    audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
     episodes: 8,
   },
   {
@@ -77,7 +83,8 @@ const DEFAULT_TRACKS = [
     duration: 65, // 01:05
     currentTime: 18,
     cover: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=400&q=80',
-    color: '#3b82f6',
+    color: '#2563eb',
+    audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
     episodes: 45,
   },
   {
@@ -88,7 +95,8 @@ const DEFAULT_TRACKS = [
     duration: 720, // 12:00
     currentTime: 45,
     cover: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=400&q=80',
-    color: '#10b981',
+    color: '#059669',
+    audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
     episodes: 22,
   },
   {
@@ -99,7 +107,8 @@ const DEFAULT_TRACKS = [
     duration: 6000, // 100 minutes
     currentTime: 1200,
     cover: 'https://images.unsplash.com/photo-1581291518655-9523c9320e6b?auto=format&fit=crop&w=400&q=80',
-    color: '#0ea5e9',
+    color: '#0284c7',
+    audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
     episodes: 10,
   },
   {
@@ -110,7 +119,8 @@ const DEFAULT_TRACKS = [
     duration: 9600, // 160 minutes
     currentTime: 3400,
     cover: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=400&q=80',
-    color: '#f59e0b',
+    color: '#d97706',
+    audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
     episodes: 40,
   }
 ];
@@ -128,12 +138,27 @@ export function AudioPlayerProvider({ children }) {
   const [favorites, setFavorites] = useState(['track-1', 'track-4']);
   const [following, setFollowing] = useState(['podcaster-1']);
 
-  // Web Audio Context reference for synthesised playback & sound simulation
-  const audioCtxRef = useRef(null);
-  const oscRef = useRef(null);
-  const gainRef = useRef(null);
+  const audioRef = useRef(null);
 
-  // Playback timer ticker
+  // Sync HTML5 audio playback
+  useEffect(() => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.play().catch(() => {
+        // Autoplay policy fallback
+      });
+    } else {
+      audioRef.current.pause();
+    }
+  }, [isPlaying, currentTrack]);
+
+  // Volume & Mute sync
+  useEffect(() => {
+    if (!audioRef.current) return;
+    audioRef.current.volume = isMuted ? 0 : volume;
+  }, [volume, isMuted]);
+
+  // Time ticker
   useEffect(() => {
     let interval = null;
     if (isPlaying) {
@@ -156,23 +181,6 @@ export function AudioPlayerProvider({ children }) {
     };
   }, [isPlaying, duration, isRepeat]);
 
-  // Audio tone generation for realistic tactile feedback
-  const startAudioTone = () => {
-    try {
-      if (!audioCtxRef.current) {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (AudioContext) {
-          audioCtxRef.current = new AudioContext();
-        }
-      }
-      if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
-        audioCtxRef.current.resume();
-      }
-    } catch {
-      // AudioContext optional/blocked by autoplay policy
-    }
-  };
-
   const playTrack = (track) => {
     if (!track) return;
     if (currentTrack?.id === track.id) {
@@ -183,15 +191,10 @@ export function AudioPlayerProvider({ children }) {
     setCurrentTime(track.currentTime || 0);
     setDuration(track.duration || 1800);
     setIsPlaying(true);
-    startAudioTone();
   };
 
   const togglePlay = () => {
-    setIsPlaying((prev) => {
-      const next = !prev;
-      if (next) startAudioTone();
-      return next;
-    });
+    setIsPlaying((prev) => !prev);
   };
 
   const pauseTrack = () => {
@@ -201,6 +204,11 @@ export function AudioPlayerProvider({ children }) {
   const seek = (timeInSeconds) => {
     const clamped = Math.max(0, Math.min(timeInSeconds, duration));
     setCurrentTime(clamped);
+    if (audioRef.current && Number.isFinite(audioRef.current.duration)) {
+      try {
+        audioRef.current.currentTime = (clamped / duration) * audioRef.current.duration;
+      } catch {}
+    }
   };
 
   const nextTrack = () => {
@@ -240,7 +248,6 @@ export function AudioPlayerProvider({ children }) {
     );
   };
 
-  // Helper formatter mm:ss or hh:mm:ss
   const formatTime = (seconds) => {
     if (isNaN(seconds) || seconds < 0) return '00:00';
     const hrs = Math.floor(seconds / 3600);
@@ -282,6 +289,12 @@ export function AudioPlayerProvider({ children }) {
         formatTime,
       }}
     >
+      <audio
+        ref={audioRef}
+        src={currentTrack?.audioUrl || 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg'}
+        loop={isRepeat}
+        preload="auto"
+      />
       {children}
     </AudioPlayerContext.Provider>
   );

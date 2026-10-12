@@ -77,7 +77,7 @@ export default function CreateBookingModal({ isOpen, onClose, recipientUser, onS
           method: 'POST',
           body: JSON.stringify({
             bookingId: newBooking._id,
-            content: `📅 New Session Booking Requested: "${topic}" for ${formattedDate} at ${formattedTime} ($${amount}). Added to My Bookings.`,
+            content: `New Session Booking Requested: "${topic}" for ${formattedDate} at ${formattedTime} ($${amount}). Added to My Bookings.`,
           }),
         });
       } catch (err) {

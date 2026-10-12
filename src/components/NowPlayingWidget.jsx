@@ -6,14 +6,13 @@ import {
   SkipForward, 
   Shuffle, 
   Repeat, 
-  Volume2, 
-  VolumeX, 
   Heart,
-  Maximize2
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import { useAudioPlayer } from '../context/AudioPlayerContext';
 
-export default function NowPlayingWidget({ compact = false }) {
+export default function NowPlayingWidget() {
   const {
     currentTrack,
     isPlaying,
@@ -28,61 +27,82 @@ export default function NowPlayingWidget({ compact = false }) {
     setIsShuffle,
     isRepeat,
     setIsRepeat,
+    favorites,
+    toggleFavorite,
     volume,
     setVolume,
     isMuted,
     setIsMuted,
-    favorites,
-    toggleFavorite,
   } = useAudioPlayer();
 
-  // Waveform bars simulation
+  // Waveform amplitude bars (26 bars)
   const [waveBars, setWaveBars] = useState(() =>
-    Array.from({ length: 28 }, (_, i) => 20 + Math.sin(i * 0.4) * 15 + Math.random() * 20)
+    [24, 38, 52, 68, 45, 30, 60, 75, 40, 28, 65, 82, 50, 35, 70, 85, 48, 32, 58, 74, 42, 26, 62, 78, 44, 25]
   );
 
   useEffect(() => {
-    let animFrame;
     if (isPlaying) {
       const interval = setInterval(() => {
-        setWaveBars(
-          Array.from({ length: 28 }, () => Math.floor(Math.random() * 75) + 15)
-        );
-      }, 120);
+        setWaveBars([
+          Math.floor(Math.random() * 40) + 20,
+          Math.floor(Math.random() * 55) + 30,
+          Math.floor(Math.random() * 60) + 35,
+          Math.floor(Math.random() * 70) + 25,
+          Math.floor(Math.random() * 50) + 20,
+          Math.floor(Math.random() * 45) + 25,
+          Math.floor(Math.random() * 65) + 30,
+          Math.floor(Math.random() * 75) + 20,
+          Math.floor(Math.random() * 40) + 25,
+          Math.floor(Math.random() * 50) + 20,
+          Math.floor(Math.random() * 70) + 25,
+          Math.floor(Math.random() * 85) + 15,
+          Math.floor(Math.random() * 60) + 25,
+          Math.floor(Math.random() * 45) + 20,
+          Math.floor(Math.random() * 70) + 25,
+          Math.floor(Math.random() * 80) + 18,
+          Math.floor(Math.random() * 55) + 22,
+          Math.floor(Math.random() * 40) + 20,
+          Math.floor(Math.random() * 65) + 30,
+          Math.floor(Math.random() * 75) + 20,
+          Math.floor(Math.random() * 48) + 24,
+          Math.floor(Math.random() * 35) + 20,
+          Math.floor(Math.random() * 60) + 30,
+          Math.floor(Math.random() * 75) + 20,
+          Math.floor(Math.random() * 45) + 20,
+          Math.floor(Math.random() * 30) + 20,
+        ]);
+      }, 140);
       return () => clearInterval(interval);
     } else {
-      setWaveBars(
-        Array.from({ length: 28 }, (_, i) => Math.max(12, 16 + Math.sin(i * 0.5) * 8))
-      );
+      setWaveBars([
+        20, 30, 42, 50, 35, 25, 45, 55, 30, 22, 48, 60, 38, 28, 52, 62, 36, 26, 44, 54, 32, 22, 46, 56, 34, 20
+      ]);
     }
   }, [isPlaying]);
 
   if (!currentTrack) return null;
 
   const isFav = favorites.includes(currentTrack.id);
-  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const progressRatio = duration > 0 ? currentTime / duration : 0;
+  const progressPercent = progressRatio * 100;
 
-  const handleSeekClick = (e) => {
+  const handleSeek = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     seek(ratio * duration);
   };
 
   return (
     <div
       style={{
-        background: '#16171d',
+        background: '#15161c',
         borderRadius: 20,
-        padding: '18px 20px',
+        padding: '18px 18px',
         border: '1px solid #23252e',
-        color: '#fff',
-        boxShadow: '0 12px 30px rgba(0, 0, 0, 0.45)',
-        position: 'relative',
-        overflow: 'hidden',
+        color: '#f3f4f6',
       }}
     >
-      {/* Title Header */}
+      {/* Header */}
       <div
         style={{
           display: 'flex',
@@ -96,13 +116,14 @@ export default function NowPlayingWidget({ compact = false }) {
             fontSize: 11,
             fontWeight: 700,
             letterSpacing: '0.08em',
-            color: '#8b8e9b',
+            color: '#6b7280',
             textTransform: 'uppercase',
           }}
         >
-          Now Playing
+          NOW PLAYING
         </span>
         <button
+          type="button"
           onClick={() => toggleFavorite(currentTrack.id)}
           style={{
             background: 'transparent',
@@ -112,8 +133,6 @@ export default function NowPlayingWidget({ compact = false }) {
             padding: 4,
             display: 'flex',
             alignItems: 'center',
-            transition: 'color 0.2s, transform 0.2s',
-            transform: isFav ? 'scale(1.1)' : 'scale(1)',
           }}
           title={isFav ? 'Remove from favorites' : 'Add to favorites'}
         >
@@ -121,7 +140,7 @@ export default function NowPlayingWidget({ compact = false }) {
         </button>
       </div>
 
-      {/* Track info with Artwork */}
+      {/* Track Artwork and Meta */}
       <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 16 }}>
         <div
           style={{
@@ -130,18 +149,13 @@ export default function NowPlayingWidget({ compact = false }) {
             borderRadius: 14,
             overflow: 'hidden',
             flexShrink: 0,
-            background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-            boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
-            position: 'relative',
+            background: '#1e2029',
           }}
         >
           <img
             src={currentTrack.cover}
             alt={currentTrack.title}
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-            }}
           />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -155,7 +169,6 @@ export default function NowPlayingWidget({ compact = false }) {
               textOverflow: 'ellipsis',
               marginBottom: 4,
             }}
-            title={currentTrack.title}
           >
             {currentTrack.title}
           </h4>
@@ -173,9 +186,9 @@ export default function NowPlayingWidget({ compact = false }) {
         </div>
       </div>
 
-      {/* Waveform Sound Visualizer & Progress */}
+      {/* Waveform Audio Visualizer (matching Image 3) */}
       <div
-        onClick={handleSeekClick}
+        onClick={handleSeek}
         style={{
           height: 38,
           display: 'flex',
@@ -186,7 +199,7 @@ export default function NowPlayingWidget({ compact = false }) {
           padding: '6px 0',
           marginBottom: 6,
         }}
-        title="Click to scrub audio"
+        title="Click anywhere to scrub playback"
       >
         {waveBars.map((height, i) => {
           const barFraction = (i / waveBars.length) * 100;
@@ -198,33 +211,31 @@ export default function NowPlayingWidget({ compact = false }) {
                 flex: 1,
                 height: `${height}%`,
                 maxHeight: '100%',
-                background: isPassed
-                  ? '#3b82f6'
-                  : 'rgba(255, 255, 255, 0.18)',
+                background: isPassed ? '#3b82f6' : '#282a36',
                 borderRadius: 2,
-                transition: isPlaying ? 'height 0.12s ease' : 'height 0.4s ease',
+                transition: 'height 0.12s ease',
               }}
             />
           );
         })}
       </div>
 
-      {/* Time timestamps */}
+      {/* Time indicators */}
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
           fontSize: 11,
           fontFamily: 'monospace',
-          color: '#8b8e9b',
-          marginBottom: 14,
+          color: '#6b7280',
+          marginBottom: 16,
         }}
       >
         <span>{formatTime(currentTime)}</span>
         <span>{formatTime(duration)}</span>
       </div>
 
-      {/* Controls row */}
+      {/* Controls row matching Image 3 */}
       <div
         style={{
           display: 'flex',
@@ -233,8 +244,8 @@ export default function NowPlayingWidget({ compact = false }) {
           padding: '0 4px',
         }}
       >
-        {/* Shuffle */}
         <button
+          type="button"
           onClick={() => setIsShuffle(!isShuffle)}
           style={{
             background: 'transparent',
@@ -243,13 +254,13 @@ export default function NowPlayingWidget({ compact = false }) {
             cursor: 'pointer',
             padding: 6,
           }}
-          title={isShuffle ? 'Shuffle on' : 'Shuffle off'}
+          title="Shuffle"
         >
           <Shuffle size={15} />
         </button>
 
-        {/* Previous */}
         <button
+          type="button"
           onClick={prevTrack}
           style={{
             background: 'transparent',
@@ -257,15 +268,15 @@ export default function NowPlayingWidget({ compact = false }) {
             color: '#d1d5db',
             cursor: 'pointer',
             padding: 6,
-            transition: 'color 0.2s',
           }}
-          title="Previous Track"
+          title="Previous"
         >
           <SkipBack size={18} />
         </button>
 
-        {/* Big Play/Pause Button */}
+        {/* Clean solid circular Play/Pause button */}
         <button
+          type="button"
           onClick={togglePlay}
           style={{
             width: 44,
@@ -278,23 +289,19 @@ export default function NowPlayingWidget({ compact = false }) {
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            boxShadow: isPlaying
-              ? '0 0 18px rgba(59, 130, 246, 0.6)'
-              : '0 4px 12px rgba(0, 0, 0, 0.4)',
-            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-            transform: isPlaying ? 'scale(1.05)' : 'scale(1)',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4)',
           }}
           title={isPlaying ? 'Pause' : 'Play'}
         >
           {isPlaying ? (
-            <Pause size={19} fill="#0f1013" />
+            <Pause size={18} fill="#0f1013" />
           ) : (
-            <Play size={19} fill="#0f1013" style={{ marginLeft: 2 }} />
+            <Play size={18} fill="#0f1013" style={{ marginLeft: 2 }} />
           )}
         </button>
 
-        {/* Next */}
         <button
+          type="button"
           onClick={nextTrack}
           style={{
             background: 'transparent',
@@ -302,15 +309,14 @@ export default function NowPlayingWidget({ compact = false }) {
             color: '#d1d5db',
             cursor: 'pointer',
             padding: 6,
-            transition: 'color 0.2s',
           }}
-          title="Next Track"
+          title="Next"
         >
           <SkipForward size={18} />
         </button>
 
-        {/* Repeat */}
         <button
+          type="button"
           onClick={() => setIsRepeat(!isRepeat)}
           style={{
             background: 'transparent',
@@ -319,7 +325,7 @@ export default function NowPlayingWidget({ compact = false }) {
             cursor: 'pointer',
             padding: 6,
           }}
-          title={isRepeat ? 'Repeat on' : 'Repeat off'}
+          title="Repeat"
         >
           <Repeat size={15} />
         </button>

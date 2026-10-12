@@ -33,7 +33,9 @@ export default function RatingSummary({ averageRating = 0, totalReviews = 0, dis
             const pct = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
             return (
               <div key={stars} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 4 }}>
-                <span style={{ width: 24, textAlign: 'right', color: 'var(--color-text-secondary)' }}>{stars}★</span>
+                <span style={{ width: 32, textAlign: 'right', color: 'var(--color-text-secondary)', display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3 }}>
+                  {stars} <Star size={10} color="#f59e0b" fill="#f59e0b" />
+                </span>
                 <div style={{ flex: 1, height: 8, borderRadius: 4, background: 'var(--color-background-secondary, #0f172a)', overflow: 'hidden' }}>
                   <div style={{ width: `${pct}%`, height: '100%', background: '#f59e0b', borderRadius: 4, transition: 'width 0.3s' }} />
                 </div>

@@ -51,7 +51,7 @@ async function verifyReplicaSetAndTransactions() {
   if (!persistedDoc || persistedDoc.val !== 100) {
     throw new Error('Transaction commit verification failed!');
   }
-  console.log('      ✅ Transaction commit succeeded! Document persisted:', persistedDoc._id);
+  console.log('      [SUCCESS] Transaction commit succeeded! Document persisted:', persistedDoc._id);
 
   // 3. Test Transaction Rollback
   console.log('[5/5] Testing Transaction Rollback (Abort)...');
@@ -66,7 +66,7 @@ async function verifyReplicaSetAndTransactions() {
   if (rolledBackDoc !== null) {
     throw new Error('Transaction rollback failed! Document was unexpectedly saved.');
   }
-  console.log('      ✅ Transaction rollback succeeded! Uncommitted document was discarded.');
+  console.log('      [SUCCESS] Transaction rollback succeeded! Uncommitted document was discarded.');
 
   // Clean up
   await TestModel.deleteMany({});
@@ -78,7 +78,7 @@ async function verifyReplicaSetAndTransactions() {
 
 if (require.main === module) {
   verifyReplicaSetAndTransactions().catch((err) => {
-    console.error('❌ Verification failed:', err.message);
+    console.error('[ERROR] Verification failed:', err.message);
     process.exit(1);
   });
 }
