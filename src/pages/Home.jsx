@@ -21,11 +21,13 @@ import {
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useAudioPlayer } from '../context/AudioPlayerContext';
+import AudioWaveform from '../components/AudioWaveform';
+import AppleMusicCaptions from '../components/AppleMusicCaptions';
 import podcastVideo from '../media/podcast.mp4';
 
 export default function Home() {
   const navigate = useNavigate();
-  const { currentTrack, isPlaying, playTrack } = useAudioPlayer();
+  const { currentTrack, isPlaying, playTrack, currentTime } = useAudioPlayer();
   const [activeCategory, setActiveCategory] = useState('All');
   const [episodes, setEpisodes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -196,28 +198,49 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* Right Value Box (Host / Guest Dual Pathway) */}
+              {/* Right Value Box: Apple Music Centered Lyrics Captions + Host/Guest Pathway */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div className="bento-card" style={{ padding: '20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--accent-lime)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Radio size={16} color="var(--text-dark)" />
+                {/* Apple Music-Style Centered Lyrics Live Captions Box */}
+                <div className="bento-card" style={{ padding: '18px 20px', background: 'linear-gradient(180deg, var(--bg-surface-elevated) 0%, var(--bg-surface) 100%)', borderColor: 'var(--border-medium)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 700, color: 'var(--accent-lime)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-lime)' }} />
+                      LIVE STUDIO CAPTIONS
                     </div>
-                    <strong style={{ fontSize: 14 }}>For Podcast Hosts</strong>
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                      APPLE MUSIC SYNC
+                    </span>
                   </div>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+
+                  {/* Centered Synchronized Lyrics / Captions Stream */}
+                  <AppleMusicCaptions currentTime={currentTime} isPlaying={isPlaying} />
+
+                  {/* Scrubber Waveform embedded directly beneath lyrics */}
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
+                    <AudioWaveform barCount={44} height={24} interactive={true} color="var(--accent-lime)" />
+                  </div>
+                </div>
+
+                <div className="bento-card" style={{ padding: '16px 20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--accent-lime)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Radio size={14} color="var(--text-dark)" />
+                    </div>
+                    <strong style={{ fontSize: 13.5 }}>For Podcast Hosts</strong>
+                  </div>
+                  <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
                     Find qualified guest speakers, review prior appearances, and book in-studio or virtual sessions instantly.
                   </p>
                 </div>
 
-                <div className="bento-card" style={{ padding: '20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--accent-purple)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Mic size={16} color="#ffffff" />
+                <div className="bento-card" style={{ padding: '16px 20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--accent-purple)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Mic size={14} color="#ffffff" />
                     </div>
-                    <strong style={{ fontSize: 14 }}>For Guest Speakers</strong>
+                    <strong style={{ fontSize: 13.5 }}>For Guest Speakers</strong>
                   </div>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                  <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
                     Get featured on top shows. Transparent host listener counts, show formats, and gear disclosures.
                   </p>
                 </div>

@@ -12,6 +12,7 @@ import {
   Radio
 } from 'lucide-react';
 import { useAudioPlayer } from '../context/AudioPlayerContext';
+import AudioWaveform from './AudioWaveform';
 
 export default function NowPlayingWidget() {
   const {
@@ -223,48 +224,14 @@ export default function NowPlayingWidget() {
           </button>
         </div>
 
-        {/* ── REAL-TIME INTERACTIVE PODCAST WAVEFORM SCRUBBER ── */}
+        {/* ── REAL-TIME INTERACTIVE PODCAST WAVEFORM SCRUBBER (Reveals on hover & scrub) ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
           <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', minWidth: 36, textAlign: 'right' }}>
             {formatTime ? formatTime(currentTime) : '00:00'}
           </span>
 
-          <div
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              const pos = (e.clientX - rect.left) / rect.width;
-              if (seek && duration) seek(pos * duration);
-            }}
-            style={{
-              flex: 1,
-              height: 28,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2.5,
-              cursor: 'pointer',
-              padding: '0 4px',
-              position: 'relative',
-            }}
-            title="Click to seek in podcast"
-          >
-            {spectrumBars.map((heightPercent, index) => {
-              const barProgress = (index / spectrumBars.length) * 100;
-              const isPlayed = barProgress <= progressPercent;
-
-              return (
-                <div
-                  key={index}
-                  style={{
-                    flex: 1,
-                    height: `${Math.max(14, isPlaying ? heightPercent : (index % 3 === 0 ? 30 : index % 2 === 0 ? 45 : 20))}%`,
-                    minHeight: 3,
-                    borderRadius: 2,
-                    background: isPlayed ? 'var(--accent-lime)' : 'rgba(255, 255, 255, 0.16)',
-                    transition: 'height 0.08s ease, background-color 0.12s ease',
-                  }}
-                />
-              );
-            })}
+          <div style={{ flex: 1, position: 'relative' }}>
+            <AudioWaveform barCount={52} height={26} interactive={true} color="var(--accent-lime)" />
           </div>
 
           <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', minWidth: 36 }}>
