@@ -21,6 +21,7 @@ import {
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useAudioPlayer } from '../context/AudioPlayerContext';
+import podcastVideo from '../media/podcast.mp4';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -158,10 +159,13 @@ export default function Home() {
                   overflow: 'hidden',
                 }} />
 
-                {/* Creator Silhouette Image */}
-                <img
-                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=700&q=80"
-                  alt="Podcast Host & Creator"
+                {/* Creator Silhouette Video */}
+                <video
+                  src={podcastVideo}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
                   style={{
                     position: 'relative',
                     zIndex: 2,
