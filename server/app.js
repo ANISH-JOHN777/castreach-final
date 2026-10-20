@@ -22,7 +22,9 @@ stitcher.initialize();
 const app = express();
 
 // ── Security headers ──────────────────────────────────────────────────────────
-app.use(helmet());
+app.use(helmet({
+  crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+}));
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',

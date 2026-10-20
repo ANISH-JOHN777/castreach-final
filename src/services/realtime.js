@@ -42,11 +42,10 @@ class RealtimeClient {
     this.setStatus(this.reconnectAttempts > 0 ? 'RECONNECTING' : 'CONNECTING');
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const isDevPort = window.location.port === '5173' || window.location.port === '5174';
-    const host = isDevPort
-      ? window.location.host
-      : (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'localhost:3001' : window.location.host);
-    const wsUrl = `${protocol}//${host}/ws?token=${encodeURIComponent(token)}`;
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const wsUrl = isLocalhost
+      ? `ws://${window.location.hostname}:3001/ws?token=${encodeURIComponent(token)}`
+      : `${protocol}//${window.location.host}/ws?token=${encodeURIComponent(token)}`;
 
     try {
       this.ws = new WebSocket(wsUrl);

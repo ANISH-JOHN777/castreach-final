@@ -152,8 +152,8 @@ export default function AvailabilityPicker({ hostId, editable = false, onSlotSel
                     onClick={() => toggleSelect(date, hour)}
                     style={{
                       height: 24, borderRadius: 4, border: 'none', cursor: past ? 'default' : 'pointer',
-                      background: sel ? '#3b82f6' : open ? '#22c55e33' : past ? 'transparent' : 'var(--color-background-secondary)',
-                      outline: open && !sel ? '1.5px solid #22c55e' : 'none',
+                      background: sel ? '#3b82f6' : open ? '#482F4C33' : past ? 'transparent' : 'var(--color-background-secondary)',
+                      outline: open && !sel ? '1.5px solid #482F4C' : 'none',
                       opacity: past ? 0.3 : 1,
                     }}
                   />
@@ -166,12 +166,12 @@ export default function AvailabilityPicker({ hostId, editable = false, onSlotSel
 
       {/* Legend */}
       <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: 11, color: 'var(--color-text-secondary)' }}>
-        <span><span style={{ display: 'inline-block', width: 10, height: 10, background: '#22c55e33', border: '1.5px solid #22c55e', borderRadius: 2, marginRight: 4 }} />Available</span>
+        <span><span style={{ display: 'inline-block', width: 10, height: 10, background: '#482F4C33', border: '1.5px solid #482F4C', borderRadius: 2, marginRight: 4 }} />Available</span>
         {editable && <span><span style={{ display: 'inline-block', width: 10, height: 10, background: '#3b82f6', borderRadius: 2, marginRight: 4 }} />Selected</span>}
       </div>
 
       {editable && selected.length > 0 && (
-        <button onClick={saveSlots} disabled={saving} style={{ marginTop: 12, padding: '8px 20px', borderRadius: 8, background: '#22c55e', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}>
+        <button onClick={saveSlots} disabled={saving} style={{ marginTop: 12, padding: '8px 20px', borderRadius: 8, background: '#482F4C', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}>
           {saving ? 'Saving…' : `Save ${selected.length} slot${selected.length > 1 ? 's' : ''}`}
         </button>
       )}

@@ -56,7 +56,7 @@ export default function Explore() {
   ];
 
   return (
-    <div style={{ background: '#fdfdfd', minHeight: '100vh', color: '#0f172a' }}>
+    <div style={{ background: '#0D0C12', minHeight: '100vh', color: '#FFFFFF', fontFamily: "'Geist Sans', -apple-system, sans-serif" }}>
       <Navbar />
 
       <main style={{ maxWidth: 1240, margin: '0 auto', padding: '50px 24px 80px' }}>
@@ -65,8 +65,9 @@ export default function Explore() {
             display: 'inline-flex',
             alignItems: 'center',
             gap: 8,
-            background: '#e0f2fe',
-            color: '#0284c7',
+            background: 'rgba(168, 85, 247, 0.12)',
+            color: '#A855F7',
+            border: '1px solid rgba(168, 85, 247, 0.28)',
             padding: '4px 12px',
             borderRadius: 16,
             fontSize: 12,
@@ -75,10 +76,10 @@ export default function Explore() {
           }}>
             <Radio size={14} /> CURATED PODCAST FEED
           </div>
-          <h1 style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 8 }}>
-            Explore Featured Episodes & Podcasts
+          <h1 style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 8, color: '#FFFFFF' }}>
+            Explore Featured Episodes &amp; Podcasts
           </h1>
-          <p style={{ color: '#64748b', fontSize: 15 }}>
+          <p style={{ color: '#A39EA9', fontSize: 15 }}>
             Listen to curated recordings created on CastReach, and instantly book the hosts or guests for your own shows.
           </p>
         </div>
@@ -90,22 +91,24 @@ export default function Explore() {
               <div
                 key={ep.id}
                 style={{
-                  background: '#fff',
-                  borderRadius: 22,
+                  background: '#181622',
+                  borderRadius: 18,
                   overflow: 'hidden',
-                  border: '1px solid #e2e8f0',
-                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
                   display: 'flex',
                   flexDirection: 'column',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  transition: 'transform 0.2s, border-color 0.2s, box-shadow 0.2s',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = '0 12px 30px rgba(0, 0, 0, 0.08)';
+                  e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.4)';
+                  e.currentTarget.style.boxShadow = '0 12px 32px rgba(168, 85, 247, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.04)';
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.5)';
                 }}
               >
                 <div style={{ height: 160, position: 'relative' }}>
@@ -115,9 +118,10 @@ export default function Explore() {
                       position: 'absolute',
                       top: 12,
                       left: 12,
-                      background: 'rgba(15, 23, 42, 0.85)',
+                      background: 'rgba(13, 12, 18, 0.88)',
                       backdropFilter: 'blur(8px)',
-                      color: '#fff',
+                      color: '#A855F7',
+                      border: '1px solid rgba(168, 85, 247, 0.3)',
                       padding: '4px 10px',
                       borderRadius: 12,
                       fontSize: 11,
@@ -129,21 +133,21 @@ export default function Explore() {
                 </div>
 
                 <div style={{ padding: 22, flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <h3 style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.35, marginBottom: 8, color: '#0f172a' }}>
+                  <h3 style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.35, marginBottom: 8, color: '#FFFFFF' }}>
                     {ep.title}
                   </h3>
 
-                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 18 }}>
-                    Host: <b>{ep.host}</b> • Guest: <b>{ep.guest}</b>
+                  <div style={{ fontSize: 13, color: '#A39EA9', marginBottom: 18 }}>
+                    Host: <strong style={{ color: '#FFFFFF' }}>{ep.host}</strong> • Guest: <strong style={{ color: '#FFFFFF' }}>{ep.guest}</strong>
                   </div>
 
-                  <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 14, borderTop: '1px solid #f1f5f9' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12.5, color: '#64748b' }}>
+                  <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 14, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12.5, color: '#6F6A76' }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <Clock size={13} /> {ep.duration}
+                        <Clock size={13} color="#A39EA9" /> {ep.duration}
                       </span>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <Star size={13} fill="#f59e0b" color="#f59e0b" /> {ep.rating}
+                        <Star size={13} fill="#A855F7" color="#A855F7" /> {ep.rating}
                       </span>
                     </div>
 
@@ -162,8 +166,8 @@ export default function Explore() {
                           })
                         }
                         style={{
-                          background: isThisPlaying ? '#2563eb' : '#0f172a',
-                          color: '#fff',
+                          background: isThisPlaying ? '#22C55E' : '#A855F7',
+                          color: '#FFFFFF',
                           padding: '7px 14px',
                           borderRadius: 9999,
                           fontSize: 12,
@@ -173,9 +177,10 @@ export default function Explore() {
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 6,
+                          boxShadow: '0 2px 10px rgba(168, 85, 247, 0.3)',
                         }}
                       >
-                        {isThisPlaying ? <Pause size={12} fill="#fff" /> : <Play size={12} fill="#fff" />}
+                        {isThisPlaying ? <Pause size={12} fill="#FFFFFF" /> : <Play size={12} fill="#FFFFFF" />}
                         {isThisPlaying ? 'Playing' : 'Listen'}
                       </button>
 
@@ -183,13 +188,13 @@ export default function Explore() {
                         type="button"
                         onClick={() => navigate('/discover')}
                         style={{
-                          background: '#f1f5f9',
-                          color: '#0f172a',
+                          background: 'rgba(255, 255, 255, 0.06)',
+                          color: '#FFFFFF',
+                          border: '1px solid rgba(255, 255, 255, 0.12)',
                           padding: '7px 12px',
                           borderRadius: 9999,
                           fontSize: 12,
                           fontWeight: 600,
-                          border: 'none',
                           cursor: 'pointer',
                         }}
                       >

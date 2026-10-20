@@ -465,7 +465,7 @@ function OverviewTab({ overview, disputesCount, reportsCount }) {
         <KpiCard label="Total Users" value={stats.users.total} sub={`${stats.users.hosts} Hosts • ${stats.users.guests} Guests`} Icon={Users} color="var(--plum-primary)" />
         <KpiCard label="Bookings" value={stats.bookings.total} sub={`${stats.bookings.completed} Completed • ${stats.bookings.active} Active`} Icon={Calendar} color="var(--purple-castreach)" />
         <KpiCard label="Escrow Held" value={`$${((stats.payments?.heldCents || 0) / 100).toFixed(2)}`} sub={`${stats.payments?.heldCount || 0} Sessions Held`} Icon={CreditCard} color="#f59e0b" />
-        <KpiCard label="Released Revenue" value={`$${((stats.revenueCents || 0) / 100).toFixed(2)}`} sub={`${stats.payments?.releasedCount || 0} Payouts Settled`} Icon={DollarSign} color="#10b981" />
+        <KpiCard label="Released Revenue" value={`$${((stats.revenueCents || 0) / 100).toFixed(2)}`} sub={`${stats.payments?.releasedCount || 0} Payouts Settled`} Icon={DollarSign} color="#482F4C" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
@@ -473,7 +473,7 @@ function OverviewTab({ overview, disputesCount, reportsCount }) {
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--color-text-primary)' }}>Recording Processing Pipeline</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 4 }}>
             <span>Processing: <strong style={{ color: '#f59e0b' }}>{stats.recordings?.processing || 0}</strong></span>
-            <span>Ready: <strong style={{ color: '#10b981' }}>{stats.recordings?.ready || 0}</strong></span>
+            <span>Ready: <strong style={{ color: '#482F4C' }}>{stats.recordings?.ready || 0}</strong></span>
             <span>Failed: <strong style={{ color: '#ef4444' }}>{stats.recordings?.failed || 0}</strong></span>
           </div>
         </div>
@@ -482,7 +482,7 @@ function OverviewTab({ overview, disputesCount, reportsCount }) {
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--color-text-primary)' }}>FFmpeg Async Rendering Queue</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 4 }}>
             <span>Queued/Processing: <strong style={{ color: '#f59e0b' }}>{(stats.renders?.queued || 0) + (stats.renders?.processing || 0)}</strong></span>
-            <span>Ready: <strong style={{ color: '#10b981' }}>{stats.renders?.ready || 0}</strong></span>
+            <span>Ready: <strong style={{ color: '#482F4C' }}>{stats.renders?.ready || 0}</strong></span>
             <span>Failed: <strong style={{ color: '#ef4444' }}>{stats.renders?.failed || 0}</strong></span>
           </div>
         </div>
@@ -643,7 +643,7 @@ function BookingsTab({ bookings, statusFilter, onStatusFilterChange, onViewBooki
                   </span>
                 </td>
                 <td style={{ padding: '10px 12px' }}>
-                  <span style={{ padding: '3px 8px', borderRadius: 10, fontSize: 11, fontWeight: 700, textTransform: 'capitalize', background: b.paymentStatus === 'released' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: b.paymentStatus === 'released' ? '#10b981' : '#f59e0b' }}>
+                  <span style={{ padding: '3px 8px', borderRadius: 10, fontSize: 11, fontWeight: 700, textTransform: 'capitalize', background: b.paymentStatus === 'released' ? 'rgba(72,47,76,0.35)' : 'rgba(245,158,11,0.15)', color: b.paymentStatus === 'released' ? '#482F4C' : '#f59e0b' }}>
                     {b.paymentStatus} (${((b.amountCents || 0) / 100).toFixed(2)})
                   </span>
                 </td>
@@ -687,7 +687,7 @@ function PaymentsTab({ bookings, onRelease, onRefund, actionLoading }) {
                 <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontSize: 11 }}>{b._id}</td>
                 <td style={{ padding: '10px 12px', fontWeight: 700 }}>${((b.amountCents || 0) / 100).toFixed(2)} USD</td>
                 <td style={{ padding: '10px 12px' }}>
-                  <span style={{ padding: '3px 8px', borderRadius: 10, fontSize: 11, fontWeight: 700, textTransform: 'capitalize', background: b.paymentStatus === 'released' ? 'rgba(16,185,129,0.15)' : b.paymentStatus === 'refunded' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)', color: b.paymentStatus === 'released' ? '#10b981' : b.paymentStatus === 'refunded' ? '#ef4444' : '#f59e0b' }}>
+                  <span style={{ padding: '3px 8px', borderRadius: 10, fontSize: 11, fontWeight: 700, textTransform: 'capitalize', background: b.paymentStatus === 'released' ? 'rgba(72,47,76,0.35)' : b.paymentStatus === 'refunded' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)', color: b.paymentStatus === 'released' ? '#482F4C' : b.paymentStatus === 'refunded' ? '#ef4444' : '#f59e0b' }}>
                     {b.paymentStatus}
                   </span>
                 </td>
@@ -697,7 +697,7 @@ function PaymentsTab({ bookings, onRelease, onRefund, actionLoading }) {
                 <td style={{ padding: '10px 12px', textAlign: 'right' }}>
                   {b.paymentStatus === 'held' && (
                     <div style={{ display: 'inline-flex', gap: 6 }}>
-                      <button onClick={() => onRelease(b._id)} disabled={actionLoading} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#10b981', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      <button onClick={() => onRelease(b._id)} disabled={actionLoading} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#482F4C', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                         Release
                       </button>
                       <button onClick={() => onRefund(b._id)} disabled={actionLoading} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#ef4444', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
@@ -760,7 +760,7 @@ function DisputesTab({ disputes, selectedDispute, setSelectedDispute, resolution
                     <button onClick={() => onResolve(d._id, 'resolve', 'refund')} disabled={actionLoading} style={{ padding: '6px 12px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                       Resolve & Refund Guest
                     </button>
-                    <button onClick={() => onResolve(d._id, 'resolve', 'release')} disabled={actionLoading} style={{ padding: '6px 12px', background: '#10b981', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                    <button onClick={() => onResolve(d._id, 'resolve', 'release')} disabled={actionLoading} style={{ padding: '6px 12px', background: '#482F4C', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                       Resolve & Release to Host
                     </button>
                     <button onClick={() => onResolve(d._id, 'dismiss', null)} disabled={actionLoading} style={{ padding: '6px 12px', background: '#6b7280', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
@@ -802,7 +802,7 @@ function RecordingsTab({ recordings }) {
               <tr key={r._id} style={{ borderBottom: '1px solid var(--color-border-tertiary)' }}>
                 <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontSize: 11 }}>{r._id}</td>
                 <td style={{ padding: '10px 12px' }}>
-                  <span style={{ padding: '3px 8px', borderRadius: 10, fontSize: 11, fontWeight: 700, background: r.recordingStatus === 'READY' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: r.recordingStatus === 'READY' ? '#10b981' : '#f59e0b' }}>
+                  <span style={{ padding: '3px 8px', borderRadius: 10, fontSize: 11, fontWeight: 700, background: r.recordingStatus === 'READY' ? 'rgba(72,47,76,0.35)' : 'rgba(245,158,11,0.15)', color: r.recordingStatus === 'READY' ? '#482F4C' : '#f59e0b' }}>
                     {r.recordingStatus || 'NOT_STARTED'}
                   </span>
                 </td>
@@ -813,7 +813,7 @@ function RecordingsTab({ recordings }) {
                   {r.recordingDuration ? `${r.recordingDuration}s` : 'N/A'}
                 </td>
                 <td style={{ padding: '10px 12px' }}>
-                  <span style={{ padding: '3px 8px', borderRadius: 10, fontSize: 11, fontWeight: 700, background: r.recordingEdit?.renderStatus === 'READY' ? 'rgba(16,185,129,0.15)' : r.recordingEdit?.renderStatus === 'FAILED' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)', color: r.recordingEdit?.renderStatus === 'READY' ? '#10b981' : r.recordingEdit?.renderStatus === 'FAILED' ? '#ef4444' : '#f59e0b' }}>
+                  <span style={{ padding: '3px 8px', borderRadius: 10, fontSize: 11, fontWeight: 700, background: r.recordingEdit?.renderStatus === 'READY' ? 'rgba(72,47,76,0.35)' : r.recordingEdit?.renderStatus === 'FAILED' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)', color: r.recordingEdit?.renderStatus === 'READY' ? '#482F4C' : r.recordingEdit?.renderStatus === 'FAILED' ? '#ef4444' : '#f59e0b' }}>
                     {r.recordingEdit?.renderStatus || 'NOT_REQUESTED'}
                   </span>
                 </td>
@@ -885,7 +885,7 @@ function PodcastsTab() {
             Inspect shows, verify publishing status, and moderate platform podcasts.
           </p>
         </div>
-        <span style={{ padding: '4px 10px', borderRadius: 12, background: 'rgba(16,185,129,0.15)', color: '#10b981', fontSize: 11, fontWeight: 700 }}>
+        <span style={{ padding: '4px 10px', borderRadius: 12, background: 'rgba(72,47,76,0.35)', color: '#482F4C', fontSize: 11, fontWeight: 700 }}>
           Module Active
         </span>
       </div>
@@ -922,7 +922,7 @@ function PodcastsTab() {
                   <td style={{ padding: '10px 12px', color: 'var(--color-text-secondary)' }}>{p.category}</td>
                   <td style={{ padding: '10px 12px', fontWeight: 600 }}>{p.episodeCount || 0}</td>
                   <td style={{ padding: '10px 12px' }}>
-                    <span style={{ padding: '3px 8px', borderRadius: 10, fontSize: 11, fontWeight: 700, background: p.status === 'PUBLISHED' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: p.status === 'PUBLISHED' ? '#10b981' : '#f59e0b' }}>
+                    <span style={{ padding: '3px 8px', borderRadius: 10, fontSize: 11, fontWeight: 700, background: p.status === 'PUBLISHED' ? 'rgba(72,47,76,0.35)' : 'rgba(245,158,11,0.15)', color: p.status === 'PUBLISHED' ? '#482F4C' : '#f59e0b' }}>
                       {p.status}
                     </span>
                   </td>
@@ -1043,8 +1043,8 @@ function AiJobsTab({ jobs = [] }) {
                       borderRadius: 12,
                       fontSize: 10,
                       fontWeight: 700,
-                      background: j.status === 'READY' ? '#dcfce7' : j.status === 'FAILED' ? '#fee2e2' : '#fef3c7',
-                      color: j.status === 'READY' ? '#15803d' : j.status === 'FAILED' ? '#b91c1c' : '#b45309',
+                      background: j.status === 'READY' ? 'rgba(72, 47, 76, 0.45)' : j.status === 'FAILED' ? '#fee2e2' : '#fef3c7',
+                      color: j.status === 'READY' ? '#DDAFE8' : j.status === 'FAILED' ? '#b91c1c' : '#b45309',
                     }}>
                       {j.status}
                     </span>

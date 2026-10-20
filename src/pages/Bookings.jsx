@@ -13,8 +13,8 @@ const STATUS_TABS = [
 
 const STATUS_COLOR = {
   pending: { bg: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: 'rgba(245, 158, 11, 0.3)' },
-  confirmed: { bg: 'rgba(37, 99, 235, 0.15)', color: '#60a5fa', border: 'rgba(37, 99, 235, 0.3)' },
-  completed: { bg: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: 'rgba(16, 185, 129, 0.3)' },
+  confirmed: { bg: 'rgba(72, 47, 76, 0.45)', color: '#E2B6EE', border: 'rgba(226, 182, 238, 0.4)' },
+  completed: { bg: 'rgba(22, 163, 74, 0.15)', color: '#22c55e', border: 'rgba(22, 163, 74, 0.3)' },
   cancelled: { bg: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: 'rgba(239, 68, 68, 0.3)' },
   disputed: { bg: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: 'rgba(239, 68, 68, 0.3)' },
 };
@@ -26,27 +26,28 @@ export default function Bookings() {
 
   return (
     <div className="fade-in" style={{ maxWidth: 960, margin: '0 auto', color: '#f3f4f6' }}>
-      <div style={{ marginBottom: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ marginBottom: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Podcast Bookings & Sessions</h1>
-          <p style={{ color: '#9ca3af', fontSize: 13.5 }}>Manage scheduled recordings, escrow status, and enter recording rooms</p>
+          <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Podcast Bookings &amp; Escrow</h1>
+          <p style={{ color: '#9ca3af', fontSize: 13.5 }}>Manage scheduled recordings, CastReach escrow status, and enter production rooms</p>
         </div>
 
         <button
           type="button"
-          onClick={() => navigate('/discover?tab=hosts')}
+          onClick={() => navigate('/discover?tab=guests')}
           style={{
-            background: '#2563eb',
+            background: '#482F4C',
+            border: '1px solid rgba(226, 182, 238, 0.4)',
             color: '#fff',
-            border: 'none',
-            padding: '9px 18px',
+            padding: '10px 20px',
             borderRadius: 9999,
             fontSize: 13,
             fontWeight: 700,
             cursor: 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 6,
+            gap: 8,
+            boxShadow: '0 4px 14px rgba(72, 47, 76, 0.4)',
           }}
         >
           Book New Session <ArrowRight size={14} />
@@ -64,10 +65,10 @@ export default function Bookings() {
               style={{
                 padding: '8px 16px',
                 border: 'none',
-                background: isActive ? '#2563eb' : 'transparent',
+                background: isActive ? '#482F4C' : 'transparent',
                 cursor: 'pointer',
                 fontSize: 13,
-                fontWeight: 600,
+                fontWeight: 650,
                 color: isActive ? '#ffffff' : '#9ca3af',
                 borderRadius: 10,
                 transition: 'all 0.15s',
@@ -154,48 +155,62 @@ function BookingRow({ booking, onClick }) {
         </div>
       </div>
 
-      {/* Action / Recording Room Shortcut */}
-      {booking.status === 'confirmed' && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate(`/bookings/${booking._id}/record`);
-          }}
+      {/* Escrow Status & Recording Room Shortcut */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {booking.paymentStatus === 'held' && (
+          <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 8, background: 'rgba(72, 47, 76, 0.6)', border: '1px solid rgba(226, 182, 238, 0.35)', color: '#E2B6EE', fontWeight: 700 }}>
+            Escrow Held (${((booking.amountCents || 0) / 100).toFixed(0)})
+          </span>
+        )}
+        {booking.paymentStatus === 'released' && (
+          <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 8, background: 'rgba(22, 163, 74, 0.2)', border: '1px solid rgba(22, 163, 74, 0.4)', color: '#22c55e', fontWeight: 700 }}>
+            Settled &amp; Released
+          </span>
+        )}
+
+        {booking.status === 'confirmed' && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/bookings/${booking._id}/record`);
+            }}
+            style={{
+              background: '#482F4C',
+              color: '#FFFFFF',
+              border: '1px solid rgba(226, 182, 238, 0.4)',
+              padding: '6px 14px',
+              borderRadius: 9999,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              boxShadow: '0 2px 8px rgba(72, 47, 76, 0.3)',
+            }}
+          >
+            <Video size={13} color="#E2B6EE" /> Enter Studio
+          </button>
+        )}
+
+        {/* Status badge */}
+        <span
           style={{
-            background: 'rgba(37, 99, 235, 0.2)',
-            color: '#60a5fa',
-            border: '1px solid rgba(37, 99, 235, 0.4)',
-            padding: '6px 14px',
-            borderRadius: 9999,
-            fontSize: 12,
+            padding: '5px 12px',
+            borderRadius: 20,
+            fontSize: 11.5,
             fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
+            background: s.bg,
+            color: s.color,
+            border: `1px solid ${s.border}`,
+            flexShrink: 0,
+            textTransform: 'capitalize',
           }}
         >
-          <Video size={13} /> Enter Studio
-        </button>
-      )}
-
-      {/* Status badge */}
-      <span
-        style={{
-          padding: '5px 12px',
-          borderRadius: 20,
-          fontSize: 11.5,
-          fontWeight: 700,
-          background: s.bg,
-          color: s.color,
-          border: `1px solid ${s.border}`,
-          flexShrink: 0,
-          textTransform: 'capitalize',
-        }}
-      >
-        {booking.status}
-      </span>
+          {booking.status}
+        </span>
+      </div>
 
       <ChevronRight size={16} color="#6b7280" />
     </div>

@@ -1,88 +1,171 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 
-// Apple Music-style time-synchronized caption lines
-const DEFAULT_CAPTIONS = [
-  { start: 0, end: 3.5, text: "Welcome to the CastReach Studio." },
-  { start: 3.5, end: 7.2, text: "Where authentic voices connect and stories unfold." },
-  { start: 7.2, end: 11.5, text: "Match with world-class hosts and industry-leading guests." },
-  { start: 11.5, end: 15.8, text: "Schedule in physical recording studios or over Google Meet." },
-  { start: 15.8, end: 20.0, text: "No fake profiles. Zero pre-seeded credentials." },
-  { start: 20.0, end: 25.0, text: "Just high-fidelity audio and transparent conversations." },
-  { start: 25.0, end: 30.0, text: "Speak loud. Be heard across the globe." },
-];
-
-export default function AppleMusicCaptions({ currentTime = 0, isPlaying = true, captions = DEFAULT_CAPTIONS }) {
-  const [activeIndex, setActiveIndex] = useState(0);
+/**
+ * AppleMusicCaptions: Real-time Synchronized Podcast Captions matching Player Mockup
+ * - Displays timestamps (mm:ss) on the left
+ * - Active caption highlighted in glowing #482F4C container with lavender text
+ * - Click any timestamp to jump to that moment
+ * - Auto-scroll smoothly centers the active caption when enabled
+ */
+export default function AppleMusicCaptions({ 
+  currentTime = 0, 
+  isPlaying = true, 
+  captions = [],
+  onSeek,
+  autoScroll = true,
+}) {
   const containerRef = useRef(null);
+  const activeLineRef = useRef(null);
 
-  useEffect(() => {
-    // Loop through captions or match current time modulo the total caption timeline duration
-    const totalDuration = captions[captions.length - 1].end;
-    const normalizedTime = totalDuration > 0 ? (currentTime % totalDuration) : 0;
+  // Fast binary search to resolve the current active cue index
+  const activeIndex = useMemo(() => {
+    if (!captions || captions.length === 0) return -1;
 
-    const idx = captions.findIndex((c) => normalizedTime >= c.start && normalizedTime < c.end);
-    if (idx !== -1) {
-      setActiveIndex(idx);
-    } else {
-      setActiveIndex(0);
+    let low = 0;
+    let high = captions.length - 1;
+    let match = -1;
+
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      const cue = captions[mid];
+
+      if (currentTime >= cue.start && currentTime <= cue.end) {
+        return mid;
+      } else if (currentTime < cue.start) {
+        high = mid - 1;
+      } else {
+        match = mid;
+        low = mid + 1;
+      }
     }
-  }, [currentTime, captions]);
 
-  // Center the active line smoothly
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const activeElem = containerRef.current.children[activeIndex];
-    if (activeElem) {
-      activeElem.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-        inline: 'center',
-      });
+    if (match !== -1 && currentTime <= captions[match].end + 3.0) {
+      return match;
     }
-  }, [activeIndex]);
+
+    if (captions[0] && currentTime < captions[0].start) {
+      return -1;
+    }
+
+    return match;
+  }, [captions, currentTime]);
+
+  // Smooth auto-scroll following the active sentence when autoScroll is ON
+  useEffect(() => {
+    if (!autoScroll || !activeLineRef.current || !containerRef.current) return;
+    const container = containerRef.current;
+    const activeEl = activeLineRef.current;
+
+    const offsetTop = activeEl.offsetTop - container.offsetTop;
+    const targetScroll = offsetTop - (container.clientHeight / 2) + (activeEl.clientHeight / 2);
+
+    container.scrollTo({
+      top: Math.max(0, targetScroll),
+      behavior: 'smooth'
+    });
+  }, [activeIndex, autoScroll]);
+
+  // Format seconds to mm:ss (e.g. 00:24)
+  const formatCueTime = (seconds) => {
+    if (isNaN(seconds) || !isFinite(seconds) || seconds < 0) return '00:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  if (!captions || captions.length === 0) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        color: '#94A3B8',
+        fontSize: 14,
+        fontFamily: "'Geist Sans', -apple-system, sans-serif",
+      }}>
+        No captions available for this master recording.
+      </div>
+    );
+  }
 
   return (
     <div
       ref={containerRef}
       style={{
-        position: 'relative',
         height: '100%',
-        maxHeight: 140,
-        overflowY: 'hidden',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        paddingRight: 6,
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 12,
-        padding: '12px 16px',
-        maskImage: 'linear-gradient(to bottom, transparent 0%, black 25%, black 75%, transparent 100%)',
-        WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 25%, black 75%, transparent 100%)',
-        textAlign: 'center',
-        userSelect: 'none',
+        gap: 6,
+        scrollBehavior: 'smooth',
+        scrollbarWidth: 'thin',
+        scrollbarColor: 'rgba(226, 182, 238, 0.3) rgba(255, 255, 255, 0.04)',
+        fontFamily: "'Geist Sans', -apple-system, sans-serif",
       }}
     >
       {captions.map((line, idx) => {
         const isActive = idx === activeIndex;
-        const isPrev = idx === activeIndex - 1;
-        const isNext = idx === activeIndex + 1;
 
         return (
           <div
-            key={idx}
+            key={`caption-${line.start}-${idx}`}
+            ref={isActive ? activeLineRef : null}
+            onClick={() => onSeek && onSeek(line.start)}
+            title={onSeek ? `Jump to ${formatCueTime(line.start)}` : undefined}
             style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: isActive ? '18px' : isPrev || isNext ? '14px' : '12px',
-              fontWeight: isActive ? 850 : 600,
-              letterSpacing: isActive ? '-0.02em' : '0em',
-              color: isActive ? 'var(--accent-lime)' : isPrev || isNext ? 'rgba(255, 255, 255, 0.45)' : 'rgba(255, 255, 255, 0.15)',
-              transform: isActive ? 'scale(1.04)' : 'scale(0.96)',
-              filter: isActive ? 'none' : 'blur(0.5px)',
-              transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
-              lineHeight: 1.35,
-              cursor: 'default',
+              display: 'flex',
+              alignItems: 'baseline',
+              gap: 18,
+              padding: '9px 14px',
+              borderRadius: 8,
+              cursor: 'pointer',
+              background: isActive 
+                ? 'rgba(72, 47, 76, 0.45)' 
+                : 'transparent',
+              border: isActive 
+                ? '1px solid rgba(226, 182, 238, 0.45)' 
+                : '1px solid transparent',
+              boxShadow: isActive 
+                ? '0 0 16px rgba(72, 47, 76, 0.35)' 
+                : 'none',
+              transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+            onMouseEnter={(e) => {
+              if (!isActive) {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isActive) {
+                e.currentTarget.style.background = 'transparent';
+              }
             }}
           >
-            {line.text}
+            {/* Timestamp on Left (mm:ss) */}
+            <span style={{
+              fontFamily: "'Geist Mono', monospace",
+              fontSize: 12.5,
+              fontWeight: isActive ? 700 : 500,
+              color: isActive ? '#E2B6EE' : '#64748B',
+              minWidth: 44,
+              flexShrink: 0,
+            }}>
+              {formatCueTime(line.start)}
+            </span>
+
+            {/* Spoken Text on Right */}
+            <span style={{
+              fontSize: 14,
+              lineHeight: 1.5,
+              fontWeight: isActive ? 750 : 450,
+              color: isActive ? '#FFFFFF' : '#94A3B8',
+              flex: 1,
+            }}>
+              {line.text}
+            </span>
           </div>
         );
       })}

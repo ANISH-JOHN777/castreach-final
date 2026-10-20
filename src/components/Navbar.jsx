@@ -1,200 +1,464 @@
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Radio, Mic, Headphones, LogOut, LayoutDashboard, User, Sparkles, Compass } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Menu, X, ArrowLeft, User, Headphones, Volume2, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useAudioPlayer } from '../context/AudioPlayerContext';
+import CastReachLogo from './CastReachLogo';
+import { realtime } from '../services/realtime';
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { currentTrack, isPlaying } = useAudioPlayer();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const isHome = location.pathname === '/';
+
+  // Smooth scroll listener for dynamic shrink animation
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPos = window.scrollY;
+      setIsScrolled(scrollPos > 36);
+    };
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Real-time unread messages notification listener
+  useEffect(() => {
+    if (!user) return;
+    const unsub = realtime.on('message:new', (msg) => {
+      if (!msg) return;
+      const myId = (user?._id || user?.id)?.toString();
+      const senderId = (msg.sender?._id || msg.senderId)?.toString();
+      if (senderId && senderId !== myId) {
+        setUnreadCount((prev) => prev + 1);
+      }
+    });
+    return () => unsub();
+  }, [user]);
+
+  // Reset unread count when user opens messages view
+  useEffect(() => {
+    if (location.search.includes('tab=messages') || location.pathname.startsWith('/messages')) {
+      setUnreadCount(0);
+    }
+  }, [location.search, location.pathname]);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  // Role-specific nav links:
+  // Host: Discover guests, Dashboard, Messages, Listen, Profile
+  // Guest: Listen, Dashboard, Messages, Profile
+  // Public/About: Discover guests, Listen, About
+  const navLinks = useMemo(() => {
+    const isHost = user?.role === 'host' || location.pathname.startsWith('/host');
+    const isGuest = user?.role === 'guest' || location.pathname.startsWith('/guest');
+
+    if (isHost) {
+      return [
+        { label: 'Discover guests', to: '/find-guests' },
+        { label: 'Dashboard', to: '/host' },
+        { label: 'Messages', to: '/host?tab=messages', isMessages: true },
+        { label: 'Listen', to: '/listen' },
+        { label: 'Profile', to: '/profile' },
+      ];
+    }
+    if (isGuest) {
+      return [
+        { label: 'Listen', to: '/listen' },
+        { label: 'Dashboard', to: '/guest' },
+        { label: 'Messages', to: '/guest?tab=messages', isMessages: true },
+        { label: 'Profile', to: '/profile' },
+      ];
+    }
+    return [
+      { label: 'Discover guests', to: '/find-guests' },
+      { label: 'Listen', to: '/listen' },
+      { label: 'About', to: '/about' },
+    ];
+  }, [user?.role, location.pathname]);
 
   const getDashboardPath = () => {
     if (!user) return '/login';
     if (user.role === 'admin') return '/admin';
     if (user.role === 'host') return '/host';
-    return '/guest';
+    if (user.role === 'guest') return '/guest';
+    return '/profile';
   };
 
-  const navLinks = [
-    { label: 'HOME', to: '/' },
-    { label: 'EPISODES', to: '/episodes' },
-    { label: 'DISCOVER', to: '/discover' },
-    { label: 'ABOUT PROJECT', to: '/about' },
-    { label: 'PRICING', to: '/pricing' },
-  ];
+  const isItemActive = (to) => {
+    if (to.includes('tab=messages')) {
+      return location.search.includes('tab=messages') || location.pathname.startsWith('/messages');
+    }
+    if (location.search.includes('tab=messages')) {
+      if (to === '/host' || to === '/guest') return false;
+    }
+    if (to === '/listen' && (location.pathname === '/listen' || location.pathname === '/discover')) {
+      return true;
+    }
+    if (to === '/find-guests' && (location.pathname === '/find-guests' || location.pathname === '/guests')) {
+      return true;
+    }
+    if (to === '/host' && location.pathname.startsWith('/host')) {
+      return true;
+    }
+    if (to === '/guest' && location.pathname.startsWith('/guest')) {
+      return true;
+    }
+    if (to === '/profile' && location.pathname.startsWith('/profile')) {
+      return true;
+    }
+    return location.pathname === to;
+  };
 
   return (
-    <header style={{
-      position: 'sticky',
-      top: 0,
-      zIndex: 100,
-      background: 'rgba(8, 8, 10, 0.88)',
-      backdropFilter: 'blur(20px)',
-      WebkitBackdropFilter: 'blur(20px)',
-      borderBottom: '1px solid var(--border-subtle)',
-      transition: 'all 0.2s ease',
-    }}>
-      <div style={{
-        maxWidth: 1360,
-        margin: '0 auto',
-        padding: '0 24px',
-        height: 72,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        {/* Brand Logo matching Image 1: Minimalist typography with Lime & Purple accents */}
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
-          <div style={{
-            width: 38,
-            height: 38,
-            borderRadius: 10,
-            background: 'var(--accent-lime)',
-            color: 'var(--text-dark)',
+    <>
+      <header
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+          backgroundColor: isScrolled ? 'rgba(0, 0, 0, 0.94)' : '#000000',
+          backdropFilter: isScrolled ? 'blur(20px) saturate(140%)' : 'none',
+          WebkitBackdropFilter: isScrolled ? 'blur(20px) saturate(140%)' : 'none',
+          borderTop: 'none',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          boxShadow: isScrolled ? '0 12px 36px rgba(0, 0, 0, 0.9)' : 'none',
+          padding: isScrolled ? '10px clamp(20px, 4vw, 56px)' : '14px clamp(20px, 4vw, 56px)',
+          transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1360,
+            margin: '0 auto',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 900,
-            fontFamily: 'var(--font-display)',
-            fontSize: 20,
-            boxShadow: 'var(--shadow-lime)',
-            transition: 'transform 0.15s ease',
-          }}>
-            <Radio size={20} strokeWidth={2.5} color="#08080a" />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-            <span style={{
-              fontFamily: 'var(--font-display)',
-              fontWeight: 900,
-              fontSize: 22,
-              letterSpacing: '-0.03em',
-              color: '#ffffff',
-            }}>
-              CASTREACH
-            </span>
-            <span style={{
-              fontSize: 10,
-              fontWeight: 800,
-              color: 'var(--accent-lime)',
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-            }}>
-              PODCAST
-            </span>
-          </div>
-        </Link>
-
-        {/* Center Nav links matching Image 1 header: HOME, EPISODES, ABOUT PROJECT, CLUB, PRICING */}
-        <nav style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 28,
-        }}>
-          {navLinks.map((item) => {
-            const isActive = location.pathname === item.to;
-            return (
-              <Link
-                key={item.label}
-                to={item.to}
+            justifyContent: 'space-between',
+            gap: 20,
+          }}
+        >
+          {/* ── LEFT: Wordmark & Back Button ── */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {!isHome && (
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                aria-label="Go back"
                 style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.14)',
+                  borderRadius: 9999,
+                  padding: '5px 10px',
+                  color: '#FFFFFF',
                   fontSize: 12,
-                  fontWeight: 700,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                  color: isActive ? 'var(--accent-lime)' : 'var(--text-secondary)',
-                  textDecoration: 'none',
-                  padding: '6px 0',
-                  position: 'relative',
-                  transition: 'color 0.15s ease',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
                 }}
-                onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.color = '#ffffff'; }}
-                onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.color = 'var(--text-secondary)'; }}
               >
-                {item.label}
-                {isActive && (
-                  <span style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: 2,
-                    background: 'var(--accent-lime)',
-                    borderRadius: 2,
-                  }} />
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+                <ArrowLeft size={13} />
+                <span className="hidden sm:inline">Back</span>
+              </button>
+            )}
 
-        {/* Right Action buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          {user ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Link
-                to={getDashboardPath()}
-                className="btn-ghost-dark"
-                style={{ padding: '8px 16px', fontSize: 13 }}
-              >
-                <LayoutDashboard size={15} />
-                Dashboard
-              </Link>
+            <Link 
+              to="/" 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                textDecoration: 'none',
+              }}
+            >
+              <CastReachLogo 
+                size={44}
+                textSize={16} 
+                color="#FFFFFF" 
+              />
+            </Link>
+          </div>
 
-              <Link
-                to={`/profile/${user._id || user.id}`}
+          {/* ── CENTER: Nav Links & Live Playback Pill ── */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+            <nav style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: isScrolled ? 20 : 26,
+              transition: 'gap 0.3s ease',
+            }} className="hidden md:flex">
+              {navLinks.map((item) => {
+                const active = isItemActive(item.to);
+                const linkColor = active ? '#FFFFFF' : '#A39EA9';
+                const hoverColor = '#FFFFFF';
+
+                return (
+                  <Link
+                    key={item.label}
+                    to={item.to}
+                    style={{
+                      fontSize: isScrolled ? 13.5 : 14,
+                      fontWeight: active ? 650 : 500,
+                      color: linkColor,
+                      textDecoration: 'none',
+                      padding: '6px 0',
+                      position: 'relative',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      transition: 'color 0.2s ease, font-size 0.3s ease',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = hoverColor; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = linkColor; }}
+                  >
+                    <span>{item.label}</span>
+                    {item.isMessages && unreadCount > 0 && (
+                      <span style={{
+                        background: '#A855F7',
+                        color: '#FFFFFF',
+                        fontSize: 10,
+                        fontWeight: 800,
+                        borderRadius: 9999,
+                        padding: '1px 6px',
+                        boxShadow: '0 0 10px rgba(168, 85, 247, 0.8)',
+                        animation: 'pulse 1.8s infinite',
+                      }}>
+                        {unreadCount}
+                      </span>
+                    )}
+                    {active && (
+                      <span style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: '10%',
+                        right: '10%',
+                        height: 2,
+                        background: '#A855F7', // Vivid Purple Active Accent
+                        borderRadius: 2,
+                        boxShadow: '0 0 8px rgba(168, 85, 247, 0.6)',
+                      }} />
+                    )}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {/* Audio Live Pill indicator in navbar if playing (Green & Purple) */}
+            {isPlaying && currentTrack && (
+              <div
+                onClick={() => navigate('/listen')}
                 style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: '50%',
-                  background: 'var(--accent-purple)',
-                  color: '#fff',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 700,
-                  fontSize: 14,
-                  textDecoration: 'none',
-                  border: '2px solid rgba(255, 255, 255, 0.2)',
-                  overflow: 'hidden',
+                  gap: 6,
+                  padding: '4px 10px',
+                  borderRadius: 9999,
+                  background: 'rgba(34, 197, 94, 0.15)', // Neon Green Accent
+                  border: '1px solid rgba(34, 197, 94, 0.4)',
+                  color: '#22C55E',
+                  fontSize: 12,
+                  fontWeight: 650,
+                  cursor: 'pointer',
+                  animation: 'pulse 2s infinite',
                 }}
-                title={user.name}
+                className="hidden lg:flex"
+                title="Episode is playing"
               >
-                {user.avatar ? (
-                  <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  user.name?.[0]?.toUpperCase() || 'U'
-                )}
-              </Link>
+                <Volume2 size={13} color="#22C55E" />
+                <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {currentTrack.title}
+                </span>
+              </div>
+            )}
+          </div>
 
-              <button
-                onClick={logout}
-                className="btn-ghost-dark"
-                style={{ padding: '8px', borderRadius: '50%', minWidth: 38, height: 38, justifyContent: 'center' }}
-                title="Log out"
+          {/* ── RIGHT: Search Lens, User state & Sign in ── */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* Search Lens Button */}
+            <button
+              type="button"
+              onClick={() => navigate('/find-guests')}
+              style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.14)',
+                borderRadius: '50%',
+                width: 36,
+                height: 36,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#CBD5E1',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.16)';
+                e.currentTarget.style.color = '#FFFFFF';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                e.currentTarget.style.color = '#CBD5E1';
+              }}
+              title="Search guests and podcasts"
+            >
+              <Search size={15} />
+            </button>
+
+            {/* User Profile / Dashboard Pill */}
+            {user ? (
+              <Link
+                to={getDashboardPath()}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 13.5,
+                  fontWeight: 550,
+                  color: '#FFFFFF',
+                  textDecoration: 'none',
+                  padding: '6px 14px',
+                  borderRadius: isScrolled ? 9999 : 8,
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                }}
               >
-                <LogOut size={16} />
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <User size={14} color="#A855F7" />
+                <span className="hidden sm:inline">
+                  {user.name?.split(' ')[0] || (user.role === 'listener' ? 'Profile' : 'Dashboard')}
+                </span>
+              </Link>
+            ) : (
               <Link
                 to="/login"
-                className="btn-ghost-dark"
-                style={{ padding: '8px 18px', fontSize: 13 }}
+                style={{
+                  fontSize: isScrolled ? 13.5 : 14,
+                  fontWeight: 550,
+                  color: '#CBD5E1',
+                  textDecoration: 'none',
+                  padding: '7px 16px',
+                  borderRadius: 9999,
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#FFFFFF';
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.16)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = '#CBD5E1';
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                }}
               >
-                Sign In
+                Sign in
               </Link>
+            )}
 
-              <Link
-                to="/register"
-                className="btn-primary-lime"
-                style={{ padding: '9px 20px', fontSize: 13 }}
-              >
-                Get Started
-              </Link>
-            </div>
-          )}
+            {/* Mobile menu trigger */}
+            <button
+              type="button"
+              className="md:hidden"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#FFFFFF',
+                cursor: 'pointer',
+                padding: 6,
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
         </div>
-      </div>
-    </header>
+
+        {/* ── MOBILE ACCORDION MENU ── */}
+        {mobileMenuOpen && (
+          <div style={{
+            background: 'rgba(15, 13, 21, 0.98)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            borderRadius: 18,
+            marginTop: 8,
+            padding: '20px 24px',
+            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.15)',
+          }} className="md:hidden">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {navLinks.map((item) => (
+                <Link
+                  key={item.label}
+                  to={item.to}
+                  style={{
+                    fontSize: 16,
+                    fontWeight: isItemActive(item.to) ? 600 : 500,
+                    color: '#FFFFFF',
+                    textDecoration: 'none',
+                    padding: '8px 0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <span>{item.label}</span>
+                  {item.isMessages && unreadCount > 0 && (
+                    <span style={{
+                      background: '#A855F7',
+                      color: '#FFFFFF',
+                      fontSize: 11,
+                      fontWeight: 800,
+                      borderRadius: 9999,
+                      padding: '2px 8px',
+                    }}>
+                      {unreadCount} new
+                    </span>
+                  )}
+                </Link>
+              ))}
+
+              <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: 14, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {user ? (
+                  <Link
+                    to={getDashboardPath()}
+                    style={{
+                      fontSize: 15,
+                      fontWeight: 600,
+                      color: '#A982BD',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    Open {user.role === 'host' ? 'Host Dashboard' : user.role === 'guest' ? 'Guest Dashboard' : 'My Profile'}
+                  </Link>
+                ) : (
+                  <Link
+                    to="/login"
+                    style={{
+                      fontSize: 15,
+                      fontWeight: 500,
+                      color: '#FFFFFF',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    Sign in to your account
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </header>
+    </>
   );
 }

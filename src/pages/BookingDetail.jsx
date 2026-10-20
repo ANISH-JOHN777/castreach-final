@@ -22,7 +22,11 @@ import {
   Globe,
   Mail,
   User as UserIcon,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  ShieldCheck,
+  DollarSign,
+  CheckCircle2,
+  Lock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useBooking } from '../hooks/useBooking';
@@ -57,7 +61,7 @@ function getGoogleCalendarUrl(booking) {
 }
 
 function formatSeconds(sec) {
-  if (sec === undefined || sec === null || isNaN(sec)) return '00:00';
+  if (sec === undefined || sec === null || isNaN(sec) || !isFinite(sec) || sec < 0) return '00:00';
   const total = Math.floor(sec);
   const hrs = Math.floor(total / 3600);
   const mins = Math.floor((total % 3600) / 60);
@@ -120,8 +124,27 @@ export default function BookingDetail() {
     }
   };
 
+  const handleDepositEscrow = async () => {
+    setPaymentActionLoading(true);
+    setActionError('');
+    try {
+      const res = await authFetch('/payments/escrow-deposit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking._id, paymentMethod: 'card_escrow' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Escrow deposit failed');
+      if (refetch) await refetch();
+    } catch (err) {
+      setActionError(err.message || 'Escrow deposit failed');
+    } finally {
+      setPaymentActionLoading(false);
+    }
+  };
+
   const handleReleasePayment = async () => {
-    if (!window.confirm('Release escrow payment to host?')) return;
+    if (!window.confirm('Release CastReach Escrow funds to the guest? This completes financial settlement for this session.')) return;
     setPaymentActionLoading(true);
     setActionError('');
     try {
@@ -170,19 +193,19 @@ export default function BookingDetail() {
 
   if (error) {
     return (
-      <div className="fade-in" style={{ padding: '40px 20px', maxWidth: 640, margin: '40px auto', textAlign: 'center', background: '#fff', borderRadius: 16, border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
-        <AlertCircle size={48} color="var(--color-text-danger, #ef4444)" style={{ margin: '0 auto 16px' }} />
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--plum-deep)', marginBottom: 8 }}>
+      <div className="fade-in" style={{ padding: '40px 20px', maxWidth: 640, margin: '40px auto', textAlign: 'center', background: '#181622', borderRadius: 16, border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+        <AlertCircle size={48} color="#EF4444" style={{ margin: '0 auto 16px' }} />
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#FFFFFF', marginBottom: 8 }}>
           {error.includes('not found') ? 'Booking Not Found' : error.includes('Forbidden') ? 'Access Restricted' : 'Error Loading Session'}
         </h2>
-        <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 14, color: '#A39EA9', marginBottom: 24, lineHeight: 1.5 }}>
           {error}
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-          <button onClick={refetch} style={{ padding: '10px 20px', background: 'var(--plum-deep)', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={refetch} style={{ padding: '10px 20px', background: '#22C55E', color: '#000', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <RefreshCw size={15} /> Retry
           </button>
-          <button onClick={() => navigate('/bookings')} style={{ padding: '10px 20px', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={() => navigate('/bookings')} style={{ padding: '10px 20px', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: '#FFFFFF', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}>
             Back to Bookings
           </button>
         </div>
@@ -192,13 +215,13 @@ export default function BookingDetail() {
 
   if (!booking) {
     return (
-      <div className="fade-in" style={{ padding: '40px 20px', maxWidth: 640, margin: '40px auto', textAlign: 'center', background: '#fff', borderRadius: 16, border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
-        <AlertCircle size={48} color="var(--plum-primary)" style={{ margin: '0 auto 16px' }} />
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--plum-deep)', marginBottom: 8 }}>Session Not Found</h2>
-        <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24 }}>
+      <div className="fade-in" style={{ padding: '40px 20px', maxWidth: 640, margin: '40px auto', textAlign: 'center', background: '#181622', borderRadius: 16, border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+        <AlertCircle size={48} color="var(--color-accent-purple, #A855F7)" style={{ margin: '0 auto 16px' }} />
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#FFFFFF', marginBottom: 8 }}>Session Not Found</h2>
+        <p style={{ fontSize: 14, color: '#A39EA9', marginBottom: 24 }}>
           The requested podcast session could not be located.
         </p>
-        <button onClick={() => navigate('/bookings')} style={{ padding: '10px 20px', background: 'var(--plum-deep)', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}>
+        <button onClick={() => navigate('/bookings')} style={{ padding: '10px 20px', background: '#22C55E', color: '#000', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>
           Back to Bookings
         </button>
       </div>
@@ -372,13 +395,125 @@ export default function BookingDetail() {
   const renderEditStatus = booking.recordingEdit?.renderStatus || 'NOT_REQUESTED';
   const hasEdl = !!(booking.recordingEdit && booking.recordingEdit.updatedAt);
 
+  // Escrow Lifecycle Stepper Calculations
+  const isEscrowDeposited = ['held', 'release_pending', 'released'].includes(booking.paymentStatus);
+  const isSessionDone = booking.status === 'completed' || booking.recordingStatus === 'READY' || !!booking.recordingUrl || booking.paymentStatus === 'released';
+  const isSettled = booking.paymentStatus === 'released';
+
+  const stepperSteps = [
+    {
+      title: '1. Request & Booking',
+      subtitle: booking.status === 'pending' ? 'Pending Acceptance' : 'Confirmed & Scheduled',
+      state: booking.status === 'cancelled' ? 'cancelled' : 'done',
+    },
+    {
+      title: '2. Escrow Protection',
+      subtitle: isEscrowDeposited ? `$${((booking.amountCents || 0) / 100).toFixed(2)} Held Safely` : 'Awaiting Host Deposit',
+      state: isEscrowDeposited ? 'done' : 'active',
+    },
+    {
+      title: '3. HD Studio Recording',
+      subtitle: isSessionDone ? 'Session Concluded' : (isEscrowDeposited ? 'Studio Room Ready' : 'Pending Escrow'),
+      state: isSessionDone ? 'done' : (isEscrowDeposited ? 'active' : 'upcoming'),
+    },
+    {
+      title: '4. Settlement & Payout',
+      subtitle: isSettled ? 'Paid Out to Guest' : (isSessionDone ? 'Ready for Release' : 'Pending Session'),
+      state: isSettled ? 'done' : (isSessionDone ? 'active' : 'upcoming'),
+    },
+  ];
+
   return (
     <div className="fade-in">
       {/* Breadcrumb */}
-      <div style={{ marginBottom: 20, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+      <div style={{ marginBottom: 16, fontSize: 13, color: 'var(--color-text-secondary)' }}>
         <Link to="/bookings" style={{ color: 'var(--color-accent)' }}>Bookings</Link>
         <span style={{ margin: '0 8px' }}>›</span>
         Session with {otherName}
+      </div>
+
+      {/* ── CASTREACH ESCROW & PRODUCTION LIFECYCLE STEPPER ── */}
+      <div style={{
+        background: '#181622',
+        border: '1px solid rgba(255, 255, 255, 0.09)',
+        borderRadius: 16,
+        padding: '20px 24px',
+        marginBottom: 20,
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(34, 197, 94, 0.12)', border: '1px solid rgba(34, 197, 94, 0.3)', color: '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ShieldCheck size={20} />
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 750, color: '#FFFFFF' }}>
+                CastReach Escrow &amp; Settlement Loop
+              </div>
+              <div style={{ fontSize: 12, color: '#A39EA9' }}>
+                Payment is held safely in CastReach Escrow and disbursed only after the interview recording is completed.
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#22C55E', background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)', padding: '5px 12px', borderRadius: 20 }}>
+            <Lock size={13} /> 100% Honorarium Protection
+          </div>
+        </div>
+
+        {/* Stepper Progress Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+          {stepperSteps.map((step, idx) => {
+            const isDone = step.state === 'done';
+            const isActive = step.state === 'active';
+            return (
+              <div
+                key={step.title}
+                style={{
+                  background: isDone ? 'rgba(34, 197, 94, 0.08)' : isActive ? 'rgba(168, 85, 247, 0.12)' : '#13111A',
+                  border: isDone ? '1.5px solid rgba(34, 197, 94, 0.35)' : isActive ? '2px solid #A855F7' : '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: 12,
+                  padding: '12px 14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4,
+                  boxShadow: isActive ? '0 4px 12px rgba(168, 85, 247, 0.2)' : 'none'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 11,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    background: isDone ? '#22C55E' : isActive ? '#A855F7' : '#292537',
+                    color: isDone ? '#000000' : '#ffffff'
+                  }}>
+                    {isDone ? <Check size={13} /> : idx + 1}
+                  </span>
+                  <span style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    color: isDone ? '#22C55E' : isActive ? '#A855F7' : '#6F6A76'
+                  }}>
+                    {isDone ? 'Completed' : isActive ? 'Current Step' : 'Upcoming'}
+                  </span>
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF', marginTop: 2 }}>
+                  {step.title}
+                </div>
+                <div style={{ fontSize: 11, color: '#A39EA9', lineHeight: 1.3 }}>
+                  {step.subtitle}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20, alignItems: 'start' }}>
@@ -436,13 +571,13 @@ export default function BookingDetail() {
             <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-subtle, rgba(231,221,232,0.2))', display: 'flex', gap: 16, alignItems: 'center', fontSize: 13, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Host Consent:</span>
-                <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: booking.status !== 'pending' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: booking.status !== 'pending' ? '#10b981' : '#f59e0b' }}>
+                <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: booking.status !== 'pending' ? 'rgba(72,47,76,0.35)' : 'rgba(245,158,11,0.15)', color: booking.status !== 'pending' ? '#482F4C' : '#f59e0b' }}>
                   {booking.status !== 'pending' ? 'Consent Verified' : 'Confirmation Pending'}
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Guest Consent:</span>
-                <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: 'rgba(16,185,129,0.15)', color: '#10b981' }}>
+                <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: 'rgba(72,47,76,0.35)', color: '#482F4C' }}>
                   Consent Verified
                 </span>
               </div>
@@ -460,7 +595,7 @@ export default function BookingDetail() {
               {booking.status === 'confirmed' && (
                 <button
                   onClick={() => navigate(`/bookings/${id}/record`)}
-                  style={{ ...btn, background: '#22c55e', color: '#fff', fontWeight: 700, padding: '10px 20px', display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: '0 2px 8px rgba(34,197,94,0.3)' }}
+                  style={{ ...btn, background: '#482F4C', color: '#fff', fontWeight: 700, padding: '10px 20px', display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: '0 2px 8px rgba(34,197,94,0.3)' }}
                 >
                   <Mic size={18} /> Start Session
                 </button>
@@ -506,8 +641,8 @@ export default function BookingDetail() {
               </div>
               <span style={{
                 padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600,
-                background: booking.meetingType === 'physical' ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)',
-                color: booking.meetingType === 'physical' ? '#3b82f6' : '#10b981'
+                background: booking.meetingType === 'physical' ? 'rgba(59,130,246,0.15)' : 'rgba(72,47,76,0.35)',
+                color: booking.meetingType === 'physical' ? '#3b82f6' : '#482F4C'
               }}>
                 {booking.meetingType === 'physical' ? 'Physical Studio' : 'Virtual / GMeet'}
               </span>
@@ -574,7 +709,7 @@ export default function BookingDetail() {
                     style={{ background: 'transparent', border: 'none', color: 'var(--color-accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, flexShrink: 0 }}
                     title="Copy Meeting Link"
                   >
-                    {copiedLink ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
+                    {copiedLink ? <Check size={14} color="#482F4C" /> : <Copy size={14} />}
                     {copiedLink ? 'Copied' : 'Copy'}
                   </button>
                 </div>
@@ -584,7 +719,7 @@ export default function BookingDetail() {
                     href={booking.gmeetUrl || 'https://meet.google.com/new'}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ ...btn, background: '#10b981', color: '#fff', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+                    style={{ ...btn, background: '#482F4C', color: '#fff', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
                   >
                     <Video size={16} /> Join Google Meet <ExternalLink size={14} />
                   </a>
@@ -624,8 +759,8 @@ export default function BookingDetail() {
               </div>
               <span style={{
                 padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600,
-                background: isOriginalReady ? 'rgba(16,185,129,0.15)' : booking.recordingStatus === 'RECORDING' ? 'rgba(239,68,68,0.15)' : booking.recordingStatus === 'PROCESSING' ? 'rgba(245,158,11,0.15)' : 'var(--color-background-secondary)',
-                color: isOriginalReady ? '#10b981' : booking.recordingStatus === 'RECORDING' ? '#ef4444' : booking.recordingStatus === 'PROCESSING' ? '#f59e0b' : 'var(--color-text-secondary)'
+                background: isOriginalReady ? 'rgba(72,47,76,0.35)' : booking.recordingStatus === 'RECORDING' ? 'rgba(239,68,68,0.15)' : booking.recordingStatus === 'PROCESSING' ? 'rgba(245,158,11,0.15)' : 'var(--color-background-secondary)',
+                color: isOriginalReady ? '#482F4C' : booking.recordingStatus === 'RECORDING' ? '#ef4444' : booking.recordingStatus === 'PROCESSING' ? '#f59e0b' : 'var(--color-text-secondary)'
               }}>
                 {booking.recordingStatus === 'RECORDING' && 'Recording in Progress'}
                 {booking.recordingStatus === 'PROCESSING' && 'Processing Recording...'}
@@ -648,7 +783,7 @@ export default function BookingDetail() {
                   </div>
                   <div>
                     <span style={{ color: 'var(--color-text-secondary)', fontSize: 11, display: 'block' }}>Storage Status</span>
-                    <span style={{ color: isStorageReady ? '#10b981' : isStorageFailed ? '#ef4444' : '#f59e0b', fontWeight: 600 }}>
+                    <span style={{ color: isStorageReady ? '#482F4C' : isStorageFailed ? '#ef4444' : '#f59e0b', fontWeight: 600 }}>
                       {booking.recordingStorage?.status || 'NOT_STORED'}
                     </span>
                   </div>
@@ -700,8 +835,8 @@ export default function BookingDetail() {
               </div>
               <span style={{
                 padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600,
-                background: renderEditStatus === 'READY' ? 'rgba(16,185,129,0.15)' : renderEditStatus === 'FAILED' ? 'rgba(239,68,68,0.15)' : ['QUEUED', 'PROCESSING'].includes(renderEditStatus) ? 'rgba(245,158,11,0.15)' : 'var(--color-background-secondary)',
-                color: renderEditStatus === 'READY' ? '#10b981' : renderEditStatus === 'FAILED' ? '#ef4444' : ['QUEUED', 'PROCESSING'].includes(renderEditStatus) ? '#f59e0b' : 'var(--color-text-secondary)'
+                background: renderEditStatus === 'READY' ? 'rgba(72,47,76,0.35)' : renderEditStatus === 'FAILED' ? 'rgba(239,68,68,0.15)' : ['QUEUED', 'PROCESSING'].includes(renderEditStatus) ? 'rgba(245,158,11,0.15)' : 'var(--color-background-secondary)',
+                color: renderEditStatus === 'READY' ? '#482F4C' : renderEditStatus === 'FAILED' ? '#ef4444' : ['QUEUED', 'PROCESSING'].includes(renderEditStatus) ? '#f59e0b' : 'var(--color-text-secondary)'
               }}>
                 {renderEditStatus === 'NOT_REQUESTED' && 'Not Rendered'}
                 {renderEditStatus === 'QUEUED' && 'Render Queued'}
@@ -759,7 +894,7 @@ export default function BookingDetail() {
                     <button
                       onClick={handleTriggerRender}
                       disabled={renderLoading}
-                      style={{ ...btn, background: '#10b981', opacity: renderLoading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                      style={{ ...btn, background: '#482F4C', opacity: renderLoading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}
                     >
                       <Film size={14} /> {renderLoading ? 'Queuing Render…' : 'Render Recording'}
                     </button>
@@ -779,7 +914,7 @@ export default function BookingDetail() {
                       <button
                         onClick={handlePreviewEdited}
                         disabled={fetchingUrl}
-                        style={{ ...btn, background: '#10b981', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                        style={{ ...btn, background: '#482F4C', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                       >
                         <Play size={14} /> Preview Edited
                       </button>
@@ -787,7 +922,7 @@ export default function BookingDetail() {
                       <button
                         onClick={handleDownloadEdited}
                         disabled={fetchingUrl}
-                        style={{ ...btn, background: 'transparent', color: '#10b981', border: '1px solid #10b981', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                        style={{ ...btn, background: 'transparent', color: '#482F4C', border: '1px solid #482F4C', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                       >
                         <Download size={14} /> Download Edited
                       </button>
@@ -905,108 +1040,217 @@ export default function BookingDetail() {
           <ParticipantCard user={booking.host}  label="Host" bookingId={booking._id} />
           <ParticipantCard user={booking.guest} label="Guest" bookingId={booking._id} />
 
-          {/* Payment due */}
-          {isGuest
-            && booking.status === 'confirmed'
-            && booking.amountCents > 0
-            && booking.paymentStatus === 'unpaid' && (
-            <div style={card}>
-              <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--color-text-secondary)', marginBottom: 4 }}>Payment due</div>
-              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>
-                ${((booking.amountCents || 0) / 100).toFixed(2)} {booking.currency?.toUpperCase()}
+          {/* ── CASTREACH ESCROW & SETTLEMENT HUB ── */}
+          {booking.paymentStatus === 'unpaid' && (
+            <div style={{ ...card, border: '1px solid rgba(255, 255, 255, 0.1)', background: '#181622', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#FFFFFF' }}>
+                  <ShieldCheck size={17} color="#22C55E" /> CastReach Escrow Protection
+                </div>
+                <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: 'rgba(245,158,11,0.15)', color: '#F59E0B', fontWeight: 600 }}>
+                  Awaiting Deposit
+                </span>
               </div>
-              {stripeConfigured ? (
-                <Elements stripe={stripePromise}>
-                  <PaymentForm
-                    amountLabel={`$${((booking.amountCents || 0) / 100).toFixed(2)}`}
-                    createPaymentIntent={createPaymentIntent}
-                    onPaid={refetch}
-                  />
-                </Elements>
+
+              <div style={{ background: '#211E2D', padding: 12, borderRadius: 10, border: '1px solid rgba(255, 255, 255, 0.08)', marginBottom: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+                  <span style={{ color: '#A39EA9' }}>Guest Honorarium:</span>
+                  <span style={{ fontWeight: 600, color: '#FFFFFF' }}>
+                    ${((booking.amountCents || 0) / 100).toFixed(2)} {booking.currency?.toUpperCase() || 'USD'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 8, color: '#A39EA9' }}>
+                  <span>Platform Protection (10%):</span>
+                  <span>${(((booking.amountCents || 0) / 100) * 0.1).toFixed(2)}</span>
+                </div>
+                <div style={{ height: 1, background: 'rgba(255, 255, 255, 0.08)', margin: '6px 0 8px' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 700, color: 'var(--color-accent-purple, #A855F7)' }}>
+                  <span>Total Escrow Deposit:</span>
+                  <span>${(((booking.amountCents || 0) / 100) * 1.1).toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div style={{ fontSize: 11.5, color: '#A39EA9', lineHeight: 1.45, marginBottom: 14 }}>
+                🔒 Funds will be safely locked in CastReach Escrow and released only after the recording session concludes.
+              </div>
+
+              {(isHost || isAdmin) ? (
+                <div>
+                  <button
+                    onClick={handleDepositEscrow}
+                    disabled={paymentActionLoading}
+                    style={{
+                      ...btn,
+                      width: '100%',
+                      background: '#22C55E',
+                      color: '#000000',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      padding: '11px 16px',
+                      borderRadius: 10,
+                      fontWeight: 750,
+                      boxShadow: '0 4px 14px rgba(34, 197, 94, 0.25)',
+                      cursor: paymentActionLoading ? 'not-allowed' : 'pointer',
+                      opacity: paymentActionLoading ? 0.7 : 1
+                    }}
+                  >
+                    <Lock size={15} />
+                    {paymentActionLoading ? 'Securing Escrow…' : 'Deposit into CastReach Escrow'}
+                  </button>
+
+                  {stripeConfigured && (
+                    <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: '#A39EA9', marginBottom: 8 }}>Or Pay with Credit Card:</div>
+                      <Elements stripe={stripePromise}>
+                        <PaymentForm
+                          amountLabel={`$${(((booking.amountCents || 0) / 100) * 1.1).toFixed(2)}`}
+                          createPaymentIntent={createPaymentIntent}
+                          onPaid={refetch}
+                        />
+                      </Elements>
+                    </div>
+                  )}
+                </div>
               ) : (
-                <div style={{ fontSize: 12, color: 'var(--color-text-danger)' }}>
-                  Payments are not configured (VITE_STRIPE_PUBLISHABLE_KEY missing).
+                <div style={{ padding: '10px 12px', background: 'rgba(168, 85, 247, 0.1)', borderRadius: 8, fontSize: 12, color: '#A855F7', fontWeight: 500 }}>
+                  Awaiting Host to deposit the session honorarium into Escrow before studio recording.
                 </div>
               )}
-              <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 10, lineHeight: 1.5 }}>
-                Your card is authorized now and only charged after the session is completed.
+            </div>
+          )}
+
+          {/* ESCROW HELD & SETTLEMENT CONTROLS */}
+          {['held', 'release_pending'].includes(booking.paymentStatus) && (
+            <div style={{ ...card, border: '1px solid rgba(34, 197, 94, 0.3)', background: '#181622', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#22C55E' }}>
+                  <ShieldCheck size={18} color="#22C55E" /> Funds Held in Escrow
+                </div>
+                <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: 'rgba(34, 197, 94, 0.15)', color: '#22C55E', fontWeight: 700 }}>
+                  Protected
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
+                <span style={{ fontSize: 24, fontWeight: 800, color: '#FFFFFF' }}>
+                  ${((booking.amountCents || 0) / 100).toFixed(2)}
+                </span>
+                <span style={{ fontSize: 12, color: '#A39EA9', fontWeight: 600 }}>
+                  {booking.currency?.toUpperCase() || 'USD'} Held Safely
+                </span>
+              </div>
+
+              {/* Completion Confirmation Statuses */}
+              <div style={{ padding: 12, background: '#211E2D', borderRadius: 10, border: '1px solid rgba(255, 255, 255, 0.08)', fontSize: 12, marginBottom: 14 }}>
+                <div style={{ fontWeight: 600, color: '#FFFFFF', marginBottom: 8 }}>Session Completion Approvals:</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ color: '#A39EA9' }}>Host Approval:</span>
+                  <span style={{ fontWeight: 700, color: booking.hostConfirmedCompletion ? '#22C55E' : '#F59E0B' }}>
+                    {booking.hostConfirmedCompletion ? '✓ Confirmed' : 'Pending'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#A39EA9' }}>Guest Approval:</span>
+                  <span style={{ fontWeight: 700, color: booking.guestConfirmedCompletion ? '#22C55E' : '#F59E0B' }}>
+                    {booking.guestConfirmedCompletion ? '✓ Confirmed' : 'Pending'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Actions for Session Wrap-up & Settlement */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {['confirmed', 'completed'].includes(booking.status) && (
+                  <>
+                    <button
+                      onClick={handleConfirmCompletion}
+                      disabled={paymentActionLoading || ((isHost && booking.hostConfirmedCompletion) || (isGuest && booking.guestConfirmedCompletion))}
+                      style={{
+                        ...btn,
+                        width: '100%',
+                        background: ((isHost && booking.hostConfirmedCompletion) || (isGuest && booking.guestConfirmedCompletion)) ? '#e2e8f0' : 'var(--plum-primary)',
+                        color: ((isHost && booking.hostConfirmedCompletion) || (isGuest && booking.guestConfirmedCompletion)) ? '#64748b' : '#ffffff',
+                        opacity: paymentActionLoading ? 0.7 : 1,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6
+                      }}
+                    >
+                      <CheckCircle size={15} />
+                      {paymentActionLoading ? 'Saving Confirmation…' : ((isHost && booking.hostConfirmedCompletion) || (isGuest && booking.guestConfirmedCompletion)) ? 'You Confirmed Session Complete' : 'Confirm Session Completed'}
+                    </button>
+
+                    {(isHost || isAdmin) && (
+                      <button
+                        onClick={handleReleasePayment}
+                        disabled={paymentActionLoading}
+                        style={{
+                          ...btn,
+                          width: '100%',
+                          background: '#482F4C',
+                          color: '#ffffff',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
+                          fontWeight: 700,
+                          boxShadow: '0 4px 12px rgba(72,47,76,0.2)'
+                        }}
+                      >
+                        <DollarSign size={15} />
+                        {paymentActionLoading ? 'Releasing…' : 'Settle & Release Escrow to Guest'}
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {isAdmin && (
+                  <button
+                    onClick={handleRefundPayment}
+                    disabled={paymentActionLoading}
+                    style={{ ...btn, width: '100%', background: '#ef4444', fontSize: 12, padding: '7px 10px', marginTop: 4 }}
+                  >
+                    Admin Emergency Refund
+                  </button>
+                )}
               </div>
             </div>
           )}
 
-          {/* Payment status & Escrow Completion */}
-          {booking.paymentStatus !== 'unpaid' && (
-            <div style={card}>
-              <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--color-text-secondary)', marginBottom: 8 }}>
-                Escrow Payment & Settlement
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <span style={{ fontSize: 16, fontWeight: 700 }}>
-                  ${((booking.amountCents || 0) / 100).toFixed(2)} {booking.currency?.toUpperCase()}
-                </span>
-                <span style={{
-                  fontSize: 12, textTransform: 'capitalize', padding: '3px 10px', borderRadius: 12, fontWeight: 600,
-                  background: booking.paymentStatus === 'released' ? 'rgba(16,185,129,0.15)' : booking.paymentStatus === 'refunded' ? 'rgba(239,68,68,0.15)' : booking.paymentStatus === 'disputed' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.15)',
-                  color: booking.paymentStatus === 'released' ? '#10b981' : booking.paymentStatus === 'refunded' ? '#ef4444' : booking.paymentStatus === 'disputed' ? '#ef4444' : '#f59e0b',
-                }}>
-                  {booking.paymentStatus === 'held' ? 'Held in Escrow' :
-                   booking.paymentStatus === 'release_pending' ? 'Release Pending' :
-                   booking.paymentStatus === 'released' ? 'Released' :
-                   booking.paymentStatus === 'refunded' ? 'Refunded' :
-                   booking.paymentStatus === 'disputed' ? 'Disputed' :
-                   booking.paymentStatus}
+          {/* ESCROW RELEASED / SETTLED */}
+          {booking.paymentStatus === 'released' && (
+            <div style={{ ...card, border: '1.5px solid rgba(22,163,74,0.3)', background: 'linear-gradient(180deg, #ffffff 0%, rgba(22,163,74,0.03) 100%)', boxShadow: 'var(--shadow-sm)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#16a34a' }}>
+                  <CheckCircle2 size={18} /> Escrow Settled & Paid Out
+                </div>
+                <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: 'rgba(22,163,74,0.1)', color: '#16a34a', fontWeight: 700 }}>
+                  Completed
                 </span>
               </div>
 
-              {/* Completion Confirmation Badges */}
-              <div style={{ padding: 10, background: 'var(--color-background-secondary)', borderRadius: 8, fontSize: 12, marginBottom: 12 }}>
-                <div style={{ fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Completion Confirmations:</div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span>Host:</span>
-                  <span style={{ fontWeight: 600, color: booking.hostConfirmedCompletion ? '#10b981' : 'var(--color-text-secondary)' }}>
-                    {booking.hostConfirmedCompletion ? 'Confirmed' : 'Pending'}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Guest:</span>
-                  <span style={{ fontWeight: 600, color: booking.guestConfirmedCompletion ? '#10b981' : 'var(--color-text-secondary)' }}>
-                    {booking.guestConfirmedCompletion ? 'Confirmed' : 'Pending'}
-                  </span>
-                </div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#16a34a', marginBottom: 6 }}>
+                ${((booking.amountCents || 0) / 100).toFixed(2)}
               </div>
 
-              {/* Action Buttons */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {['confirmed', 'completed'].includes(booking.status) && booking.paymentStatus === 'held' && (
-                  <button
-                    onClick={handleConfirmCompletion}
-                    disabled={paymentActionLoading || ((isHost && booking.hostConfirmedCompletion) || (isGuest && booking.guestConfirmedCompletion))}
-                    style={{ ...btn, width: '100%', background: 'var(--color-accent)', opacity: paymentActionLoading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-                  >
-                    <CheckCircle size={15} />
-                    {paymentActionLoading ? 'Confirming…' : ((isHost && booking.hostConfirmedCompletion) || (isGuest && booking.guestConfirmedCompletion)) ? 'You Confirmed Completion' : 'Confirm Session Completed'}
-                  </button>
-                )}
-
-                {isAdmin && booking.paymentStatus === 'held' && (
-                  <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                    <button
-                      onClick={handleReleasePayment}
-                      disabled={paymentActionLoading}
-                      style={{ ...btn, flex: 1, background: '#10b981', fontSize: 12, padding: '7px 10px' }}
-                    >
-                      Admin Release
-                    </button>
-                    <button
-                      onClick={handleRefundPayment}
-                      disabled={paymentActionLoading}
-                      style={{ ...btn, flex: 1, background: '#ef4444', fontSize: 12, padding: '7px 10px' }}
-                    >
-                      Admin Refund
-                    </button>
-                  </div>
-                )}
+              <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5, marginBottom: 12 }}>
+                Payment successfully disbursed to guest. Both parties are covered by CastReach Guarantee.
               </div>
+
+              {booking.paymentReleasedAt && (
+                <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 12 }}>
+                  Released on: {new Date(booking.paymentReleasedAt).toLocaleString()}
+                </div>
+              )}
+
+              <button
+                onClick={() => setShowReview(true)}
+                style={{ ...btn, width: '100%', background: '#482F4C', color: '#ffffff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              >
+                <Star size={15} fill="#fbbf24" color="#fbbf24" /> Leave Mutual Review
+              </button>
             </div>
           )}
         </div>

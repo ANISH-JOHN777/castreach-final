@@ -1,22 +1,48 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Radio, ShieldCheck, AlertCircle, ArrowRight, Lock, Mail, Video, Headphones, Mic } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  ArrowRight, 
+  Mail, 
+  Lock, 
+  Eye, 
+  EyeOff, 
+  Mic, 
+  Headphones, 
+  Users, 
+  Video, 
+  ShieldCheck, 
+  AlertCircle,
+  Radio
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import loginVideo from '../../media/login.mp4';
+import CastReachLogo from '../../components/CastReachLogo';
 
 export default function Login() {
   const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  // CastReach Design Tokens
+  const BTN_PLUM = '#482F4C';
+  const BTN_PLUM_HOVER = '#613F66';
+  const ACCENT_LAVENDER = '#E2B6EE';
+  const ACCENT_LAVENDER_BORDER = 'rgba(226, 182, 238, 0.45)';
+
   const getRoleRedirect = (user) => {
-    if (!user.isOnboarded) return '/onboarding';
+    if (!user) return '/listen';
     if (user.role === 'admin') return '/admin';
+    if (!user.isOnboarded) return '/onboarding';
     if (user.role === 'host') return '/host';
-    return '/guest';
+    if (user.role === 'guest') return '/guest';
+    return '/listen';
   };
 
   const submit = async (e) => {
@@ -37,7 +63,7 @@ export default function Login() {
     setError('');
     setGoogleLoading(true);
     try {
-      const user = await loginWithGoogle('guest');
+      const user = await loginWithGoogle();
       navigate(getRoleRedirect(user));
     } catch (err) {
       setError(err.message || 'Google authentication failed');
@@ -51,12 +77,14 @@ export default function Login() {
       style={{
         minHeight: '100vh',
         display: 'grid',
-        gridTemplateColumns: 'minmax(420px, 1.1fr) minmax(380px, 1fr)',
-        background: 'var(--bg-obsidian)',
-        color: 'var(--text-primary)',
+        gridTemplateColumns: 'minmax(500px, 1.15fr) minmax(420px, 0.85fr)',
+        background: '#13111C',
+        color: '#FFFFFF',
+        fontFamily: "'Geist Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}
+      className="auth-split-layout"
     >
-      {/* ── LEFT SECTION: Video Background & Brand Ambience ── */}
+      {/* ── LEFT SECTION: STUDIO ENVIRONMENT & VALUE BADGES ── */}
       <div
         style={{
           position: 'relative',
@@ -64,9 +92,9 @@ export default function Login() {
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          padding: '48px',
-          borderRight: '1px solid var(--border-subtle)',
-          background: '#090a0f',
+          padding: '44px 52px',
+          borderRight: '1px solid rgba(226, 182, 238, 0.14)',
+          background: '#13111C',
         }}
       >
         {/* Ambient Video Background */}
@@ -75,308 +103,569 @@ export default function Login() {
           loop
           muted
           playsInline
-          poster="https://images.unsplash.com/photo-1590602847861-f357a9332bbc?auto=format&fit=crop&w=1200&q=80"
           style={{
             position: 'absolute',
             inset: 0,
             width: '100%',
             height: '100%',
             objectFit: 'cover',
-            opacity: 0.35,
+            opacity: 0.55,
             pointerEvents: 'none',
           }}
         >
-          {/* Public studio broadcast loop video source */}
-          <source
-            src="https://assets.mixkit.co/videos/preview/mixkit-recording-studio-with-microphone-and-headphones-42861-large.mp4"
-            type="video/mp4"
-          />
+          <source src={loginVideo} type="video/mp4" />
         </video>
 
-        {/* Subtle Dark Matte Overlay (Strictly zero neon glow) */}
+        {/* Ambient Plum Glow Overlay */}
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(180deg, rgba(8, 8, 10, 0.75) 0%, rgba(8, 8, 10, 0.95) 100%)',
+            background: 'linear-gradient(135deg, rgba(35, 22, 44, 0.72) 0%, rgba(19, 17, 28, 0.85) 100%)',
             pointerEvents: 'none',
           }}
         />
 
-        {/* Top Brand Logo: CastReach */}
-        <div style={{ position: 'relative', zIndex: 2 }}>
-          <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
+        {/* Top Header: Logo + STUDIO Badge */}
+        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Link to="/" style={{ textDecoration: 'none' }}>
+            <CastReachLogo size={32} textSize={22} />
+          </Link>
+          <span
+            style={{
+              fontSize: 10.5,
+              fontWeight: 800,
+              color: ACCENT_LAVENDER,
+              background: 'rgba(72, 47, 76, 0.55)',
+              border: `1px solid ${ACCENT_LAVENDER_BORDER}`,
+              padding: '3px 9px',
+              borderRadius: 6,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+            }}
+          >
+            STUDIO
+          </span>
+        </div>
+
+        {/* Middle: Main Value Headline & 3-Column Features */}
+        <div style={{ position: 'relative', zIndex: 2, margin: '48px 0 36px' }}>
+          <h1
+            style={{
+              fontSize: 'clamp(32px, 3.8vw, 48px)',
+              fontWeight: 850,
+              letterSpacing: '-0.035em',
+              lineHeight: 1.12,
+              margin: '0 0 16px',
+              color: '#FFFFFF',
+              maxWidth: 580,
+            }}
+          >
+            Join the podcast creator <br />
+            <span
+              style={{
+                background: 'linear-gradient(90deg, #A78BFA 0%, #DDAFE8 45%, #C084FC 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              & guest marketplace.
+            </span>
+          </h1>
+
+          <p
+            style={{
+              fontSize: 15.5,
+              color: '#CBD5E1',
+              lineHeight: 1.6,
+              maxWidth: 520,
+              margin: '0 0 36px',
+            }}
+          >
+            Connect with leading show hosts and verified guest speakers. Meet virtually over Google Meet or physically in recording studios.
+          </p>
+
+          {/* 3 Horizontal Feature Cards */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: 20,
+              maxWidth: 560,
+            }}
+          >
+            {/* Feature 1 */}
+            <div>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: 'rgba(72, 47, 76, 0.6)',
+                  border: `1px solid ${ACCENT_LAVENDER_BORDER}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: ACCENT_LAVENDER,
+                  marginBottom: 10,
+                }}
+              >
+                <Mic size={18} />
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 750, color: '#FFFFFF', marginBottom: 3 }}>
+                Verified Hosts
+              </div>
+              <div style={{ fontSize: 12, color: '#94A3B8', lineHeight: 1.4 }}>
+                Trusted & professional podcast creators
+              </div>
+            </div>
+
+            {/* Feature 2 */}
+            <div>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: 'rgba(72, 47, 76, 0.6)',
+                  border: `1px solid ${ACCENT_LAVENDER_BORDER}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: ACCENT_LAVENDER,
+                  marginBottom: 10,
+                }}
+              >
+                <Users size={18} />
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 750, color: '#FFFFFF', marginBottom: 3 }}>
+                Global Guests
+              </div>
+              <div style={{ fontSize: 12, color: '#94A3B8', lineHeight: 1.4 }}>
+                Industry leaders, experts and creators
+              </div>
+            </div>
+
+            {/* Feature 3 */}
+            <div>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: 'rgba(72, 47, 76, 0.6)',
+                  border: `1px solid ${ACCENT_LAVENDER_BORDER}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: ACCENT_LAVENDER,
+                  marginBottom: 10,
+                }}
+              >
+                <Video size={18} />
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 750, color: '#FFFFFF', marginBottom: 3 }}>
+                Flexible Meetings
+              </div>
+              <div style={{ fontSize: 12, color: '#94A3B8', lineHeight: 1.4 }}>
+                Online (Google Meet) or in-person studios
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom: Frosted Glass Feature Banner */}
+        <div
+          style={{
+            position: 'relative',
+            zIndex: 2,
+            background: 'rgba(18, 19, 28, 0.7)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            borderRadius: 16,
+            padding: '16px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+            maxWidth: 560,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div
               style={{
-                width: 42,
-                height: 42,
+                width: 38,
+                height: 38,
                 borderRadius: 10,
-                background: 'var(--accent-lime)',
+                background: 'rgba(72, 47, 76, 0.65)',
+                border: `1px solid ${ACCENT_LAVENDER_BORDER}`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: 'var(--shadow-sm)',
+                color: ACCENT_LAVENDER,
+                flexShrink: 0,
               }}
             >
-              <Radio size={22} strokeWidth={2.5} color="var(--text-dark)" />
+              <ShieldCheck size={20} />
             </div>
             <div>
-              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 850, fontSize: 24, color: '#fff', letterSpacing: '-0.02em' }}>
-                CASTREACH
-              </span>
-              <span
+              <div
                 style={{
-                  display: 'inline-block',
-                  marginLeft: 8,
-                  fontSize: 10,
+                  fontSize: 10.5,
                   fontWeight: 800,
-                  color: 'var(--accent-lime)',
-                  background: 'rgba(203, 251, 69, 0.12)',
-                  padding: '2px 8px',
-                  borderRadius: 6,
-                  letterSpacing: '0.06em',
+                  color: ACCENT_LAVENDER,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  marginBottom: 2,
                 }}
               >
-                PODCAST
-              </span>
+                REAL VERIFIED PLATFORM
+              </div>
+              <div style={{ fontSize: 12, color: '#CBD5E1', lineHeight: 1.45 }}>
+                Real-time podcast discovery, instant guest scheduling, WebRTC studio recording, and direct messaging between hosts and guests.
+              </div>
             </div>
-          </Link>
-        </div>
-
-        {/* Center Editorial Quote */}
-        <div style={{ position: 'relative', zIndex: 2, maxWidth: 460 }}>
-          <div style={{
-            fontSize: 12,
-            fontWeight: 700,
-            color: 'var(--accent-lime)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            marginBottom: 12,
-          }}>
-            CONNECTED PRODUCTION
           </div>
-          <h2 style={{ fontSize: 'clamp(1.8rem, 3.2vw, 2.5rem)', fontWeight: 850, letterSpacing: '-0.03em', lineHeight: 1.15, marginBottom: 16 }}>
-            Speak Loud. Connect Deep.
-          </h2>
-          <p style={{ fontSize: 14.5, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            The verified network for podcast hosts and guest speakers. Book Google Meet sessions or physical studio tapings with complete data transparency.
-          </p>
-        </div>
 
-        {/* Bottom Feature Tags */}
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255, 255, 255, 0.08)', padding: '6px 12px', borderRadius: 'var(--radius-pill)', fontSize: 12, color: 'var(--text-secondary)' }}>
-            <Video size={13} color="var(--accent-lime)" /> Google Meet Virtual Rooms
-          </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255, 255, 255, 0.08)', padding: '6px 12px', borderRadius: 'var(--radius-pill)', fontSize: 12, color: 'var(--text-secondary)' }}>
-            <Mic size={13} color="var(--accent-purple)" /> In-Person Studio Tapings
-          </span>
+          {/* Waveform graphic */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+            {[16, 26, 12, 32, 20, 28, 14].map((h, i) => (
+              <div
+                key={i}
+                style={{
+                  width: 3,
+                  height: h,
+                  background: 'linear-gradient(180deg, #E2B6EE 0%, #482F4C 100%)',
+                  borderRadius: 2,
+                }}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* ── RIGHT SECTION: Login Boxes & Firebase Auth ── */}
+      {/* ── RIGHT SECTION: FLOATING CARD FORM (LOGIN) ── */}
       <div
         style={{
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
-          padding: '48px 32px',
-          background: 'var(--bg-carbon)',
+          padding: '48px 36px',
+          background: '#0B0C12',
+          position: 'relative',
         }}
       >
-        <div style={{ width: '100%', maxWidth: 420 }}>
-          <div style={{ marginBottom: 32 }}>
-            <h1 style={{ fontSize: 28, fontWeight: 850, letterSpacing: '-0.03em', marginBottom: 6, color: '#ffffff' }}>
-              Welcome back
-            </h1>
-            <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', margin: 0 }}>
-              Enter your credentials or continue with Google to access your CastReach dashboard.
+        {/* Floating Card Container matching mockup */}
+        <div
+          style={{
+            width: '100%',
+            maxWidth: 440,
+            background: '#11121A',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: 22,
+            padding: '36px 32px',
+            boxShadow: '0 16px 40px rgba(0, 0, 0, 0.6), 0 0 24px rgba(72, 47, 76, 0.25)',
+          }}
+        >
+          {/* Back Button */}
+          <div style={{ marginBottom: 20 }}>
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'rgba(255, 255, 255, 0.06)',
+                border: '1px solid rgba(255, 255, 255, 0.14)',
+                borderRadius: 20,
+                padding: '6px 14px',
+                color: '#CBD5E1',
+                fontSize: 12.5,
+                fontWeight: 650,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = '#FFFFFF';
+                e.currentTarget.style.borderColor = 'rgba(226, 182, 238, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = '#CBD5E1';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.14)';
+              }}
+            >
+              <ArrowLeft size={14} />
+              <span>Back</span>
+            </button>
+          </div>
+
+          {/* Heading */}
+          <div style={{ marginBottom: 24 }}>
+            <h2
+              style={{
+                fontSize: 26,
+                fontWeight: 850,
+                color: '#FFFFFF',
+                letterSpacing: '-0.025em',
+                margin: '0 0 6px',
+              }}
+            >
+              Sign In
+            </h2>
+            <p style={{ fontSize: 13.5, color: '#94A3B8', margin: 0 }}>
+              Enter your credentials to access your CastReach studio and episodes.
             </p>
           </div>
 
+          {/* Error Banner */}
           {error && (
             <div
               style={{
-                marginBottom: 20,
-                padding: '12px 16px',
-                background: 'var(--color-danger-bg)',
-                border: '1px solid var(--border-medium)',
-                borderRadius: 'var(--radius-md)',
-                color: '#fca5a5',
-                fontSize: 13,
+                marginBottom: 18,
+                padding: '10px 14px',
+                background: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: 10,
+                color: '#FCA5A5',
+                fontSize: 12.5,
                 display: 'flex',
                 alignItems: 'center',
-                gap: 10,
+                gap: 8,
               }}
             >
-              <AlertCircle size={16} color="var(--color-danger)" style={{ flexShrink: 0 }} />
+              <AlertCircle size={15} style={{ flexShrink: 0 }} />
               <span>{error}</span>
             </div>
           )}
 
-          {/* Continue with Google Popup Button */}
-          <button
-            type="button"
-            onClick={handleGoogleSignIn}
-            disabled={googleLoading || loading}
-            className="btn-ghost-dark"
-            style={{
-              width: '100%',
-              padding: '12px',
-              marginBottom: 20,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 10,
-              fontWeight: 700,
-              fontSize: 13.5,
-              opacity: googleLoading ? 0.7 : 1,
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24">
-              <path
-                fill="#EA4335"
-                d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"
-              />
-              <path
-                fill="#4285F4"
-                d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3 0-.8.1-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15.2s.7 5.5 1.9 7.9l3.7-2.9z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2-6.4-4.8L1.9 17c1.8 3.7 5.6 6.5 10.1 6.5z"
-              />
-            </svg>
-            <span>{googleLoading ? 'Connecting to Google…' : 'Continue with Google'}</span>
-          </button>
+          {/* Form */}
+          <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Email Address */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#CBD5E1', marginBottom: 6 }}>
+                Email Address
+              </label>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  borderRadius: 12,
+                  padding: '10px 14px',
+                  gap: 10,
+                  transition: 'all 0.15s ease',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = ACCENT_LAVENDER;
+                  e.currentTarget.style.boxShadow = '0 0 12px rgba(72, 47, 76, 0.4)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <Mail size={16} color="#94A3B8" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="anderson@gmail.com"
+                  style={{
+                    flex: 1,
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    color: '#FFFFFF',
+                    fontSize: 13.5,
+                    fontFamily: 'inherit',
+                  }}
+                />
+              </div>
+            </div>
 
-          {/* Divider */}
+            {/* Password */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#CBD5E1' }}>
+                  Password
+                </label>
+                <a
+                  href="#forgot"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setError('Please contact support or sign in with Google to recover your credentials.');
+                  }}
+                  style={{ fontSize: 11.5, color: ACCENT_LAVENDER, textDecoration: 'none', fontWeight: 600 }}
+                >
+                  Forgot?
+                </a>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  borderRadius: 12,
+                  padding: '10px 14px',
+                  gap: 10,
+                  transition: 'all 0.15s ease',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = ACCENT_LAVENDER;
+                  e.currentTarget.style.boxShadow = '0 0 12px rgba(72, 47, 76, 0.4)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <Lock size={16} color="#94A3B8" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  style={{
+                    flex: 1,
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    color: '#FFFFFF',
+                    fontSize: 13.5,
+                    fontFamily: 'inherit',
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: 0 }}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Primary Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                marginTop: 6,
+                background: BTN_PLUM,
+                border: `1px solid ${ACCENT_LAVENDER_BORDER}`,
+                borderRadius: 24,
+                padding: '12px 20px',
+                color: '#FFFFFF',
+                fontSize: 14,
+                fontWeight: 750,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                boxShadow: '0 4px 16px rgba(72, 47, 76, 0.55)',
+                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.background = BTN_PLUM_HOVER;
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.background = BTN_PLUM;
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }
+              }}
+            >
+              <span>{loading ? 'Signing in...' : 'Sign In to Account'}</span>
+              <ArrowRight size={16} />
+            </button>
+          </form>
+
+          {/* Divider OR */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 14,
-              marginBottom: 20,
-              color: 'var(--text-muted)',
-              fontSize: 12,
-              textTransform: 'uppercase',
+              gap: 12,
+              margin: '20px 0',
+              color: '#64748B',
+              fontSize: 11,
+              fontWeight: 700,
               letterSpacing: '0.06em',
             }}
           >
-            <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
-            <span>or email</span>
-            <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
+            <div style={{ flex: 1, height: 1, background: 'rgba(255, 255, 255, 0.1)' }} />
+            <span>OR</span>
+            <div style={{ flex: 1, height: 1, background: 'rgba(255, 255, 255, 0.1)' }} />
           </div>
 
-          {/* Login Form */}
-          <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div>
-              <label
-                style={{
-                  display: 'block',
-                  fontSize: 12.5,
-                  fontWeight: 650,
-                  marginBottom: 6,
-                  color: 'var(--text-secondary)',
-                }}
-              >
-                Email Address
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Mail size={15} color="var(--text-muted)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your.email@example.com"
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '11px 14px 11px 38px',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--border-subtle)',
-                    background: 'var(--bg-surface)',
-                    color: 'var(--text-primary)',
-                    fontSize: 13.5,
-                    outline: 'none',
-                    transition: 'border-color 0.15s ease',
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = 'var(--accent-lime)')}
-                  onBlur={(e) => (e.target.style.borderColor = 'var(--border-subtle)')}
-                />
-              </div>
-            </div>
+          {/* Google Sign In Button */}
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={googleLoading}
+            style={{
+              width: '100%',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.14)',
+              borderRadius: 24,
+              padding: '11px 18px',
+              color: '#FFFFFF',
+              fontSize: 13,
+              fontWeight: 650,
+              cursor: googleLoading ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              if (!googleLoading) {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                e.currentTarget.style.borderColor = 'rgba(226, 182, 238, 0.35)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!googleLoading) {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.14)';
+              }
+            }}
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+            </svg>
+            <span>{googleLoading ? 'Connecting...' : 'Sign in with Google'}</span>
+          </button>
 
-            <div>
-              <label
-                style={{
-                  display: 'block',
-                  fontSize: 12.5,
-                  fontWeight: 650,
-                  marginBottom: 6,
-                  color: 'var(--text-secondary)',
-                }}
-              >
-                Password
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Lock size={15} color="var(--text-muted)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '11px 14px 11px 38px',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--border-subtle)',
-                    background: 'var(--bg-surface)',
-                    color: 'var(--text-primary)',
-                    fontSize: 13.5,
-                    outline: 'none',
-                    transition: 'border-color 0.15s ease',
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = 'var(--accent-lime)')}
-                  onBlur={(e) => (e.target.style.borderColor = 'var(--border-subtle)')}
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading || googleLoading}
-              className="btn-primary-lime"
-              style={{
-                width: '100%',
-                padding: '12px',
-                marginTop: 6,
-                fontSize: 14,
-                opacity: loading ? 0.7 : 1,
-              }}
-            >
-              {loading ? 'Authenticating…' : 'Sign In to CastReach'}
-            </button>
-          </form>
-
-          {/* Footer Navigation */}
-          <div style={{ marginTop: 28, textAlign: 'center', fontSize: 13, color: 'var(--text-secondary)' }}>
-            Don&apos;t have an account yet?{' '}
+          {/* Bottom Switch Link */}
+          <div style={{ textAlign: 'center', marginTop: 22, fontSize: 13, color: '#94A3B8' }}>
+            Don't have an account?{' '}
             <Link
               to="/register"
               style={{
-                color: 'var(--accent-lime)',
-                fontWeight: 700,
+                color: ACCENT_LAVENDER,
+                fontWeight: 750,
                 textDecoration: 'none',
               }}
+              onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+              onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
             >
-              Sign up for free
+              Create Account
             </Link>
           </div>
         </div>

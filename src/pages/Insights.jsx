@@ -38,7 +38,7 @@ const BADGE_META = {
   top_rated:      { label: 'Top Rated',      Icon: Star, color: '#f59e0b' },
   fast_responder: { label: 'Fast Responder', Icon: Zap, color: '#3b82f6' },
   most_booked:    { label: 'Most Booked',    Icon: Flame, color: '#ef4444' },
-  verified_host:  { label: 'Verified Host',  Icon: ShieldCheck, color: '#22c55e' },
+  verified_host:  { label: 'Verified Host',  Icon: ShieldCheck, color: '#DDAFE8' },
 };
 
 export default function Insights() {
@@ -211,7 +211,7 @@ export default function Insights() {
                   <Icon size={18} color={color} />
                 </div>
               </div>
-              <div style={{ fontSize: 24, fontWeight: 700, marginTop: 12, color: 'var(--plum-deep)' }}>{value}</div>
+              <div style={{ fontSize: 24, fontWeight: 700, marginTop: 12, color: '#FFFFFF' }}>{value}</div>
             </div>
           ))}
         </div>
@@ -742,7 +742,7 @@ const headerStyle = {
 const titleStyle = {
   fontSize: 26,
   fontWeight: 800,
-  color: 'var(--plum-deep)',
+  color: '#FFFFFF',
   letterSpacing: '-0.02em',
   margin: 0,
 };
@@ -754,7 +754,7 @@ const subtitleStyle = {
 };
 
 const adminBadgeStyle = {
-  background: 'var(--plum-deep)',
+  background: 'var(--color-accent-purple, #A855F7)',
   color: '#fff',
   fontSize: 11,
   fontWeight: 700,
@@ -770,7 +770,7 @@ const sectionHeaderStyle = {
 const sectionTitleStyle = {
   fontSize: 18,
   fontWeight: 700,
-  color: 'var(--plum-deep)',
+  color: '#FFFFFF',
   margin: 0,
 };
 

@@ -47,7 +47,7 @@ export default function Shorts() {
   ];
 
   return (
-    <div style={{ background: '#fdfdfd', minHeight: '100vh', color: '#0f172a' }}>
+    <div style={{ background: '#0D0C12', minHeight: '100vh', color: '#FFFFFF', fontFamily: "'Geist Sans', -apple-system, sans-serif" }}>
       <Navbar />
 
       <main style={{ maxWidth: 1240, margin: '0 auto', padding: '50px 24px 80px' }}>
@@ -56,8 +56,9 @@ export default function Shorts() {
             display: 'inline-flex',
             alignItems: 'center',
             gap: 8,
-            background: '#eff6ff',
-            color: '#2563eb',
+            background: 'rgba(34, 197, 94, 0.12)',
+            color: '#22C55E',
+            border: '1px solid rgba(34, 197, 94, 0.3)',
             padding: '4px 12px',
             borderRadius: 16,
             fontSize: 12,
@@ -67,10 +68,10 @@ export default function Shorts() {
             <Sparkles size={14} /> BITE-SIZED HIGHLIGHTS
           </div>
 
-          <h1 style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 8 }}>
-            Podcast Shorts & Audiograms
+          <h1 style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 8, color: '#FFFFFF' }}>
+            Podcast Shorts &amp; Audiograms
           </h1>
-          <p style={{ color: '#64748b', fontSize: 15 }}>
+          <p style={{ color: '#A39EA9', fontSize: 15 }}>
             High-impact takeaways clipped directly from CastReach live recording studio sessions.
           </p>
         </div>
@@ -82,22 +83,24 @@ export default function Shorts() {
               <div
                 key={s.id}
                 style={{
-                  background: '#ffffff',
-                  borderRadius: 22,
+                  background: '#181622',
+                  borderRadius: 18,
                   overflow: 'hidden',
-                  border: '1px solid #e2e8f0',
-                  boxShadow: '0 4px 18px rgba(0, 0, 0, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
                   display: 'flex',
                   flexDirection: 'column',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  transition: 'transform 0.2s, border-color 0.2s, box-shadow 0.2s',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = '0 12px 28px rgba(0, 0, 0, 0.08)';
+                  e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+                  e.currentTarget.style.boxShadow = '0 12px 30px rgba(34, 197, 94, 0.15)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 18px rgba(0, 0, 0, 0.04)';
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.5)';
                 }}
               >
                 <div style={{ height: 200, position: 'relative', overflow: 'hidden' }}>
@@ -106,7 +109,7 @@ export default function Shorts() {
                     style={{
                       position: 'absolute',
                       inset: 0,
-                      background: 'rgba(0, 0, 0, 0.35)',
+                      background: 'rgba(0, 0, 0, 0.45)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -129,20 +132,20 @@ export default function Shorts() {
                         width: 50,
                         height: 50,
                         borderRadius: '50%',
-                        background: '#ffffff',
-                        color: '#0f172a',
+                        background: '#22C55E',
+                        color: '#0D0C12',
                         border: 'none',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         cursor: 'pointer',
-                        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
+                        boxShadow: '0 4px 16px rgba(34, 197, 94, 0.4)',
                         transition: 'transform 0.2s',
                       }}
                       onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.08)')}
                       onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
                     >
-                      {isThisPlaying ? <Pause size={20} fill="#0f172a" /> : <Play size={20} fill="#0f172a" style={{ marginLeft: 3 }} />}
+                      {isThisPlaying ? <Pause size={20} fill="#0D0C12" /> : <Play size={20} fill="#0D0C12" style={{ marginLeft: 3 }} />}
                     </button>
                   </div>
 
@@ -151,12 +154,14 @@ export default function Shorts() {
                       position: 'absolute',
                       bottom: 12,
                       right: 12,
-                      background: 'rgba(15, 23, 42, 0.85)',
-                      color: '#fff',
+                      background: 'rgba(13, 12, 18, 0.88)',
+                      backdropFilter: 'blur(8px)',
+                      color: '#22C55E',
+                      border: '1px solid rgba(34, 197, 94, 0.3)',
                       padding: '3px 8px',
                       borderRadius: 8,
                       fontSize: 11,
-                      fontWeight: 600,
+                      fontWeight: 650,
                     }}
                   >
                     {s.duration}
@@ -164,13 +169,13 @@ export default function Shorts() {
                 </div>
 
                 <div style={{ padding: 18, display: 'flex', flexDirection: 'column', flex: 1 }}>
-                  <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 8, lineHeight: 1.35 }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: '#FFFFFF', marginBottom: 8, lineHeight: 1.35 }}>
                     {s.title}
                   </h3>
-                  <div style={{ fontSize: 13, color: '#64748b', marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>{s.creator}</span>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      <Eye size={13} /> {s.views}
+                  <div style={{ fontSize: 13, color: '#A39EA9', marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: '#FFFFFF', fontWeight: 600 }}>{s.creator}</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#6F6A76' }}>
+                      <Eye size={13} color="#A39EA9" /> {s.views}
                     </span>
                   </div>
                 </div>

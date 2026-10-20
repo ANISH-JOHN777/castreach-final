@@ -198,6 +198,8 @@ export default function AIIntelligencePanel({
   };
 
   const formatSeconds = (sec) => {
+    if (!sec && sec !== 0) return '00:00';
+    if (!isFinite(sec) || isNaN(sec) || sec < 0) return '00:00';
     const mins = Math.floor(sec / 60);
     const remainingSec = Math.floor(sec % 60);
     return `${mins.toString().padStart(2, '0')}:${remainingSec.toString().padStart(2, '0')}`;

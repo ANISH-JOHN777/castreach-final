@@ -49,9 +49,11 @@ async function verifyFirebaseToken(idToken) {
   if (!idToken) throw new Error('No Firebase ID token provided');
 
   // Attempt Firebase Admin SDK verification if app is initialized
-  if (admin.apps.length > 0) {
+  const initializedApps = admin.getApps ? admin.getApps() : admin.apps;
+  if (initializedApps && initializedApps.length > 0) {
     try {
-      const decoded = await admin.auth().verifyIdToken(idToken);
+      const { getAuth } = require('firebase-admin/auth');
+      const decoded = await getAuth().verifyIdToken(idToken);
       return {
         uid: decoded.uid,
         email: decoded.email,
@@ -121,7 +123,88 @@ async function verifyFirebaseToken(idToken) {
   }
 }
 
+let firestoreDb = null;
+let firestoreAvailable = null;
+
+function getFirestoreInstance() {
+  if (firestoreAvailable === false) return null;
+  if (firestoreDb) return firestoreDb;
+  try {
+    const hasServiceAccount = Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.GOOGLE_APPLICATION_CREDENTIALS);
+    if (!hasServiceAccount) {
+      // In local dev without Google Cloud service account file, client-side Firebase SDK syncs directly to Firestore
+      firestoreAvailable = false;
+      return null;
+    }
+    const apps = admin.getApps ? admin.getApps() : admin.apps;
+    if (apps && apps.length > 0) {
+      const { getFirestore } = require('firebase-admin/firestore');
+      firestoreDb = getFirestore();
+      firestoreAvailable = true;
+    }
+  } catch (err) {
+    console.warn('[Firebase Firestore] Failed to initialize firestore db:', err.message);
+    firestoreAvailable = false;
+  }
+  return firestoreDb;
+}
+
+/**
+ * Save and sync user credentials and profile to Firebase DB (Firestore).
+ */
+async function saveUserToFirestore(userData, extra = {}) {
+  try {
+    const db = getFirestoreInstance();
+    if (!db) return null;
+    const uid = (userData.firebaseUid || userData._id || userData.id || userData.email || '').toString();
+    if (!uid) return null;
+
+    const profileData = {
+      uid,
+      mongoId: userData._id ? userData._id.toString() : uid,
+      email: userData.email || '',
+      name: userData.name || '',
+      role: userData.role || 'guest',
+      bio: userData.bio || '',
+      expertise: Array.isArray(userData.expertise) ? userData.expertise : (userData.expertise ? [userData.expertise] : []),
+      sessionRateCents: userData.sessionRateCents || 50000,
+      sessionRate: (userData.sessionRateCents ? Math.round(userData.sessionRateCents / 100) : 500),
+      avatar: userData.avatar || userData.profilePicture || '',
+      location: userData.location || userData.studioLocation || 'Remote Studio',
+      podcastName: userData.podcastName || '',
+      isOnboarded: userData.isOnboarded !== undefined ? Boolean(userData.isOnboarded) : false,
+      authProvider: userData.authProvider || 'castreach_credentials',
+      updatedAt: new Date().toISOString(),
+      ...extra,
+    };
+
+    // 1. Save profile document in 'users'
+    await db.collection('users').doc(uid).set(profileData, { merge: true });
+
+    // 2. Save credentials tracking record in 'credentials'
+    if (userData.email) {
+      await db.collection('credentials').doc(uid).set({
+        uid,
+        email: userData.email,
+        role: userData.role || 'guest',
+        authProvider: userData.authProvider || 'credentials',
+        lastLogin: new Date().toISOString(),
+        profileRef: `users/${uid}`,
+      }, { merge: true });
+    }
+
+    console.log(`[Firebase Firestore] User profile and credentials saved for ${userData.email || uid}`);
+    return true;
+  } catch (err) {
+    console.warn('[Firebase Firestore] Warning saving user to Firestore:', err.message);
+    return null;
+  }
+}
+
 module.exports = {
   admin,
-  verifyFirebaseToken
+  verifyFirebaseToken,
+  saveUserToFirestore,
+  getFirestoreInstance
 };
+

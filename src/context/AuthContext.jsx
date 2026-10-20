@@ -4,9 +4,13 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signInWithPopup, 
-  GoogleAuthProvider,
+  GoogleAuthProvider, 
   signOut as fbSignOut, 
-  onAuthStateChanged 
+  onAuthStateChanged,
+  updateProfile,
+  setPersistence,
+  browserLocalPersistence,
+  saveUserProfileToFirestore
 } from '../config/firebase';
 
 const API = import.meta.env.VITE_API_URL || '/api';
@@ -51,6 +55,8 @@ export function AuthProvider({ children }) {
       setUser(newUser);
       localStorage.setItem('cr_user', JSON.stringify(newUser));
       localStorage.setItem('user', JSON.stringify(newUser));
+      // Dual-persist to Firebase DB
+      saveUserProfileToFirestore(newUser).catch(() => {});
     }
   };
 
@@ -85,8 +91,11 @@ export function AuthProvider({ children }) {
         method: 'POST',
         credentials: 'include',
       });
-      if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
         clearAuth();
+        return null;
+      }
+      if (!res.ok) {
         return null;
       }
       const data = await res.json();
@@ -102,7 +111,7 @@ export function AuthProvider({ children }) {
       saveAuth(newToken, refreshedUser || user);
       return newToken;
     } catch {
-      clearAuth();
+      // Do not clearAuth on transient network drop — preserve user session
       return null;
     }
   };
@@ -144,35 +153,70 @@ export function AuthProvider({ children }) {
   );
 
   useEffect(() => {
-    if (!token) {
+    // 1. Listen to Firebase auth state persistence (IndexedDB / LocalStorage)
+    const unsubscribeFb = onAuthStateChanged(auth, async (fbUser) => {
+      if (fbUser) {
+        try {
+          const idToken = await fbUser.getIdToken();
+          const res = await fetch(`${API}/auth/firebase-login`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              idToken,
+              email: fbUser.email,
+              name: fbUser.displayName,
+              avatar: fbUser.photoURL,
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.token && data.user) {
+              saveAuth(data.token, data.user);
+            }
+          }
+        } catch { /* network swallow */ }
+      }
       setLoading(false);
-      return;
+    });
+
+    // 2. Validate current stored session with backend
+    if (token) {
+      fetch(`${API}/auth/me`, {
+        credentials: 'include',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(async (r) => {
+          if (!r.ok) {
+            if (r.status === 401 || r.status === 403) {
+              return refreshAccessToken();
+            }
+            return;
+          }
+          const text = await r.text();
+          const parsed = text ? JSON.parse(text) : {};
+          if (parsed.user) {
+            saveAuth(token, parsed.user);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
     }
-    fetch(`${API}/auth/me`, {
-      credentials: 'include',
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(async (r) => {
-        if (!r.ok) return Promise.reject();
-        const text = await r.text();
-        return text ? JSON.parse(text) : {};
-      })
-      .then(({ user: serverUser }) => {
-        saveAuth(token, serverUser);
-      })
-      .catch(() => {
-        refreshAccessToken().finally(() => setLoading(false));
-      })
-      .finally(() => setLoading(false));
+
+    return () => {
+      if (typeof unsubscribeFb === 'function') unsubscribeFb();
+    };
   }, []);
 
   // Sync Firebase authentication with backend MongoDB user session
-  const syncWithBackendFirebase = async ({ idToken, role, name, email, avatar }) => {
+  const syncWithBackendFirebase = async ({ idToken, role, name, email, avatar, password }) => {
     const res = await fetch(`${API}/auth/firebase-login`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken, role, name, email, avatar }),
+      body: JSON.stringify({ idToken, role, name, email, avatar, password }),
     });
 
     const data = await parseResponse(res);
@@ -185,7 +229,10 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     let firebaseError = null;
     try {
-      // 1. Attempt Firebase Authentication
+      // 1. Attempt Firebase Authentication if configured with local persistence
+      if (setPersistence && browserLocalPersistence) {
+        await setPersistence(auth, browserLocalPersistence).catch(() => {});
+      }
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const idToken = await userCredential.user.getIdToken();
       return await syncWithBackendFirebase({
@@ -193,9 +240,11 @@ export function AuthProvider({ children }) {
         email: userCredential.user.email,
         name: userCredential.user.displayName,
         avatar: userCredential.user.photoURL,
+        password,
       });
     } catch (fbErr) {
       firebaseError = fbErr;
+      console.warn('[Firebase Auth fallback]:', fbErr.code || fbErr.message);
     }
 
     // 2. Direct backend database authentication (fallback if Firebase is unconfigured or user was seeded in MongoDB)
@@ -238,16 +287,24 @@ export function AuthProvider({ children }) {
     const { email, password, name, role } = fields;
     let firebaseError = null;
     try {
+      if (setPersistence && browserLocalPersistence) {
+        await setPersistence(auth, browserLocalPersistence).catch(() => {});
+      }
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      if (name && updateProfile) {
+        await updateProfile(userCredential.user, { displayName: name }).catch(() => {});
+      }
       const idToken = await userCredential.user.getIdToken();
       return await syncWithBackendFirebase({
         idToken,
         email,
+        password,
         name,
         role: role || 'guest'
       });
     } catch (fbErr) {
       firebaseError = fbErr;
+      console.warn('[Firebase Register fallback]:', fbErr.code || fbErr.message);
     }
 
     // Direct backend registration fallback
@@ -269,9 +326,9 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
-  const setCustomUser = (updatedUser) => {
+  const setCustomUser = (updatedUser, newToken) => {
     if (updatedUser) {
-      saveAuth(token, updatedUser);
+      saveAuth(newToken || token, updatedUser);
     }
   };
 

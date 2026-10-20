@@ -6,7 +6,14 @@ const Notification = require('../models/Notification');
  */
 async function notify(recipientId, { type, title, body, link, meta } = {}) {
   try {
-    await Notification.create({ recipient: recipientId, type, title, body, link, meta });
+    const doc = await Notification.create({ recipient: recipientId, type, title, body, link, meta });
+    try {
+      const { broadcastToUser } = require('./realtimeServer');
+      if (broadcastToUser && recipientId) {
+        broadcastToUser(recipientId.toString(), 'notification:new', doc);
+      }
+    } catch {}
+    return doc;
   } catch (err) {
     console.error('Failed to create notification:', err.message);
   }

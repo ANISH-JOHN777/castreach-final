@@ -1,626 +1,924 @@
 import { useState, useEffect, useRef } from 'react';
-import { Film, Play, Pause, RotateCcw, Save, X, AlertTriangle, CheckCircle, Clock, Music, Volume2, VolumeX, Maximize2, Sparkles, Download, HardDrive } from 'lucide-react';
+import { 
+  Play, 
+  Pause, 
+  Scissors, 
+  Trash2, 
+  RotateCcw, 
+  Download, 
+  X, 
+  CheckCircle2, 
+  Clock, 
+  Sparkles,
+  Volume2,
+  VolumeX,
+  FastForward,
+  Rewind,
+  Upload,
+  Film
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 function formatSeconds(sec) {
-  if (sec === undefined || sec === null || isNaN(sec)) return '00:00';
+  if (sec === undefined || sec === null || isNaN(sec) || !isFinite(sec) || sec < 0) return '00:00';
   const total = Math.floor(sec);
-  const hrs = Math.floor(total / 3600);
-  const mins = Math.floor((total % 3600) / 60);
+  const mins = Math.floor(total / 60);
   const secs = total % 60;
-  if (hrs > 0) {
-    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
-// Sample fallback high quality MP4 for demo preview when local/server recording is not available
-const SAMPLE_FALLBACK_VIDEO = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+const DEFAULT_SAMPLE_VIDEO = '/sample-podcast.mp4';
 
 export default function RecordingEditorModal({ booking, onClose, onSaveSuccess }) {
   const { authFetch } = useAuth();
   const videoRef = useRef(null);
-  const timelineBarRef = useRef(null);
+  const fileInputRef = useRef(null);
 
-  // Video Source Resolution — Local Storage First
+  // Video source resolution with validation
   const [videoSource, setVideoSource] = useState(() => {
-    if (!booking?._id) return SAMPLE_FALLBACK_VIDEO;
-    // 1. Check booking specific local storage blob / URL
+    if (!booking?._id) return DEFAULT_SAMPLE_VIDEO;
     const localVideo = localStorage.getItem(`cr_recorded_video_${booking._id}`) || localStorage.getItem('cr_last_recording');
+    // If localVideo is available and not a revoked blob, use it; otherwise fallback to booking or sample
     if (localVideo) return localVideo;
-    // 2. Check booking recordingUrl prop
     if (booking.recordingUrl) return booking.recordingUrl;
-    // 3. Fallback sample video
-    return SAMPLE_FALLBACK_VIDEO;
+    return DEFAULT_SAMPLE_VIDEO;
   });
 
-  // State
-  const [sourceDuration, setSourceDuration] = useState(booking?.recordingDuration || 60);
-  const [trimStart, setTrimStart] = useState(0);
-  const [trimEnd, setTrimEnd] = useState(60);
-  const [selectedMusicTrack, setSelectedMusicTrack] = useState('none');
-  const [musicVolume, setMusicVolume] = useState(20);
+  const savedDuration = Number(
+    localStorage.getItem(`cr_duration_${booking?._id}`) ||
+    localStorage.getItem('cr_last_recording_duration') ||
+    booking?.recordingDuration ||
+    0
+  );
+  const initialDuration = savedDuration > 0 && isFinite(savedDuration) ? savedDuration : 60;
+
+  const [duration, setDuration] = useState(initialDuration);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [downloading, setDownloading] = useState(false);
-  const [resetting, setResetting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const [savedEdit, setSavedEdit] = useState(null);
+  const [toastNotice, setToastNotice] = useState('');
 
-  // Load saved edit from LocalStorage + Server API on mount
+  // Clips state: Array of { id, start, end }
+  const [clips, setClips] = useState([
+    { id: 1, start: 0, end: initialDuration }
+  ]);
+  const [selectedClipId, setSelectedClipId] = useState(1);
+
+  const showToast = (msg) => {
+    setToastNotice(msg);
+    setTimeout(() => setToastNotice(''), 3500);
+  };
+
+  // Ensure video element loads fresh source when videoSource changes
   useEffect(() => {
-    let isMounted = true;
-
-    // 1. Load from localStorage immediately for fast responsive restoration
-    const localEditJson = localStorage.getItem(`cr_recording_edit_${booking._id}`);
-    if (localEditJson) {
-      try {
-        const parsed = JSON.parse(localEditJson);
-        if (parsed && typeof parsed.trimStartSeconds === 'number') {
-          setSavedEdit(parsed);
-          setTrimStart(parsed.trimStartSeconds);
-          if (parsed.trimEndSeconds) setTrimEnd(parsed.trimEndSeconds);
-          if (parsed.musicTrack) setSelectedMusicTrack(parsed.musicTrack);
-          if (typeof parsed.musicVolume === 'number') setMusicVolume(parsed.musicVolume);
-        }
-      } catch (e) {
-        console.warn('Failed to parse local EDL edit:', e);
-      }
-    }
-
-    // 2. Sync with Server API
-    (async () => {
-      try {
-        const res = await authFetch(`/recordings/${booking._id}/edit`);
-        if (res.ok && isMounted) {
-          const data = await res.json();
-          if (data.sourceDurationSeconds && data.sourceDurationSeconds > 0) {
-            setSourceDuration(data.sourceDurationSeconds);
-          }
-          if (data.edit) {
-            setSavedEdit(data.edit);
-            setTrimStart(data.edit.trimStartSeconds || 0);
-            if (data.edit.trimEndSeconds) setTrimEnd(data.edit.trimEndSeconds);
-            if (data.edit.musicTrack) setSelectedMusicTrack(data.edit.musicTrack);
-            if (typeof data.edit.musicVolume === 'number') setMusicVolume(data.edit.musicVolume);
-            // Sync to local storage
-            localStorage.setItem(`cr_recording_edit_${booking._id}`, JSON.stringify(data.edit));
-          }
-        }
-      } catch (err) {
-        console.warn('EDL API fetch info:', err.message);
-      }
-    })();
-
-    return () => { isMounted = false; };
-  }, [booking._id]);
-
-  // Video Loaded Metadata Handler
-  const handleLoadedMetadata = () => {
     if (videoRef.current) {
-      const dur = videoRef.current.duration;
-      if (dur && !isNaN(dur) && dur > 0) {
-        setSourceDuration(dur);
-        // Set initial trim end if not explicitly modified
-        setTrimEnd((prev) => {
-          if (!prev || prev > dur || prev === 60) return dur;
+      videoRef.current.load();
+    }
+  }, [videoSource]);
+
+  // Load saved edits if existing
+  useEffect(() => {
+    const savedEditJson = localStorage.getItem(`cr_recording_edit_${booking?._id}`);
+    if (savedEditJson) {
+      try {
+        const parsed = JSON.parse(savedEditJson);
+        if (parsed?.clips && Array.isArray(parsed.clips) && parsed.clips.length > 0) {
+          setClips(parsed.clips);
+          setSelectedClipId(parsed.clips[0].id);
+        }
+      } catch (e) {}
+    }
+  }, [booking?._id]);
+
+  const applyDuration = (dur) => {
+    if (!isFinite(dur) || dur <= 0) return;
+    setDuration(dur);
+    setClips((prev) => {
+      if (prev.length === 1 && (prev[0].end === 60 || prev[0].end > dur || prev[0].end === 0 || !isFinite(prev[0].end))) {
+        return [{ id: prev[0].id, start: prev[0].start, end: dur }];
+      }
+      return prev;
+    });
+  };
+
+  // Handle metadata loaded on video
+  const handleLoadedMetadata = () => {
+    if (!videoRef.current) return;
+    const v = videoRef.current;
+    let dur = v.duration;
+
+    // Handle Chrome MediaRecorder WebM duration === Infinity
+    if (dur === Infinity) {
+      const onTimeUpdateForDuration = () => {
+        v.removeEventListener('timeupdate', onTimeUpdateForDuration);
+        v.currentTime = 0;
+        const realDur = v.duration;
+        if (realDur && isFinite(realDur) && realDur > 0) {
+          applyDuration(realDur);
+        } else if (v.seekable && v.seekable.length > 0) {
+          const seekEnd = v.seekable.end(v.seekable.length - 1);
+          if (isFinite(seekEnd) && seekEnd > 0) applyDuration(seekEnd);
+        } else if (savedDuration > 0) {
+          applyDuration(savedDuration);
+        }
+      };
+      v.addEventListener('timeupdate', onTimeUpdateForDuration);
+      try {
+        v.currentTime = 1e101;
+      } catch (e) {
+        if (savedDuration > 0) applyDuration(savedDuration);
+      }
+    } else if (dur && isFinite(dur) && dur > 0) {
+      applyDuration(dur);
+    } else if (savedDuration > 0) {
+      applyDuration(savedDuration);
+    }
+  };
+
+  // Video time update & cut-flow enforcement
+  const handleTimeUpdate = () => {
+    if (!videoRef.current) return;
+    const curr = videoRef.current.currentTime;
+    if (isFinite(curr)) {
+      setCurrentTime(curr);
+      // Auto-correct duration if video plays past current duration or duration is not finite
+      if ((!isFinite(duration) || duration <= 0 || curr > duration) && curr > 0) {
+        setDuration(Math.ceil(curr));
+        setClips((prev) => {
+          if (prev.length === 1 && prev[0].end < curr) {
+            return [{ ...prev[0], end: Math.ceil(curr) }];
+          }
           return prev;
         });
       }
     }
-  };
 
-  // Video Time Update & Trim Boundary Loop Control
-  const handleTimeUpdate = () => {
-    if (!videoRef.current) return;
-    const curr = videoRef.current.currentTime;
-    setCurrentTime(curr);
-
-    // Manual trim boundary enforcement — loop back to trimStart when passing trimEnd
-    if (curr >= trimEnd) {
-      videoRef.current.currentTime = trimStart;
-      if (!isPlaying) {
+    // If outside active clip boundaries, jump to next clip
+    const currentClip = clips.find((c) => curr >= c.start && curr < c.end);
+    if (!currentClip && clips.length > 0) {
+      const nextClip = clips.find((c) => c.start >= curr);
+      if (nextClip) {
+        videoRef.current.currentTime = nextClip.start;
+      } else {
+        videoRef.current.currentTime = clips[0].start;
         videoRef.current.pause();
+        setIsPlaying(false);
       }
+    } else if (currentClip && currentClip.id !== selectedClipId) {
+      setSelectedClipId(currentClip.id);
     }
   };
 
-  // Play / Pause Toggle
-  const togglePlayPause = () => {
+  // Play / Pause
+  const togglePlay = () => {
     if (!videoRef.current) return;
     if (isPlaying) {
       videoRef.current.pause();
       setIsPlaying(false);
     } else {
-      if (videoRef.current.currentTime < trimStart || videoRef.current.currentTime >= trimEnd) {
-        videoRef.current.currentTime = trimStart;
+      const inClip = clips.some((c) => currentTime >= c.start && currentTime < c.end);
+      if (!inClip && clips.length > 0) {
+        videoRef.current.currentTime = clips[0].start;
       }
-      videoRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+      videoRef.current.play()
+        .then(() => setIsPlaying(true))
+        .catch((err) => {
+          console.warn('Play error:', err);
+          setIsPlaying(false);
+        });
     }
   };
 
-  // Mute Toggle
-  const toggleMute = () => {
+  // Skip delta seconds
+  const skip = (delta) => {
     if (!videoRef.current) return;
-    videoRef.current.muted = !isMuted;
-    setIsMuted(!isMuted);
+    const nextTime = Math.max(0, Math.min(duration, videoRef.current.currentTime + delta));
+    videoRef.current.currentTime = nextTime;
+    setCurrentTime(nextTime);
   };
 
-  // Fullscreen Toggle
-  const toggleFullscreen = () => {
+  // Seek from range slider
+  const handleSeek = (newTime) => {
+    const t = Number(newTime);
+    setCurrentTime(t);
     if (videoRef.current) {
-      if (videoRef.current.requestFullscreen) {
-        videoRef.current.requestFullscreen();
-      }
+      videoRef.current.currentTime = t;
+    }
+    // Select the clip covering this time
+    const coveringClip = clips.find((c) => t >= c.start && t <= c.end);
+    if (coveringClip) {
+      setSelectedClipId(coveringClip.id);
     }
   };
 
-  // Manual Trim Start Change
-  const handleStartChange = (val) => {
-    const num = Math.max(0, Math.min(Number(val), trimEnd - 0.5));
-    setTrimStart(num);
-    if (videoRef.current) {
-      videoRef.current.currentTime = num;
-      setCurrentTime(num);
-    }
-  };
-
-  // Manual Trim End Change
-  const handleEndChange = (val) => {
-    const maxDur = sourceDuration || 999999;
-    const num = Math.min(maxDur, Math.max(Number(val), trimStart + 0.5));
-    setTrimEnd(num);
-  };
-
-  // Click on Timeline Visual Bar to Seek
-  const handleTimelineClick = (e) => {
-    if (!timelineBarRef.current || !sourceDuration) return;
-    const rect = timelineBarRef.current.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const percentage = Math.max(0, Math.min(1, clickX / rect.width));
-    const seekTime = percentage * sourceDuration;
-    
-    if (videoRef.current) {
-      videoRef.current.currentTime = seekTime;
-      setCurrentTime(seekTime);
-    }
-  };
-
-  // Download Video to System Storage (Local Computer Disk)
-  const handleDownloadSystemStorage = async () => {
-    if (!videoSource) return;
-    setDownloading(true);
-    try {
-      const filename = `castreach_recording_${booking?._id || 'session'}.webm`;
-
-      if (videoSource.startsWith('blob:') || videoSource.startsWith('data:')) {
-        const a = document.createElement('a');
-        a.href = videoSource;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setDownloading(false);
-        return;
-      }
-
-      // Fetch blob if remote URL
-      const response = await fetch(videoSource);
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 10000);
-    } catch (err) {
-      console.warn('Direct system storage download fallback:', err);
-      const a = document.createElement('a');
-      a.href = videoSource;
-      a.download = `castreach_recording_${booking?._id || 'session'}.mp4`;
-      a.target = '_blank';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  // Check unsaved status
-  const isModified = savedEdit
-    ? (savedEdit.trimStartSeconds !== trimStart || savedEdit.trimEndSeconds !== trimEnd || savedEdit.musicTrack !== selectedMusicTrack || savedEdit.musicVolume !== musicVolume)
-    : (trimStart > 0 || (sourceDuration > 0 && trimEnd < sourceDuration) || selectedMusicTrack !== 'none');
-
-  const isValidRange = trimStart >= 0 && trimEnd > trimStart && (!sourceDuration || trimEnd <= sourceDuration + 1);
-  const editedDuration = Math.max(0, trimEnd - trimStart);
-
-  // Save Edit (EDL) Handler
-  const handleSave = async (e) => {
-    if (e && e.preventDefault) e.preventDefault();
-    setErrorMsg('');
-    setSuccessMsg('');
-
-    if (!isValidRange) {
-      setErrorMsg('Invalid trim boundaries. Trim end must be strictly greater than trim start.');
+  // 1. SPLIT at playhead
+  const handleSplit = () => {
+    const activeClip = clips.find((c) => currentTime >= c.start && currentTime <= c.end) || clips.find((c) => c.id === selectedClipId);
+    if (!activeClip) {
+      showToast('Move timeline slider to choose a cut point inside a clip.');
       return;
     }
 
+    if (currentTime <= activeClip.start + 0.3 || currentTime >= activeClip.end - 0.3) {
+      showToast(`Scrub timeline slider to where you want to cut (e.g. ${formatSeconds(Math.round(activeClip.start + (activeClip.end - activeClip.start) / 2))}) then click Split.`);
+      return;
+    }
+
+    const splitPoint = Math.round(currentTime * 10) / 10;
+    const clipA = { id: activeClip.id, start: activeClip.start, end: splitPoint };
+    const clipB = { id: Date.now(), start: splitPoint, end: activeClip.end };
+
+    const newClips = [];
+    for (const c of clips) {
+      if (c.id === activeClip.id) {
+        newClips.push(clipA, clipB);
+      } else {
+        newClips.push(c);
+      }
+    }
+    setClips(newClips);
+    setSelectedClipId(clipB.id);
+    showToast(`Clip split at ${formatSeconds(splitPoint)}! ✂️`);
+  };
+
+  // 2. TRIM START to playhead
+  const handleTrimStart = () => {
+    const activeClip = clips.find((c) => c.id === selectedClipId) || clips[0];
+    if (!activeClip) return;
+    if (currentTime >= activeClip.end - 0.2) {
+      showToast('Playhead must be before the end of the clip to trim start.');
+      return;
+    }
+
+    const newStart = Math.round(currentTime * 10) / 10;
+    setClips((prev) =>
+      prev.map((c) => (c.id === activeClip.id ? { ...c, start: newStart } : c))
+    );
+    showToast(`Trimmed start to ${formatSeconds(newStart)}`);
+  };
+
+  // 2b. TRIM END to playhead
+  const handleTrimEnd = () => {
+    const activeClip = clips.find((c) => c.id === selectedClipId) || clips[0];
+    if (!activeClip) return;
+    if (currentTime <= activeClip.start + 0.2) {
+      showToast('Playhead must be after the start of the clip to trim end.');
+      return;
+    }
+
+    const newEnd = Math.round(currentTime * 10) / 10;
+    setClips((prev) =>
+      prev.map((c) => (c.id === activeClip.id ? { ...c, end: newEnd } : c))
+    );
+    showToast(`Trimmed end to ${formatSeconds(newEnd)}`);
+  };
+
+  // 3. DELETE clip
+  const handleDeleteClip = (clipId) => {
+    if (clips.length <= 1) {
+      showToast('Cannot delete the only remaining clip. Use Trim instead.');
+      return;
+    }
+    const remaining = clips.filter((c) => c.id !== clipId);
+    setClips(remaining);
+    setSelectedClipId(remaining[0].id);
+    if (videoRef.current) {
+      videoRef.current.currentTime = remaining[0].start;
+    }
+    showToast('Deleted clip section.');
+  };
+
+  // 4. RESET ALL
+  const handleReset = () => {
+    setClips([{ id: 1, start: 0, end: duration }]);
+    setSelectedClipId(1);
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+    }
+    showToast('Reset all cuts to full original video.');
+  };
+
+  // Handle local video file upload from computer
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const localUrl = URL.createObjectURL(file);
+    setVideoSource(localUrl);
+    showToast(`Loaded ${file.name}`);
+  };
+
+  // Total edited duration
+  const totalEditedSeconds = clips.reduce((sum, c) => sum + Math.max(0, c.end - c.start), 0);
+  const selectedClip = clips.find((c) => c.id === selectedClipId) || clips[0];
+
+  // Save Edit & Export
+  const handleSaveAndExport = async () => {
     setSaving(true);
+    setSuccessMsg('');
+
     const editPayload = {
-      trimStartSeconds: Math.round(trimStart * 10) / 10,
-      trimEndSeconds: Math.round(trimEnd * 10) / 10,
-      musicTrack: selectedMusicTrack,
-      musicVolume,
+      bookingId: booking?._id,
+      clips,
+      trimStartSeconds: clips[0]?.start || 0,
+      trimEndSeconds: clips[clips.length - 1]?.end || duration,
+      totalDurationSeconds: Math.round(totalEditedSeconds * 10) / 10,
       updatedAt: new Date().toISOString(),
     };
 
+    localStorage.setItem(`cr_recording_edit_${booking?._id}`, JSON.stringify(editPayload));
+
+    await authFetch(`/recordings/${booking?._id}/edit`, {
+      method: 'POST',
+      body: JSON.stringify(editPayload),
+    }).catch(() => {});
+
+    // Download video file
     try {
-      // 1. Save edit payload to LocalStorage
-      localStorage.setItem(`cr_recording_edit_${booking._id}`, JSON.stringify(editPayload));
+      const a = document.createElement('a');
+      a.href = videoSource;
+      a.download = `recording_${booking?._id || 'cut'}.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (e) {}
 
-      // 2. Persist to API
-      await authFetch(`/recordings/${booking._id}/edit`, {
-        method: 'POST',
-        body: JSON.stringify(editPayload),
-      }).catch((err) => console.warn('API edit save fallback:', err));
-
-      // 3. Save video file to System Storage (Computer Downloads)
-      await handleDownloadSystemStorage();
-
-      setSavedEdit(editPayload);
-      setSuccessMsg('Video saved to system storage and EDL edit recorded successfully!');
-      if (onSaveSuccess) onSaveSuccess(editPayload);
-    } catch (err) {
-      // Even if network or API has fallback, local storage save and download succeed
-      setSavedEdit(editPayload);
-      setSuccessMsg('Video saved to system storage and updated successfully!');
-      if (onSaveSuccess) onSaveSuccess(editPayload);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Reset Edit Handler
-  const handleReset = async () => {
-    setErrorMsg('');
-    setSuccessMsg('');
-    setResetting(true);
-
-    try {
-      // 1. Clear LocalStorage
-      localStorage.removeItem(`cr_recording_edit_${booking._id}`);
-
-      // 2. Call DELETE endpoint
-      await authFetch(`/recordings/${booking._id}/edit`, { method: 'DELETE' }).catch(() => {});
-
-      // 3. Reset State
-      setTrimStart(0);
-      setTrimEnd(sourceDuration || 60);
-      setSelectedMusicTrack('none');
-      setMusicVolume(20);
-      setSavedEdit(null);
-
-      if (videoRef.current) videoRef.current.currentTime = 0;
-      setSuccessMsg('Manual trim reset to full original video recording.');
-      if (onSaveSuccess) onSaveSuccess(null);
-    } catch (err) {
-      setErrorMsg('Failed to reset edit instructions');
-    } finally {
-      setResetting(false);
-    }
+    setSaving(false);
+    setSuccessMsg('Clips saved & video exported successfully!');
+    if (onSaveSuccess) onSaveSuccess(editPayload);
+    setTimeout(() => {
+      if (onClose) onClose();
+    }, 1800);
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 5, 24, 0.88)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(12px)' }}>
-      <div style={{ background: 'linear-gradient(145deg, #24142e 0%, #170a1f 100%)', borderRadius: 20, maxWidth: 880, width: '100%', padding: '24px 28px', color: '#fff', boxShadow: '0 25px 60px -12px rgba(15, 5, 24, 0.95)', border: '1px solid rgba(220, 201, 221, 0.2)', maxHeight: '92vh', overflowY: 'auto' }}>
-
-        {/* Modal Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, borderBottom: '1px solid rgba(220, 201, 221, 0.15)', paddingBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 42, height: 42, borderRadius: 12, background: 'linear-gradient(135deg, #5A3D5C, #321F3A)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(90, 61, 92, 0.4)' }}>
-              <Film size={22} color="#F4EDF5" />
+    <div style={modalBackdropStyle}>
+      <div style={modalContainerStyle}>
+        {/* Header */}
+        <div style={modalHeaderStyle}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 16, fontWeight: 800, color: '#FFFFFF' }}>Recording Editor</span>
+              <span style={cutPillStyle}>
+                <Scissors size={12} color="#A855F7" /> Trim &amp; Split
+              </span>
             </div>
-            <div>
-              <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0, color: '#FFF9F4', letterSpacing: '-0.02em' }}>Recording Editor</h2>
-              <span style={{ fontSize: 13, color: '#DCC9DD', opacity: 0.85 }}>Manual Timeline Trimming & Non-Destructive EDL</span>
-            </div>
+            <p style={{ fontSize: 12, color: '#A39EA9', marginTop: 2 }}>
+              Scrub the timeline to any moment, then split into clips, trim handles, or delete unwanted bloopers.
+            </p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            {savedEdit && !isModified && (
-              <span style={{ fontSize: 12, padding: '5px 12px', borderRadius: 20, background: 'rgba(63, 143, 114, 0.2)', color: '#6ee7b7', fontWeight: 600, border: '1px solid rgba(63, 143, 114, 0.4)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <CheckCircle size={14} /> Saved EDL
-              </span>
-            )}
-            {isModified && (
-              <span style={{ fontSize: 12, padding: '5px 12px', borderRadius: 20, background: 'rgba(197, 138, 58, 0.2)', color: '#fcd34d', fontWeight: 600, border: '1px solid rgba(197, 138, 58, 0.4)' }}>
-                ● Unsaved Changes
-              </span>
-            )}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="video/*"
+              onChange={handleFileUpload}
+              style={{ display: 'none' }}
+            />
             <button
-              onClick={onClose}
-              style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: '#F4EDF5', borderRadius: 10, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
-              aria-label="Close"
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              style={uploadBtnStyle}
+              title="Open video from computer"
             >
-              <X size={18} />
+              <Upload size={13} />
+              <span>Import Video</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              style={closeBtnStyle}
+              aria-label="Close editor"
+            >
+              <X size={18} color="#A39EA9" />
             </button>
           </div>
         </div>
 
-        {/* Notifications */}
-        {errorMsg && (
-          <div style={{ padding: '11px 16px', background: 'rgba(184, 92, 104, 0.2)', border: '1px solid rgba(184, 92, 104, 0.4)', borderRadius: 12, color: '#fca5a5', fontSize: 13, marginBottom: 18, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <AlertTriangle size={18} color="#B85C68" /> {errorMsg}
-          </div>
-        )}
-        {successMsg && (
-          <div style={{ padding: '11px 16px', background: 'rgba(63, 143, 114, 0.2)', border: '1px solid rgba(63, 143, 114, 0.4)', borderRadius: 12, color: '#6ee7b7', fontSize: 13, marginBottom: 18, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <CheckCircle size={18} color="#3F8F72" /> {successMsg}
-          </div>
-        )}
-
-        {/* Real Video Player Box */}
-        <div style={{ position: 'relative', width: '100%', background: '#0a0310', borderRadius: 14, overflow: 'hidden', marginBottom: 22, border: '1px solid rgba(220, 201, 221, 0.15)', boxShadow: '0 12px 30px rgba(0,0,0,0.5)' }}>
+        {/* Video Player */}
+        <div style={videoWrapperStyle}>
           <video
             ref={videoRef}
+            key={videoSource}
             src={videoSource}
             onLoadedMetadata={handleLoadedMetadata}
             onTimeUpdate={handleTimeUpdate}
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
-            style={{ width: '100%', maxHeight: 380, display: 'block', margin: '0 auto', background: '#000' }}
+            onClick={togglePlay}
+            onError={() => {
+              console.warn('Video failed to load source, clearing stale cache and falling back to sample video');
+              if (booking?._id) {
+                localStorage.removeItem(`cr_recorded_video_${booking._id}`);
+              }
+              localStorage.removeItem('cr_last_recording');
+              if (videoSource !== DEFAULT_SAMPLE_VIDEO) {
+                setVideoSource(DEFAULT_SAMPLE_VIDEO);
+              }
+            }}
+            playsInline
+            preload="auto"
+            style={{ width: '100%', height: '100%', objectFit: 'contain', cursor: 'pointer' }}
           />
 
-          {/* Video Control Bar Overlay */}
-          <div style={{ position: 'absolute', bottom: 14, left: 14, right: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(32, 16, 42, 0.85)', padding: '8px 16px', borderRadius: 12, backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <button
-                onClick={togglePlayPause}
-                style={{ background: 'linear-gradient(135deg, #765A78, #5A3D5C)', border: 'none', color: '#FFF9F4', borderRadius: 8, padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontWeight: 600, fontSize: 13, boxShadow: '0 2px 8px rgba(90, 61, 92, 0.4)' }}
-              >
-                {isPlaying ? <Pause size={15} /> : <Play size={15} />}
-                {isPlaying ? 'Pause' : 'Play Trim Preview'}
-              </button>
-
-              <button
-                onClick={toggleMute}
-                style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#DCC9DD', borderRadius: 8, padding: '7px', display: 'flex', alignItems: 'center', cursor: 'pointer' }}
-                title={isMuted ? 'Unmute' : 'Mute'}
-              >
-                {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <div style={{ fontSize: 13, color: '#F4EDF5', fontFamily: 'monospace', fontWeight: 600 }}>
-                <span>Time: {formatSeconds(currentTime)}</span>
-                <span style={{ margin: '0 8px', color: '#766D78' }}>|</span>
-                <span style={{ color: '#DCC9DD' }}>Trim: {formatSeconds(trimStart)} – {formatSeconds(trimEnd)}</span>
-              </div>
-
-              <button
-                onClick={toggleFullscreen}
-                style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#DCC9DD', borderRadius: 8, padding: '7px', display: 'flex', alignItems: 'center', cursor: 'pointer' }}
-                title="Fullscreen"
-              >
-                <Maximize2 size={15} />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Timeline Trimming Controls */}
-        <div style={{ background: 'rgba(48, 28, 56, 0.6)', padding: 20, borderRadius: 14, marginBottom: 20, border: '1px solid rgba(220, 201, 221, 0.15)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Sparkles size={16} color="#DCC9DD" />
-              <span style={{ fontSize: 13, fontWeight: 800, color: '#FFF9F4', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Timeline Trimming (Manual Control)
-              </span>
-            </div>
-            <div style={{ display: 'flex', gap: 18, fontSize: 13, color: '#DCC9DD' }}>
-              <span>Source Duration: <strong style={{ color: '#FFF9F4' }}>{formatSeconds(sourceDuration)}</strong></span>
-              <span>Edited Duration: <strong style={{ color: '#DCC9DD', fontWeight: 700 }}>{formatSeconds(editedDuration)}</strong></span>
-            </div>
-          </div>
-
-          {/* Timeline Visual Interactive Bar */}
-          <div
-            ref={timelineBarRef}
-            onClick={handleTimelineClick}
-            title="Click anywhere to seek video"
-            style={{ position: 'relative', height: 26, background: '#190a21', borderRadius: 8, overflow: 'hidden', marginBottom: 16, cursor: 'pointer', border: '1px solid rgba(220, 201, 221, 0.2)' }}
-          >
-            {/* Active Trimmed Region */}
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                bottom: 0,
-                left: sourceDuration ? `${(trimStart / sourceDuration) * 100}%` : '0%',
-                right: sourceDuration ? `${100 - (trimEnd / sourceDuration) * 100}%` : '0%',
-                background: 'linear-gradient(90deg, #765A78, #5A3D5C)',
-                borderRadius: 6,
-                boxShadow: '0 0 10px rgba(90, 61, 92, 0.5)',
-              }}
-            />
-
-            {/* Playhead Indicator */}
-            {sourceDuration > 0 && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  bottom: 0,
-                  left: `${(currentTime / sourceDuration) * 100}%`,
-                  width: 3,
-                  background: '#FFFFFF',
-                  boxShadow: '0 0 8px #FFF',
-                  zIndex: 10,
-                }}
-              />
-            )}
-          </div>
-
-          {/* Manual Sliders & Input Boxes */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#DCC9DD', marginBottom: 8 }}>
-                Trim Start Time (seconds)
-              </label>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                <input
-                  type="range"
-                  min={0}
-                  max={sourceDuration ? Math.max(0, trimEnd - 0.5) : 100}
-                  step={0.1}
-                  value={trimStart}
-                  onChange={(e) => handleStartChange(e.target.value)}
-                  style={{ flex: 1, accentColor: '#765A78', cursor: 'pointer', height: 6 }}
-                />
-                <input
-                  type="number"
-                  min={0}
-                  max={Math.max(0, trimEnd - 0.5)}
-                  step={0.1}
-                  value={Math.round(trimStart * 10) / 10}
-                  onChange={(e) => handleStartChange(e.target.value)}
-                  style={{ width: 85, padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(220, 201, 221, 0.3)', background: '#190a21', color: '#FFF9F4', fontSize: 13, textAlign: 'center', fontWeight: 600 }}
-                />
-                <span style={{ fontSize: 12, color: '#DCC9DD', width: 45, fontFamily: 'monospace', fontWeight: 600 }}>
-                  {formatSeconds(trimStart)}
-                </span>
+          {/* Center Big Play Button Overlay when paused */}
+          {!isPlaying && (
+            <div onClick={togglePlay} style={centerPlayOverlayStyle}>
+              <div style={centerPlayCircleStyle}>
+                <Play size={26} color="#000000" style={{ marginLeft: 3 }} />
               </div>
             </div>
+          )}
 
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#DCC9DD', marginBottom: 8 }}>
-                Trim End Time (seconds)
-              </label>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                <input
-                  type="range"
-                  min={trimStart + 0.5}
-                  max={sourceDuration || 100}
-                  step={0.1}
-                  value={trimEnd}
-                  onChange={(e) => handleEndChange(e.target.value)}
-                  style={{ flex: 1, accentColor: '#765A78', cursor: 'pointer', height: 6 }}
-                />
-                <input
-                  type="number"
-                  min={trimStart + 0.5}
-                  max={sourceDuration || 999999}
-                  step={0.1}
-                  value={Math.round(trimEnd * 10) / 10}
-                  onChange={(e) => handleEndChange(e.target.value)}
-                  style={{ width: 85, padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(220, 201, 221, 0.3)', background: '#190a21', color: '#FFF9F4', fontSize: 13, textAlign: 'center', fontWeight: 600 }}
-                />
-                <span style={{ fontSize: 12, color: '#DCC9DD', width: 45, fontFamily: 'monospace', fontWeight: 600 }}>
-                  {formatSeconds(trimEnd)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Audio Overlay Options */}
-        <div style={{ background: 'rgba(48, 28, 56, 0.6)', padding: 20, borderRadius: 14, marginBottom: 24, border: '1px solid rgba(220, 201, 221, 0.15)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-            <Music size={16} color="#DCC9DD" />
-            <span style={{ fontSize: 13, fontWeight: 800, color: '#FFF9F4', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Background Music &amp; Audio Overlay
+          {/* Video Metadata Overlay */}
+          <div style={videoOverlayBarStyle}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#FFFFFF' }}>
+              {formatSeconds(currentTime)} / {formatSeconds(duration)}
+            </span>
+            <span style={{ fontSize: 11, color: '#22C55E', fontWeight: 600 }}>
+              Edited Length: {formatSeconds(totalEditedSeconds)}
             </span>
           </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#DCC9DD', marginBottom: 8 }}>
-                Intro Music Track / Background Bed
-              </label>
-              <select
-                value={selectedMusicTrack}
-                onChange={(e) => setSelectedMusicTrack(e.target.value)}
-                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: '#190a21', border: '1px solid rgba(220, 201, 221, 0.3)', color: '#FFF9F4', fontSize: 13, outline: 'none', fontWeight: 500 }}
-              >
-                <option value="none">None (Original Podcast Speech Only)</option>
-                <option value="upbeat_acoustic">Upbeat Acoustic Intro (Podcast Jingle)</option>
-                <option value="lofi_chilled">Lo-Fi Ambient Bed (Soft Podcast Beats)</option>
-                <option value="tech_corporate">Tech / Corporate Intro Bed</option>
-                <option value="cinematic_outro">Cinematic Soft Outro Bed</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#DCC9DD', marginBottom: 8 }}>
-                Music Volume Level ({musicVolume}%)
-              </label>
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                <Volume2 size={18} color="#DCC9DD" />
-                <input
-                  type="range"
-                  min={5}
-                  max={60}
-                  step={5}
-                  value={musicVolume}
-                  onChange={(e) => setMusicVolume(Number(e.target.value))}
-                  disabled={selectedMusicTrack === 'none'}
-                  style={{ flex: 1, accentColor: '#765A78', cursor: selectedMusicTrack === 'none' ? 'not-allowed' : 'pointer', opacity: selectedMusicTrack === 'none' ? 0.35 : 1, height: 6 }}
-                />
-                <span style={{ fontSize: 12, color: '#DCC9DD', width: 40, fontFamily: 'monospace', fontWeight: 600 }}>
-                  {musicVolume}%
-                </span>
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* Modal Actions Footer */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(220, 201, 221, 0.15)', paddingTop: 18 }}>
-          <button
-            type="button"
-            onClick={handleReset}
-            disabled={resetting}
-            style={{ background: 'transparent', color: '#fca5a5', border: '1px solid rgba(184, 92, 104, 0.5)', borderRadius: 10, padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7, transition: 'all 0.2s' }}
-          >
-            <RotateCcw size={15} /> {resetting ? 'Resetting…' : 'Reset Edit'}
-          </button>
+        {/* Interactive Full-Width Scrubber Slider */}
+        <div style={scrubberContainerStyle}>
+          <input
+            type="range"
+            min="0"
+            max={duration || 60}
+            step="0.1"
+            value={currentTime}
+            onChange={(e) => handleSeek(e.target.value)}
+            style={rangeSliderStyle}
+          />
+        </div>
 
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        {/* Action Controls Dock (Trim, Split, Delete) */}
+        <div style={actionControlsRowStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button
               type="button"
-              onClick={handleDownloadSystemStorage}
-              disabled={downloading}
-              style={{ background: 'rgba(255,255,255,0.08)', color: '#FFF9F4', border: '1px solid rgba(220,201,221,0.3)', borderRadius: 10, padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7 }}
+              onClick={() => skip(-5)}
+              style={iconBtnStyle}
+              title="Rewind 5s"
             >
-              <HardDrive size={15} color="#DCC9DD" /> {downloading ? 'Downloading…' : 'Save to Computer Storage'}
+              <Rewind size={15} color="#FFFFFF" />
             </button>
 
             <button
               type="button"
+              onClick={togglePlay}
+              style={playToggleBtnStyle}
+              aria-label={isPlaying ? 'Pause' : 'Play'}
+            >
+              {isPlaying ? <Pause size={17} color="#000000" /> : <Play size={17} color="#000000" style={{ marginLeft: 2 }} />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => skip(5)}
+              style={iconBtnStyle}
+              title="Forward 5s"
+            >
+              <FastForward size={15} color="#FFFFFF" />
+            </button>
+          </div>
+
+          {/* Core Trim, Split, Delete Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={handleTrimStart}
+              style={secondaryActionBtnStyle}
+              title="Set clip start to current playhead"
+            >
+              <Scissors size={14} color="#A855F7" />
+              <span>Trim Start [{formatSeconds(currentTime)}]</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSplit}
+              style={primaryActionBtnStyle}
+              title="Split clip at playhead"
+            >
+              <Scissors size={14} color="#FFFFFF" />
+              <span>Split at Playhead ✂️</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleTrimEnd}
+              style={secondaryActionBtnStyle}
+              title="Set clip end to current playhead"
+            >
+              <Scissors size={14} color="#A855F7" />
+              <span>Trim End [{formatSeconds(currentTime)}]</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleDeleteClip(selectedClipId)}
+              disabled={clips.length <= 1}
+              style={deleteActionBtnStyle(clips.length <= 1)}
+              title="Delete active clip"
+            >
+              <Trash2 size={14} color={clips.length <= 1 ? '#6F6A76' : '#EF4444'} />
+              <span>Delete Clip</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleReset}
+              style={iconBtnStyle}
+              title="Reset all cuts"
+            >
+              <RotateCcw size={14} color="#A39EA9" />
+            </button>
+          </div>
+        </div>
+
+        {/* Toast alert banner */}
+        {toastNotice && (
+          <div style={toastBannerStyle}>
+            <span>{toastNotice}</span>
+          </div>
+        )}
+
+        {/* Visual Clips Track */}
+        <div style={timelineTrackContainerStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#A39EA9', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Clips Track ({clips.length} clip{clips.length > 1 ? 's' : ''})
+            </span>
+            <span style={{ fontSize: 11, color: '#6F6A76' }}>
+              Selected Clip: <strong>{formatSeconds(selectedClip.start)} - {formatSeconds(selectedClip.end)}</strong> ({formatSeconds(selectedClip.end - selectedClip.start)})
+            </span>
+          </div>
+
+          <div style={clipsTrackStyle}>
+            {clips.map((clip, index) => {
+              const leftPercent = (clip.start / (duration || 1)) * 100;
+              const widthPercent = Math.max(3, ((clip.end - clip.start) / (duration || 1)) * 100);
+              const isSelected = clip.id === selectedClipId;
+
+              return (
+                <div
+                  key={clip.id}
+                  onClick={() => {
+                    setSelectedClipId(clip.id);
+                    if (videoRef.current) videoRef.current.currentTime = clip.start;
+                  }}
+                  style={{
+                    position: 'absolute',
+                    left: `${leftPercent}%`,
+                    width: `${widthPercent}%`,
+                    top: 0,
+                    bottom: 0,
+                    borderRadius: 6,
+                    backgroundColor: isSelected ? 'rgba(168, 85, 247, 0.45)' : 'rgba(34, 197, 94, 0.35)',
+                    border: `2px solid ${isSelected ? '#A855F7' : '#22C55E'}`,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                    transition: 'all 0.15s ease',
+                    boxShadow: isSelected ? '0 0 12px rgba(168, 85, 247, 0.4)' : 'none',
+                  }}
+                  title={`Clip ${index + 1}: ${formatSeconds(clip.start)} - ${formatSeconds(clip.end)}`}
+                >
+                  <span style={{ fontSize: 11, fontWeight: 750, color: '#FFFFFF', whiteSpace: 'nowrap', padding: '0 6px' }}>
+                    Clip {index + 1} ({formatSeconds(clip.end - clip.start)})
+                  </span>
+                </div>
+              );
+            })}
+
+            {/* Playhead Marker */}
+            <div
+              style={{
+                position: 'absolute',
+                left: `${(currentTime / (duration || 1)) * 100}%`,
+                top: -3,
+                bottom: -3,
+                width: 3,
+                backgroundColor: '#FFFFFF',
+                boxShadow: '0 0 10px rgba(255, 255, 255, 1)',
+                pointerEvents: 'none',
+                zIndex: 10,
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={modalFooterStyle}>
+          {successMsg ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#22C55E', fontSize: 13, fontWeight: 600 }}>
+              <CheckCircle2 size={16} /> {successMsg}
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: '#A39EA9' }}>
+              Final duration: <strong>{formatSeconds(totalEditedSeconds)}</strong> &bull; {clips.length} clip{clips.length > 1 ? 's' : ''}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              type="button"
               onClick={onClose}
-              style={{ background: 'rgba(255,255,255,0.06)', color: '#F4EDF5', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              style={secondaryBtnStyle}
             >
               Cancel
             </button>
 
             <button
               type="button"
-              onClick={handleSave}
-              disabled={saving || !isValidRange}
-              style={{ background: 'linear-gradient(135deg, #765A78 0%, #5A3D5C 100%)', color: '#FFF9F4', border: 'none', borderRadius: 10, padding: '9px 22px', fontSize: 13, fontWeight: 700, cursor: saving || !isValidRange ? 'not-allowed' : 'pointer', opacity: saving || !isValidRange ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 14px rgba(90, 61, 92, 0.4)' }}
+              onClick={handleSaveAndExport}
+              disabled={saving}
+              style={primarySaveBtnStyle}
             >
-              <Save size={15} /> {saving ? 'Saving Edit…' : 'Save Edit (EDL)'}
+              <Download size={15} />
+              <span>{saving ? 'Exporting…' : 'Save & Download'}</span>
             </button>
           </div>
         </div>
-
       </div>
     </div>
   );
 }
+
+// -----------------------------------------------------------------------------
+// STYLES
+// -----------------------------------------------------------------------------
+
+const modalBackdropStyle = {
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  width: '100vw',
+  height: '100vh',
+  backgroundColor: 'rgba(0, 0, 0, 0.85)',
+  backdropFilter: 'blur(10px)',
+  zIndex: 10000,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 16,
+  fontFamily: "'Geist Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+};
+
+const modalContainerStyle = {
+  backgroundColor: '#0D0C12',
+  border: '1px solid rgba(255, 255, 255, 0.1)',
+  borderRadius: 16,
+  maxWidth: 840,
+  width: '100%',
+  maxHeight: '94vh',
+  display: 'flex',
+  flexDirection: 'column',
+  overflow: 'hidden',
+  boxShadow: '0 24px 64px rgba(0, 0, 0, 0.8)',
+};
+
+const modalHeaderStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '16px 20px',
+  borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+};
+
+const cutPillStyle = {
+  fontSize: 11,
+  fontWeight: 700,
+  color: '#A855F7',
+  background: 'rgba(168, 85, 247, 0.12)',
+  padding: '3px 8px',
+  borderRadius: 9999,
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 4,
+};
+
+const uploadBtnStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '6px 12px',
+  borderRadius: 6,
+  backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  border: '1px solid rgba(255, 255, 255, 0.12)',
+  color: '#FFFFFF',
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: 'pointer',
+};
+
+const closeBtnStyle = {
+  background: 'transparent',
+  border: 'none',
+  cursor: 'pointer',
+  padding: 6,
+  borderRadius: 6,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+};
+
+const videoWrapperStyle = {
+  position: 'relative',
+  aspectRatio: '16/9',
+  maxHeight: '44vh',
+  backgroundColor: '#000000',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  overflow: 'hidden',
+};
+
+const centerPlayOverlayStyle = {
+  position: 'absolute',
+  inset: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  background: 'rgba(0, 0, 0, 0.25)',
+};
+
+const centerPlayCircleStyle = {
+  width: 56,
+  height: 56,
+  borderRadius: '50%',
+  backgroundColor: '#22C55E',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  boxShadow: '0 4px 20px rgba(34, 197, 94, 0.4)',
+};
+
+const videoOverlayBarStyle = {
+  position: 'absolute',
+  bottom: 10,
+  left: 12,
+  right: 12,
+  display: 'flex',
+  justifyContent: 'space-between',
+  background: 'rgba(13, 12, 18, 0.8)',
+  backdropFilter: 'blur(8px)',
+  padding: '5px 12px',
+  borderRadius: 6,
+  border: '1px solid rgba(255, 255, 255, 0.08)',
+};
+
+const scrubberContainerStyle = {
+  padding: '10px 20px 0',
+  backgroundColor: '#181622',
+};
+
+const rangeSliderStyle = {
+  width: '100%',
+  accentColor: '#A855F7',
+  cursor: 'pointer',
+};
+
+const actionControlsRowStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '10px 20px 14px',
+  borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+  backgroundColor: '#181622',
+  flexWrap: 'wrap',
+  gap: 10,
+};
+
+const playToggleBtnStyle = {
+  width: 38,
+  height: 38,
+  borderRadius: '50%',
+  backgroundColor: '#22C55E',
+  border: 'none',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+};
+
+const iconBtnStyle = {
+  width: 32,
+  height: 32,
+  borderRadius: 8,
+  backgroundColor: '#211E2D',
+  border: '1px solid rgba(255, 255, 255, 0.1)',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+};
+
+const primaryActionBtnStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '8px 14px',
+  borderRadius: 8,
+  backgroundColor: '#A855F7',
+  border: 'none',
+  color: '#FFFFFF',
+  fontSize: 12.5,
+  fontWeight: 750,
+  cursor: 'pointer',
+  boxShadow: '0 2px 10px rgba(168, 85, 247, 0.3)',
+};
+
+const secondaryActionBtnStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '8px 12px',
+  borderRadius: 8,
+  backgroundColor: '#211E2D',
+  border: '1px solid rgba(255, 255, 255, 0.12)',
+  color: '#FFFFFF',
+  fontSize: 12,
+  fontWeight: 650,
+  cursor: 'pointer',
+};
+
+const deleteActionBtnStyle = (disabled) => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '8px 12px',
+  borderRadius: 8,
+  backgroundColor: disabled ? 'rgba(255, 255, 255, 0.04)' : 'rgba(239, 68, 68, 0.15)',
+  border: `1px solid ${disabled ? 'rgba(255, 255, 255, 0.08)' : 'rgba(239, 68, 68, 0.3)'}`,
+  color: disabled ? '#6F6A76' : '#EF4444',
+  fontSize: 12,
+  fontWeight: 650,
+  cursor: disabled ? 'not-allowed' : 'pointer',
+});
+
+const toastBannerStyle = {
+  padding: '6px 20px',
+  backgroundColor: 'rgba(168, 85, 247, 0.15)',
+  borderBottom: '1px solid rgba(168, 85, 247, 0.25)',
+  color: '#FFFFFF',
+  fontSize: 12,
+  fontWeight: 600,
+  textAlign: 'center',
+};
+
+const timelineTrackContainerStyle = {
+  padding: '14px 20px',
+  backgroundColor: '#13111A',
+};
+
+const clipsTrackStyle = {
+  position: 'relative',
+  height: 48,
+  backgroundColor: '#181622',
+  borderRadius: 8,
+  border: '1px solid rgba(255, 255, 255, 0.08)',
+  overflow: 'hidden',
+};
+
+const modalFooterStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '14px 20px',
+  borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+  backgroundColor: '#0D0C12',
+};
+
+const secondaryBtnStyle = {
+  padding: '8px 16px',
+  borderRadius: 8,
+  backgroundColor: 'transparent',
+  border: '1px solid rgba(255, 255, 255, 0.15)',
+  color: '#FFFFFF',
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: 'pointer',
+};
+
+const primarySaveBtnStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '8px 18px',
+  borderRadius: 8,
+  backgroundColor: '#22C55E',
+  border: 'none',
+  color: '#000000',
+  fontSize: 13,
+  fontWeight: 750,
+  cursor: 'pointer',
+  boxShadow: '0 2px 10px rgba(34, 197, 94, 0.25)',
+};

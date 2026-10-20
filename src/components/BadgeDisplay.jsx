@@ -3,8 +3,8 @@ import { Star, Zap, Flame, ShieldCheck, Award } from 'lucide-react';
 const BADGE_META = {
   top_rated:      { label: 'Top Rated',      Icon: Star, color: '#f59e0b', desc: 'Avg rating ≥ 4.8 with 10+ reviews' },
   fast_responder: { label: 'Fast Responder', Icon: Zap, color: '#3b82f6', desc: 'Responds within 2 hours on average' },
-  most_booked:    { label: 'Most Booked',    Icon: Flame, color: '#ef4444', desc: '5+ completed bookings this month' },
-  verified_host:  { label: 'Verified Host',  Icon: ShieldCheck, color: '#22c55e', desc: 'Verified Stripe account + 5+ reviews' },
+  most_booked:    { label: 'Most Booked',    Icon: Flame, color: '#A855F7', desc: '5+ completed bookings this month' },
+  verified_host:  { label: 'Verified Host',  Icon: ShieldCheck, color: '#DDAFE8', desc: 'Verified Stripe account + 5+ reviews' },
 };
 
 /**

@@ -21,8 +21,17 @@ const idOf = (ref) =>
 async function completeBooking(booking) {
   if (!booking || booking.status === 'completed') return booking;
 
-  booking.status         = 'completed';
-  booking.recordingReady = true;
+  booking.status                  = 'completed';
+  booking.recordingReady          = true;
+  booking.hostConfirmedCompletion = true;
+  booking.hostConfirmedAt         = new Date();
+  
+  // Escrow release: Held funds in CastReach are released and paid out to the guest
+  if (['held', 'unpaid', 'release_pending'].includes(booking.paymentStatus)) {
+    booking.paymentStatus    = 'released';
+    booking.paymentReleasedAt= new Date();
+  }
+
   await booking.save();
 
   const hostId  = idOf(booking.host);
@@ -30,15 +39,15 @@ async function completeBooking(booking) {
 
   await Promise.all([
     notify(hostId, {
-      type:  'review',
-      title: 'Session complete',
-      body:  'Your session is complete — leave a review for your guest.',
+      type:  'booking_completed',
+      title: 'Podcast session completed!',
+      body:  `Session complete. Escrow funds have been released to the guest.`,
       link:  `/bookings/${booking._id}`,
     }),
     notify(guestId, {
-      type:  'review',
-      title: 'Session complete',
-      body:  'Your session is complete — leave a review for your host.',
+      type:  'escrow_released',
+      title: 'Payment released to your account!',
+      body:  `Host marked the podcast as completed. Escrow payout of $${((booking.amountCents || 0) / 100).toFixed(2)} has been released to you.`,
       link:  `/bookings/${booking._id}`,
     }),
   ]);

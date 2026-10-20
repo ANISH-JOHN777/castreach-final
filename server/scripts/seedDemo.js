@@ -35,10 +35,16 @@ async function seedDemoData() {
 
   if (mongoose.connection.readyState === 0) {
     if (mongoUri === 'memory' || process.env.NODE_ENV === 'test') {
+      const fs = require('fs');
+      const dataDir = path.resolve(__dirname, '../.data/db');
+      if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
       const { MongoMemoryReplSet } = require('mongodb-memory-server');
-      mongodInstance = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
+      mongodInstance = await MongoMemoryReplSet.create({
+        replSet: { count: 1, storageEngine: 'wiredTiger' },
+        instanceOpts: [{ dbPath: dataDir }]
+      });
       mongoUri = mongodInstance.getUri();
-      console.log('[Seed] Created MongoMemoryReplSet instance.');
+      console.log('[Seed] Created MongoMemoryReplSet instance with persistent storage at', dataDir);
     }
     try {
       await mongoose.connect(mongoUri, {
@@ -47,9 +53,15 @@ async function seedDemoData() {
       });
     } catch (err) {
       if (process.env.NODE_ENV !== 'production') {
-        console.warn(`[Seed] Connection to ${mongoUri} failed (${err.message}). Falling back to MongoMemoryReplSet.`);
+        const fs = require('fs');
+        const dataDir = path.resolve(__dirname, '../.data/db');
+        if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+        console.warn(`[Seed] Connection to ${mongoUri} failed (${err.message}). Falling back to MongoMemoryReplSet with persistent storage.`);
         const { MongoMemoryReplSet } = require('mongodb-memory-server');
-        mongodInstance = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
+        mongodInstance = await MongoMemoryReplSet.create({
+          replSet: { count: 1, storageEngine: 'wiredTiger' },
+          instanceOpts: [{ dbPath: dataDir }]
+        });
         mongoUri = mongodInstance.getUri();
         await mongoose.connect(mongoUri, {
           maxPoolSize: 10,
@@ -186,53 +198,77 @@ async function seedDemoData() {
     hosts.push(host);
   }
 
+  // Clean up any preexisting mockup guest records
+  await User.deleteMany({
+    email: {
+      $in: [
+        'sarah.jenkins@castreach.com',
+        'david.miller@castreach.com',
+        'amara.patel@castreach.com',
+        'demo.guest1@castreach.demo'
+      ]
+    }
+  }).catch(() => {});
+
   const guestsData = [
+    // Authentic Curated Guest Personalities
     {
-      name: 'Sarah Jenkins',
-      email: 'sarah.jenkins@castreach.com',
+      name: 'Dr. Andrew Huberman',
+      email: 'andrew.huberman@castreach.demo',
       password: passwordHash,
       role: 'guest',
-      expertise: ['AI Engineering', 'LLM Fine-Tuning', 'Agent Workflows'],
-      bio: 'Lead AI Engineer specializing in multimodal LLM architectures and production inference pipelines.',
-      sessionRateCents: 0,
-      profilePicture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+      expertise: ['Neurobiology', 'Circadian Biology', 'Dopamine & Focus', 'Stress Modulation'],
+      bio: 'Tenured professor of neurobiology and ophthalmology at Stanford School of Medicine.',
+      sessionRateCents: 150000,
+      profilePicture: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=800&q=80',
       tenantId,
       isOnboarded: true,
     },
     {
-      name: 'David K. Miller',
-      email: 'david.miller@castreach.com',
+      name: 'Druski (Drew Desbordes)',
+      email: 'druski@castreach.demo',
       password: passwordHash,
       role: 'guest',
-      expertise: ['Fintech Growth', 'Stripe Escrow Architecture', 'Payment Systems'],
-      bio: 'Fintech product architect scaling cross-border payments, ledger systems, and automated reconciliation.',
-      sessionRateCents: 0,
-      profilePicture: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
+      expertise: ['Digital Comedy', 'Brand Building', 'Pop Culture', 'Entertainment Satire'],
+      bio: 'Pioneering comedian and entertainment entrepreneur who reshaped digital satire through Coulda Been Records.',
+      sessionRateCents: 120000,
+      profilePicture: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80',
       tenantId,
       isOnboarded: true,
     },
     {
-      name: 'Amara Patel',
-      email: 'amara.patel@castreach.com',
+      name: 'Tom Holland',
+      email: 'tom.holland@castreach.demo',
       password: passwordHash,
       role: 'guest',
-      expertise: ['Cloud Architecture', 'DevOps', 'Kubernetes Clusters'],
-      bio: 'Principal Cloud Architect specializing in multi-region Kubernetes, WebSockets, and low-latency audio transmission.',
-      sessionRateCents: 0,
-      profilePicture: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80',
+      expertise: ['Mental Health', 'Sobriety', 'Acting Craft', 'Public Vulnerability'],
+      bio: 'BAFTA-winning actor known for Spider-Man. Passionate advocate for youth mental health and sobriety.',
+      sessionRateCents: 200000,
+      profilePicture: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80',
       tenantId,
       isOnboarded: true,
     },
-    // Compatibility alias
     {
-      name: 'Sarah Jenkins',
-      email: 'demo.guest1@castreach.demo',
+      name: 'Marcus Vance',
+      email: 'marcus.vance.guest@castreach.demo',
       password: passwordHash,
       role: 'guest',
-      expertise: ['AI Engineering', 'LLM Fine-Tuning'],
-      bio: 'Lead AI Engineer specializing in multimodal LLM architectures.',
-      sessionRateCents: 0,
-      profilePicture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+      expertise: ['B2B SaaS Growth', 'Venture Capital', 'Pricing Architecture', 'Go-to-Market'],
+      bio: 'Built and exited two B2B software companies ($140M aggregate exit). Now advises founders.',
+      sessionRateCents: 85000,
+      profilePicture: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80',
+      tenantId,
+      isOnboarded: true,
+    },
+    {
+      name: 'DJ Shipley',
+      email: 'dj.shipley@castreach.demo',
+      password: passwordHash,
+      role: 'guest',
+      expertise: ['Mental Resilience', 'High-Stress Performance', 'Team Leadership', 'Vulnerability & Healing'],
+      bio: 'Decorated combat veteran with 17 years in Naval Special Warfare (DEVGRU). Co-founder of GBRS Group.',
+      sessionRateCents: 175000,
+      profilePicture: 'https://images.unsplash.com/photo-1508873696983-2df5293cb32f?auto=format&fit=crop&w=800&q=80',
       tenantId,
       isOnboarded: true,
     },
@@ -242,6 +278,35 @@ async function seedDemoData() {
   for (const g of guestsData) {
     const guest = await User.findOneAndUpdate({ email: g.email }, g, { upsert: true, new: true });
     guests.push(guest);
+  }
+
+  const listenersData = [
+    {
+      name: 'Jordan Reed',
+      email: 'jordan.reed@castreach.com',
+      password: passwordHash,
+      role: 'listener',
+      bio: 'Audiophile & tech enthusiast. Tuning in to leading AI and venture podcasts.',
+      profilePicture: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80',
+      interests: ['AI', 'Startups', 'Cybersecurity', 'Design'],
+      tenantId,
+      isOnboarded: true,
+    },
+    {
+      name: 'Jordan Reed',
+      email: 'demo.listener@castreach.demo',
+      password: passwordHash,
+      role: 'listener',
+      bio: 'Audiophile & tech enthusiast. Tuning in to leading AI and venture podcasts.',
+      profilePicture: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80',
+      interests: ['AI', 'Startups', 'Cybersecurity', 'Design'],
+      tenantId,
+      isOnboarded: true,
+    },
+  ];
+
+  for (const l of listenersData) {
+    await User.findOneAndUpdate({ email: l.email }, l, { upsert: true, new: true });
   }
 
   // ── 2. PODCASTS & EPISODES WITH REAL ARTWORK ─────────────────────────────

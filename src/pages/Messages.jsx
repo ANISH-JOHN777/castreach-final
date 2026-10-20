@@ -89,17 +89,17 @@ export default function Messages() {
   return (
     <div style={containerStyle}>
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--plum-deep)', margin: 0 }}>Messages &amp; Conversations</h1>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 800, color: '#FFFFFF', margin: 0 }}>Messages &amp; Conversations</h1>
+        <p style={{ fontSize: 13, color: '#A39EA9', marginTop: 4 }}>
           Real-time messaging threads for all your studio sessions and bookings
         </p>
       </div>
 
       {bookings.length === 0 ? (
         <div style={emptyContainerStyle}>
-          <MessageSquare size={48} color="var(--plum-primary)" style={{ marginBottom: 14 }} />
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--plum-deep)', marginBottom: 8 }}>No Messages Yet</h2>
-          <p style={{ fontSize: 14, color: 'var(--text-muted)', maxWidth: 420, marginBottom: 20 }}>
+          <MessageSquare size={48} color="var(--color-accent-purple, #A855F7)" style={{ marginBottom: 14 }} />
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#FFFFFF', marginBottom: 8 }}>No Messages Yet</h2>
+          <p style={{ fontSize: 14, color: '#A39EA9', maxWidth: 420, marginBottom: 20 }}>
             You haven't requested or confirmed any podcast sessions yet. Conversations are created automatically for each booking session.
           </p>
           <button onClick={() => navigate('/discover')} style={primaryBtnStyle}>
@@ -239,18 +239,18 @@ const workspaceStyle = {
   display: 'grid',
   gridTemplateColumns: '320px 1fr',
   height: 650,
-  background: 'var(--white-pure)',
+  background: '#181622',
   borderRadius: 14,
-  border: '1px solid var(--border-subtle)',
-  boxShadow: 'var(--shadow-sm)',
+  border: '1px solid rgba(255, 255, 255, 0.08)',
+  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
   overflow: 'hidden',
 };
 
 const sidebarStyle = {
   display: 'flex',
   flexDirection: 'column',
-  borderRight: '1px solid var(--border-subtle)',
-  background: 'var(--white-pure)',
+  borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+  background: '#181622',
 };
 
 const chatContainerStyle = {
@@ -258,6 +258,7 @@ const chatContainerStyle = {
   flexDirection: 'column',
   height: '100%',
   overflow: 'hidden',
+  background: '#14121D',
 };
 
 const searchContainerStyle = {
@@ -265,9 +266,9 @@ const searchContainerStyle = {
   alignItems: 'center',
   gap: 8,
   padding: '6px 12px',
-  background: 'var(--cream-warm)',
+  background: '#0D0C12',
   borderRadius: 8,
-  border: '1px solid var(--border-subtle)',
+  border: '1px solid rgba(255, 255, 255, 0.08)',
 };
 
 const searchInputStyle = {
@@ -276,7 +277,7 @@ const searchInputStyle = {
   outline: 'none',
   fontSize: 13,
   width: '100%',
-  color: 'var(--plum-deep)',
+  color: '#FFFFFF',
 };
 
 const emptyContainerStyle = {
@@ -286,9 +287,9 @@ const emptyContainerStyle = {
   justifyContent: 'center',
   padding: '60px 20px',
   textAlign: 'center',
-  background: 'var(--white-pure)',
+  background: '#181622',
   borderRadius: 14,
-  border: '1px dashed var(--border-subtle)',
+  border: '1px dashed rgba(255, 255, 255, 0.12)',
 };
 
 const primaryBtnStyle = {
@@ -296,11 +297,11 @@ const primaryBtnStyle = {
   alignItems: 'center',
   gap: 8,
   padding: '10px 20px',
-  background: 'var(--plum-deep)',
-  color: '#fff',
+  background: 'var(--color-accent-purple, #A855F7)',
+  color: '#FFFFFF',
   borderRadius: 10,
   fontSize: 14,
-  fontWeight: 600,
+  fontWeight: 650,
   cursor: 'pointer',
   border: 'none',
 };

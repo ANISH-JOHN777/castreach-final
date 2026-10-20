@@ -53,7 +53,7 @@ export default function RecommendedGuests() {
               )}
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#22c55e' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#DDAFE8' }}>
                 {Math.round(score * 100)}% match
               </div>
               {user.avgRating > 0 && (

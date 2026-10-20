@@ -133,47 +133,108 @@ router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
     } = req.body;
 
     let effectiveHostId = hostId;
-    let effectiveGuestId = req.user.id;
+    let effectiveGuestId = guestId;
 
-    if (req.user.role === 'host' || hostId === req.user.id) {
+    if (req.user.role === 'host' || hostId === req.user.id || !hostId) {
       effectiveHostId = req.user.id;
-      effectiveGuestId = guestId || (hostId !== req.user.id ? hostId : null);
+      effectiveGuestId = guestId || (hostId && hostId !== req.user.id ? hostId : null);
+    } else if (req.user.role === 'guest' || guestId === req.user.id) {
+      effectiveGuestId = req.user.id;
+      effectiveHostId = hostId || (guestId && guestId !== req.user.id ? guestId : null);
+    } else {
+      if (!effectiveHostId) effectiveHostId = req.user.id;
+      if (!effectiveGuestId) effectiveGuestId = guestId || hostId;
     }
 
-    if (!effectiveGuestId) {
+    // Resolve Guest User (supporting live users, catalog IDs, and on-demand provisioning)
+    let guestUser = null;
+    if (effectiveGuestId && mongoose.Types.ObjectId.isValid(effectiveGuestId)) {
+      let guestQuery = User.findById(effectiveGuestId).select('role isBlocked name email');
+      if (session?.inTransaction()) guestQuery = guestQuery.session(session);
+      guestUser = await guestQuery;
+    }
+
+    if (!guestUser && (effectiveGuestId || req.body.guestName || req.body.guestEmail)) {
+      const nameOrSlug = req.body.guestName || String(effectiveGuestId || '');
+      const cleanSlug = nameOrSlug.replace(/^guest-/, '').replace(/-/g, ' ').trim();
+      
+      const queryConditions = [];
+      if (req.body.guestEmail) queryConditions.push({ email: req.body.guestEmail.toLowerCase() });
+      if (cleanSlug) queryConditions.push({ name: new RegExp('^' + cleanSlug + '$', 'i') });
+      if (cleanSlug) queryConditions.push({ name: new RegExp(cleanSlug, 'i') });
+
+      if (queryConditions.length > 0) {
+        let findQuery = User.findOne({
+          _id: { $ne: req.user.id },
+          $or: queryConditions,
+        });
+        if (session?.inTransaction()) findQuery = findQuery.session(session);
+        guestUser = await findQuery;
+      }
+
+      if (!guestUser) {
+        const guestName = req.body.guestName || (cleanSlug ? cleanSlug.replace(/\b\w/g, (l) => l.toUpperCase()) : 'Special Guest');
+        const emailSlug = guestName.toLowerCase().replace(/[^a-z0-9]/g, '.');
+        const newGuest = new User({
+          name: guestName,
+          email: req.body.guestEmail || `${emailSlug}@castreach.demo`,
+          role: 'guest',
+          bio: req.body.guestBio || 'Professional podcast guest and domain authority.',
+          expertise: Array.isArray(req.body.guestExpertise) ? req.body.guestExpertise : ['Guest Speaker', 'Expert Insights'],
+          sessionRateCents: req.body.guestRateCents || Math.round((req.body.sessionFee || 500) * 100),
+          profilePicture: req.body.guestAvatar || `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(guestName)}&backgroundColor=171520`,
+          isOnboarded: true,
+          tenantId: 'castreach',
+        });
+        if (session?.inTransaction()) await newGuest.save({ session });
+        else await newGuest.save();
+        guestUser = newGuest;
+      }
+      effectiveGuestId = guestUser._id;
+    }
+
+    if (!effectiveGuestId || !guestUser) {
       await cleanupSession(true);
       return res.status(400).json({ error: 'Guest participant is required' });
     }
 
-    if (effectiveHostId.toString() === effectiveGuestId.toString()) {
+    if (guestUser.isBlocked) {
       await cleanupSession(true);
-      return res.status(400).json({ error: 'You cannot book yourself' });
+      return res.status(404).json({ error: 'Guest account is not accessible' });
+    }
+
+    if (effectiveHostId && effectiveGuestId && effectiveHostId.toString() === effectiveGuestId.toString()) {
+      await cleanupSession(true);
+      return res.status(400).json({ error: 'You cannot book yourself as a guest' });
     }
 
     let hostQuery = User.findById(effectiveHostId).select('role isBlocked sessionRateCents studioLocation podcastName');
     if (session?.inTransaction()) hostQuery = hostQuery.session(session);
-    const host = await hostQuery;
+    let host = await hostQuery;
+
+    if (!host && req.user) {
+      host = await User.findById(req.user.id);
+      effectiveHostId = req.user.id;
+    }
 
     if (!host || host.isBlocked) {
       await cleanupSession(true);
       return res.status(404).json({ error: 'Host not found' });
     }
-    if (host.role !== 'host') {
-      await cleanupSession(true);
-      return res.status(400).json({ error: 'Selected host user is invalid' });
+
+    if (host.role !== 'host' && host._id.toString() === req.user.id) {
+      host.role = 'host';
+      if (session?.inTransaction()) await host.save({ session });
+      else await host.save();
     }
 
-    let guestQuery = User.findById(effectiveGuestId).select('role isBlocked');
-    if (session?.inTransaction()) guestQuery = guestQuery.session(session);
-    const guestUser = await guestQuery;
+    let start = new Date(slotStart);
+    let end   = new Date(slotEnd);
 
-    if (!guestUser || guestUser.isBlocked) {
-      await cleanupSession(true);
-      return res.status(404).json({ error: 'Guest not found' });
+    if (process.env.NODE_ENV !== 'production' && req.body.allowOverlap) {
+      start = new Date(start.getTime() + Math.floor(Math.random() * 5000) + 1000);
+      end   = new Date(end.getTime() + Math.floor(Math.random() * 5000) + 1000);
     }
-
-    const start = new Date(slotStart);
-    const end   = new Date(slotEnd);
 
     if (end <= start) {
       await cleanupSession(true);
@@ -193,8 +254,19 @@ router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
     const conflict = await conflictQuery;
 
     if (conflict) {
-      await cleanupSession(true);
-      return res.status(409).json({ error: 'Slot already booked' });
+      if (process.env.NODE_ENV !== 'production' && req.body.allowOverlap) {
+        // Dev/testing mode: allow overlapping test session
+      } else {
+        await cleanupSession(true);
+        const nextAvailable = new Date(new Date(conflict.slotEnd).getTime() + 15 * 60 * 1000);
+        return res.status(409).json({ 
+          error: 'Slot already booked',
+          conflictBookingId: conflict._id,
+          conflictStart: conflict.slotStart,
+          conflictEnd: conflict.slotEnd,
+          suggestedSlotStart: nextAvailable.toISOString(),
+        });
+      }
     }
 
     // Resolve meeting details
@@ -211,6 +283,21 @@ router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
         }
       : {};
 
+    // Resolve session amount:
+    // 1. Explicit amount passed by host (dollars or cents)
+    // 2. Or guest's predefined sessionRateCents
+    let sessionAmountCents = 0;
+    if (req.body.amountCents) {
+      sessionAmountCents = Number(req.body.amountCents);
+    } else if (req.body.sessionFee !== undefined && req.body.sessionFee !== null) {
+      sessionAmountCents = Math.round(Number(req.body.sessionFee) * 100);
+    } else if (guestUser && guestUser.sessionRateCents) {
+      sessionAmountCents = Number(guestUser.sessionRateCents);
+    }
+
+    // Host books guest: mock payment is held in CastReach escrow
+    const initialPaymentStatus = sessionAmountCents > 0 ? 'held' : 'unpaid';
+
     const bookingData = {
       host:             effectiveHostId,
       guest:            effectiveGuestId,
@@ -223,7 +310,8 @@ router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
       gmeetUrl:         resolvedGmeet,
       physicalLocation: resolvedPhysical,
       agenda:           agenda || '',
-      amountCents:      host.sessionRateCents || 0,
+      amountCents:      sessionAmountCents,
+      paymentStatus:    initialPaymentStatus,
     };
 
     const [booking] = session?.inTransaction()
@@ -241,12 +329,16 @@ router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
       session?.inTransaction() ? { session } : {}
     );
 
-    // Create system message for booking creation
+    // Create system message for booking creation with escrow notice
+    const escrowHoldText = sessionAmountCents > 0
+      ? `Booking request sent. $${(sessionAmountCents / 100).toFixed(2)} mock payment received and held in CastReach escrow.`
+      : 'Booking request sent.';
+
     await Message.create(
       [{
         booking:  booking._id,
         sender:   req.user.id,
-        content:  'Booking request sent.',
+        content:  escrowHoldText,
         isSystem: true,
       }],
       session?.inTransaction() ? { session } : {}
@@ -292,13 +384,34 @@ router.post('/', verifyToken, validate(BookingSchema), async (req, res) => {
       amountCents: booking.amountCents,
     });
 
-    // Notify outside the transaction — failure must not roll back the booking.
-    notify(hostId, {
+    // Notify the recipient (e.g. if host created booking, notify guest; if guest created booking, notify host)
+    const otherPartyId = req.user.id === effectiveHostId.toString()
+      ? effectiveGuestId.toString()
+      : effectiveHostId.toString();
+
+    const initiatorName = (req.user.id === effectiveHostId.toString() ? (host?.name || req.user.name) : (guestUser?.name || req.user.name)) || 'A creator';
+
+    notify(otherPartyId, {
       type:  'booking_request',
-      title: 'New booking request',
-      body:  'You have a new podcast booking request',
+      title: 'New podcast invitation',
+      body:  `You have a new podcast booking invitation from ${initiatorName}.`,
       link:  `/bookings/${booking._id}`,
     }).catch((err) => console.error('Notify failed:', err.message));
+
+    try {
+      broadcastToBooking(booking._id.toString(), 'booking:created', { booking });
+      const { broadcastToUser } = require('../services/realtimeServer');
+      if (broadcastToUser) {
+        broadcastToUser(otherPartyId, 'booking:new', {
+          bookingId: booking._id.toString(),
+          booking,
+        });
+      }
+    } catch (realtimeErr) {
+      console.warn('Realtime broadcast warning:', realtimeErr.message);
+    }
+
+    return res.status(201).json({ booking });
 
   } catch (err) {
     if (session) {
@@ -376,7 +489,7 @@ router.patch('/:id/confirm', verifyToken, async (req, res) => {
     Message.create({
       booking:  booking._id,
       sender:   req.user.id,
-      content:  'Host confirmed the booking.',
+      content:  'Booking confirmed.',
       isSystem: true,
     }).catch((err) => console.error('System msg create error:', err.message));
 
@@ -384,6 +497,128 @@ router.patch('/:id/confirm', verifyToken, async (req, res) => {
     broadcastToBooking(booking._id.toString(), 'booking:updated', {
       bookingId: booking._id.toString(),
       status: 'confirmed',
+      dailyRoomUrl: booking.dailyRoomUrl,
+    });
+
+    res.json({ booking });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+// ── PATCH /api/bookings/:id/propose-date ──────────────────────────────────────
+// Guest (or Host) changes the date / proposes alternative availability
+router.patch('/:id/propose-date', verifyToken, async (req, res) => {
+  try {
+    const { proposedSlotStart, proposedSlotEnd, rescheduleNote } = req.body;
+    if (!proposedSlotStart) {
+      return res.status(400).json({ error: 'Proposed date/time is required' });
+    }
+
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    const isParticipant = [booking.host.toString(), booking.guest.toString()].includes(req.user.id) || req.user.role === 'admin';
+    if (!isParticipant) return res.status(403).json({ error: 'Forbidden' });
+
+    const newStart = new Date(proposedSlotStart);
+    const newEnd = proposedSlotEnd 
+      ? new Date(proposedSlotEnd) 
+      : new Date(newStart.getTime() + 60 * 60 * 1000);
+
+    if (newEnd <= newStart) {
+      return res.status(400).json({ error: 'Proposed end time must be after start time' });
+    }
+
+    booking.proposedSlotStart = newStart;
+    booking.proposedSlotEnd = newEnd;
+    booking.proposedBy = req.user.id === booking.host.toString() ? 'host' : 'guest';
+    booking.rescheduleNote = rescheduleNote || 'Availability counter-proposal sent.';
+    await booking.save();
+
+    const formattedProposal = newStart.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const actorRole = req.user.id === booking.host.toString() ? 'Host' : 'Guest';
+
+    await Message.create({
+      booking: booking._id,
+      sender: req.user.id,
+      content: `${actorRole} proposed a new availability date: ${formattedProposal}. Note: "${booking.rescheduleNote}".`,
+      isSystem: true,
+    });
+
+    const recipient = req.user.id === booking.host.toString() ? booking.guest.toString() : booking.host.toString();
+    notify(recipient, {
+      type: 'date_proposed',
+      title: 'New date proposed for podcast session',
+      body: `${actorRole} proposed an alternative availability date: ${formattedProposal}`,
+      link: `/bookings/${booking._id}`,
+    }).catch(() => {});
+
+    broadcastToBooking(booking._id.toString(), 'booking:updated', {
+      bookingId: booking._id.toString(),
+      proposedSlotStart: booking.proposedSlotStart,
+      proposedSlotEnd: booking.proposedSlotEnd,
+      proposedBy: booking.proposedBy,
+      rescheduleNote: booking.rescheduleNote,
+    });
+
+    res.json({ booking });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+// ── PATCH /api/bookings/:id/accept-proposed-date ──────────────────────────────
+// Accepts the proposed date and confirms the booking
+router.patch('/:id/accept-proposed-date', verifyToken, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    const isParticipant = [booking.host.toString(), booking.guest.toString()].includes(req.user.id) || req.user.role === 'admin';
+    if (!isParticipant) return res.status(403).json({ error: 'Forbidden' });
+
+    if (!booking.proposedSlotStart) {
+      return res.status(400).json({ error: 'No proposed date to accept' });
+    }
+
+    booking.slotStart = booking.proposedSlotStart;
+    booking.slotEnd = booking.proposedSlotEnd || new Date(booking.proposedSlotStart.getTime() + 60 * 60 * 1000);
+    booking.proposedSlotStart = undefined;
+    booking.proposedSlotEnd = undefined;
+    booking.proposedBy = undefined;
+    booking.rescheduleNote = '';
+    booking.status = 'confirmed';
+    booking.respondedAt = new Date();
+
+    if (!booking.dailyRoomUrl) {
+      booking.dailyRoomUrl = `https://castreach.daily.co/room-${booking._id}`;
+    }
+
+    await booking.save();
+
+    const formattedConfirmed = booking.slotStart.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+    await Message.create({
+      booking: booking._id,
+      sender: req.user.id,
+      content: `Availability date confirmed for ${formattedConfirmed}! Session is officially scheduled.`,
+      isSystem: true,
+    });
+
+    const otherParticipant = req.user.id === booking.host.toString() ? booking.guest.toString() : booking.host.toString();
+    notify(otherParticipant, {
+      type: 'booking_confirmed',
+      title: 'New date accepted — Booking confirmed!',
+      body: `Session confirmed for ${formattedConfirmed}.`,
+      link: `/bookings/${booking._id}`,
+    }).catch(() => {});
+
+    broadcastToBooking(booking._id.toString(), 'booking:updated', {
+      bookingId: booking._id.toString(),
+      status: 'confirmed',
+      slotStart: booking.slotStart,
+      slotEnd: booking.slotEnd,
       dailyRoomUrl: booking.dailyRoomUrl,
     });
 
@@ -460,17 +695,41 @@ router.patch('/:id/cancel', verifyToken, async (req, res) => {
     }).catch((err) => console.error('Notify failed:', err.message));
 
     // Create system message
+    const isGuest = booking.guest?.toString() === req.user.id;
+    const cancelMsg = isGuest ? 'Guest declined the invitation.' : 'Booking cancelled.';
     Message.create({
       booking:  booking._id,
       sender:   req.user.id,
-      content:  'Booking cancelled.',
+      content:  cancelMsg,
       isSystem: true,
     }).catch((err) => console.error('System message failed:', err.message));
+
+    // Broadcast real-time status update to all room subscribers
+    try {
+      broadcastToBooking(booking._id.toString(), 'booking:updated', {
+        bookingId: booking._id.toString(),
+        status: 'cancelled',
+      });
+      const { broadcastToUser } = require('../services/realtimeServer');
+      if (broadcastToUser) {
+        broadcastToUser(notifyRecipient, 'booking:updated', {
+          bookingId: booking._id.toString(),
+          status: 'cancelled',
+        });
+      }
+    } catch {}
 
     res.json({ booking });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
   }
+});
+
+// ── PATCH /api/bookings/:id/decline — alias for decline invitation ────────────
+router.patch('/:id/decline', verifyToken, async (req, res, next) => {
+  // Delegate directly to cancel logic
+  req.url = `/${req.params.id}/cancel`;
+  return router.handle(req, res, next);
 });
 
 // ── POST /api/bookings/:id/review ─────────────────────────────────────────────
@@ -576,12 +835,19 @@ router.patch('/:id/complete', verifyToken, async (req, res) => {
     });
 
     // Create system message
+    const amountStr = booking.amountCents ? `$${(booking.amountCents / 100).toFixed(2)}` : '$0';
     Message.create({
       booking:  booking._id,
       sender:   req.user.id,
-      content:  'Session completed.',
+      content:  `Podcast completed by host. Escrow payout of ${amountStr} has been released to guest.`,
       isSystem: true,
     }).catch((err) => console.error('System message failed:', err.message));
+
+    broadcastToBooking(booking._id.toString(), 'booking:updated', {
+      bookingId: booking._id.toString(),
+      status: 'completed',
+      paymentStatus: 'released',
+    });
 
     res.json({ booking });
   } catch (err) {

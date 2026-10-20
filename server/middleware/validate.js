@@ -22,7 +22,7 @@ const RegisterSchema = z.object({
   email:    z.string().email(),
   password: z.string().min(8).max(128),
   name:     z.string().min(2).max(80),
-  role:     z.enum(['host', 'guest']),
+  role:     z.enum(['host', 'guest', 'listener']).optional().default('listener'),
 });
 
 const LoginSchema = z.object({
@@ -31,22 +31,34 @@ const LoginSchema = z.object({
 });
 
 const BookingSchema = z.object({
-  hostId:           z.string().min(1),
-  guestId:          z.string().optional(),
-  slotStart:        z.string(),
-  slotEnd:          z.string(),
-  topics:           z.array(z.string()).optional(),
-  message:          z.string().max(500).optional(),
-  meetingType:      z.enum(['gmeet', 'physical']).optional(),
-  gmeetUrl:         z.string().optional(),
-  physicalLocation: z.object({
+  hostId:              z.string().optional(),
+  guestId:             z.string().optional(),
+  guestName:           z.string().optional(),
+  guestEmail:          z.string().optional(),
+  guestAvatar:         z.string().optional(),
+  guestBio:            z.string().optional(),
+  guestExpertise:      z.any().optional(),
+  guestRateCents:      z.number().optional(),
+  sessionFee:          z.number().optional(),
+  slotStart:           z.string(),
+  slotEnd:             z.string(),
+  topics:              z.array(z.string()).optional(),
+  message:             z.string().max(1000).optional(),
+  meetingType:         z.enum(['gmeet', 'physical']).optional(),
+  gmeetUrl:            z.string().optional(),
+  location:            z.string().optional(),
+  studioLocation:      z.string().optional(),
+  studioCity:          z.string().optional(),
+  studioName:          z.string().optional(),
+  arrivalInstructions: z.string().optional(),
+  physicalLocation:    z.object({
     address:      z.string().optional(),
     city:         z.string().optional(),
     studioName:   z.string().optional(),
     arrivalNotes: z.string().optional(),
   }).optional(),
-  agenda:           z.string().optional(),
-});
+  agenda:              z.string().optional(),
+}).passthrough();
 
 const MessageSchema = z.object({
   bookingId: z.string().min(1),

@@ -38,7 +38,7 @@ export default function ReviewList({ reviews = [], onReport }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {reportMsg && (
-        <div style={{ padding: 10, borderRadius: 8, background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', fontSize: 13 }}>
+        <div style={{ padding: 10, borderRadius: 8, background: 'rgba(72, 47, 76, 0.35)', color: '#DDAFE8', fontSize: 13, border: '1px solid rgba(221, 175, 232, 0.3)' }}>
           {reportMsg}
         </div>
       )}

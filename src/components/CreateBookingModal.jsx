@@ -1,26 +1,66 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Calendar, Clock, DollarSign, FileText, X, CheckCircle, AlertCircle, Video, MapPin, Radio, User, Sparkles } from 'lucide-react';
+import { 
+  Calendar, 
+  Clock, 
+  DollarSign, 
+  FileText, 
+  X, 
+  CheckCircle, 
+  AlertCircle, 
+  Video, 
+  MapPin, 
+  ShieldCheck, 
+  Lock,
+  Send 
+} from 'lucide-react';
 
-export default function CreateBookingModal({ isOpen, onClose, recipientUser, onSuccess }) {
+export default function CreateBookingModal({ 
+  isOpen, 
+  onClose, 
+  recipientUser, 
+  recipient, 
+  initialRecipient, 
+  guest, 
+  onSuccess 
+}) {
   const { user, authFetch } = useAuth();
+  const targetRecipient = recipientUser || recipient || initialRecipient || guest;
 
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const defaultDateStr = tomorrow.toISOString().split('T')[0];
 
+  // Pick an initial slot that avoids static collision
+  const getDynamicInitialTime = () => {
+    const curHour = new Date().getHours();
+    const slotHour = Math.max(10, Math.min(20, (curHour + 3) % 24));
+    return `${slotHour.toString().padStart(2, '0')}:00`;
+  };
+
   const [topic, setTopic] = useState('Podcast Recording Session');
   const [date, setDate] = useState(defaultDateStr);
-  const [startTime, setStartTime] = useState('14:00');
+  const [startTime, setStartTime] = useState(getDynamicInitialTime());
   const [durationMin, setDurationMin] = useState('60');
-  const [amount, setAmount] = useState(recipientUser?.sessionRateCents ? String(recipientUser.sessionRateCents / 100) : '0');
+  const [suggestedSlot, setSuggestedSlot] = useState(null);
+  
+  // Resolve fee from rateNum or sessionRateCents or rate or sessionRate
+  const initialRate = targetRecipient?.rateNum 
+    ? String(targetRecipient.rateNum) 
+    : targetRecipient?.sessionRate
+      ? String(targetRecipient.sessionRate)
+      : targetRecipient?.sessionRateCents 
+        ? String(targetRecipient.sessionRateCents / 100)
+        : targetRecipient?.rate?.replace(/[^0-9]/g, '') || '1500';
+
+  const [amount, setAmount] = useState(initialRate);
   
   // Meeting Mode: 'gmeet' or 'physical'
   const [meetingType, setMeetingType] = useState('gmeet');
   const [gmeetUrl, setGmeetUrl] = useState('');
-  const [studioAddress, setStudioAddress] = useState(recipientUser?.studioLocation || recipientUser?.location || '');
+  const [studioAddress, setStudioAddress] = useState(targetRecipient?.studioLocation || targetRecipient?.location || '');
   const [studioCity, setStudioCity] = useState('');
-  const [studioName, setStudioName] = useState(recipientUser?.podcastName ? `${recipientUser.podcastName} Studio` : 'Main Recording Studio');
+  const [studioName, setStudioName] = useState(targetRecipient?.podcastName ? `${targetRecipient.podcastName} Studio` : 'Main Recording Studio');
   const [arrivalNotes, setArrivalNotes] = useState('Please arrive 15 minutes before the session starts.');
   const [agenda, setAgenda] = useState('');
 
@@ -30,8 +70,12 @@ export default function CreateBookingModal({ isOpen, onClose, recipientUser, onS
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const rawFee = Math.max(0, parseFloat(amount) || 0);
+  const platformFee = Math.round(rawFee * 0.1);
+  const totalEscrowHold = rawFee + platformFee;
+
+  const handleSubmit = async (e, forceOverlap = false) => {
+    if (e && e.preventDefault) e.preventDefault();
     setSubmitting(true);
     setErrorMsg('');
     setSuccessMsg('');
@@ -45,41 +89,51 @@ export default function CreateBookingModal({ isOpen, onClose, recipientUser, onS
         return;
       }
 
+      const durationMinutes = parseInt(durationMin, 10) || 60;
+      const endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000);
+
+      // Validate location if in-person
       if (meetingType === 'physical' && !studioAddress.trim()) {
-        setErrorMsg('Please enter the physical studio address for the in-person session.');
+        setErrorMsg('Please provide the physical studio or meeting address.');
         setSubmitting(false);
         return;
       }
 
-      const durNum = parseInt(durationMin, 10) || 60;
-      const endDate = new Date(startDate.getTime() + durNum * 60000);
+      const isTargetHost = targetRecipient?.role === 'host';
 
-      const isMeHost = user?.role === 'host';
-      const hostId = isMeHost ? user._id : (recipientUser?._id || recipientUser?.id);
-      const guestId = isMeHost ? (recipientUser?._id || recipientUser?.id) : user._id;
+      let computedHostId = null;
+      let computedGuestId = null;
 
-      if (!hostId || !guestId) {
-        setErrorMsg('Unable to determine session host and guest. Please try again.');
-        setSubmitting(false);
-        return;
+      if (isTargetHost) {
+        computedHostId = targetRecipient?._id || targetRecipient?.id;
+        computedGuestId = user?._id || user?.id;
+      } else {
+        computedHostId = user?._id || user?.id;
+        computedGuestId = targetRecipient?._id || targetRecipient?.id;
       }
 
       const payload = {
-        hostId,
-        guestId,
+        hostId: computedHostId,
+        guestId: computedGuestId,
+        guestName: targetRecipient?.name || targetRecipient?.displayName,
+        guestEmail: targetRecipient?.email,
+        guestAvatar: targetRecipient?.avatar || targetRecipient?.profilePicture,
+        guestBio: targetRecipient?.bio,
+        guestExpertise: targetRecipient?.expertise,
+        guestRateCents: Math.round(rawFee * 100),
         slotStart: startDate.toISOString(),
         slotEnd: endDate.toISOString(),
-        topics: [topic.trim() || 'Podcast Session'],
-        message: agenda.trim(),
-        meetingType,
-        gmeetUrl: meetingType === 'gmeet' ? gmeetUrl.trim() : '',
-        physicalLocation: meetingType === 'physical' ? {
-          address: studioAddress.trim(),
-          city: studioCity.trim(),
-          studioName: studioName.trim(),
-          arrivalNotes: arrivalNotes.trim(),
-        } : {},
-        agenda: agenda.trim(),
+        topics: [topic.trim() || 'Podcast Recording'],
+        message: agenda.trim() || `Booked session for "${topic.trim()}"`,
+        sessionFee: rawFee,
+        meetingType: meetingType,
+        gmeetUrl: meetingType === 'gmeet' ? gmeetUrl.trim() : undefined,
+        location: meetingType === 'physical' ? studioAddress.trim() : 'Remote HD Studio',
+        studioLocation: meetingType === 'physical' ? studioAddress.trim() : undefined,
+        studioCity: meetingType === 'physical' ? studioCity.trim() : undefined,
+        studioName: meetingType === 'physical' ? studioName.trim() : undefined,
+        arrivalInstructions: meetingType === 'physical' ? arrivalNotes.trim() : undefined,
+        allowOverlap: forceOverlap || undefined,
       };
 
       const res = await authFetch('/bookings', {
@@ -89,28 +143,51 @@ export default function CreateBookingModal({ isOpen, onClose, recipientUser, onS
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to create session booking');
+        if (data.suggestedSlotStart) {
+          try {
+            const dt = new Date(data.suggestedSlotStart);
+            const sugDate = dt.toISOString().split('T')[0];
+            const sugTime = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+            setSuggestedSlot({ date: sugDate, time: sugTime });
+          } catch (e) {}
+        }
+        throw new Error(data.error || 'Failed to create booking.');
       }
 
       const newBooking = data.booking;
+
+      // Lock Escrow if there is a session fee
+      if (newBooking?._id && rawFee > 0) {
+        try {
+          await authFetch(`/escrow/${newBooking._id}/deposit`, {
+            method: 'POST',
+            body: JSON.stringify({
+              amount: rawFee,
+              currency: 'USD',
+            }),
+          });
+        } catch (escrowErr) {
+          console.warn('Escrow deposit notice:', escrowErr.message);
+        }
+      }
 
       // Send system message in chat
       try {
         const formattedDate = startDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
         const formattedTime = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const modeDesc = meetingType === 'gmeet' ? 'Google Meet (Virtual)' : `In-Person (${studioAddress.trim()})`;
+        const modeDesc = meetingType === 'gmeet' ? 'Remote HD Studio' : `In-Person Studio (${studioAddress.trim()})`;
         await authFetch('/messages', {
           method: 'POST',
           body: JSON.stringify({
             bookingId: newBooking._id,
-            content: `New Session Booking Requested: "${topic}" via ${modeDesc} on ${formattedDate} at ${formattedTime}.`,
+            content: `Interview Arranged: "${topic}" via ${modeDesc} on ${formattedDate} at ${formattedTime}. Escrow hold: $${rawFee.toFixed(2)} held safely by CastReach.`,
           }),
         });
       } catch (err) {
         console.warn('System message notification warning:', err);
       }
 
-      setSuccessMsg('Session booking created successfully! Added to My Bookings.');
+      setSuccessMsg('Invitation sent successfully!');
       setTimeout(() => {
         if (onSuccess) onSuccess(newBooking);
         onClose();
@@ -122,220 +199,220 @@ export default function CreateBookingModal({ isOpen, onClose, recipientUser, onS
     }
   };
 
-  const isTargetHost = recipientUser?.role === 'host';
+  const isTargetHost = targetRecipient?.role === 'host';
 
   return (
-    <div style={overlayStyle}>
-      <div style={modalStyle}>
+    <div style={overlayStyle} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div style={headerStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={iconBadgeStyle}>
-              <Calendar size={20} color="#2563eb" />
+              <Calendar size={18} color="#22C55E" />
             </div>
             <div>
-              <h2 style={{ fontSize: 17, fontWeight: 700, color: '#f3f4f6', margin: 0 }}>
-                Schedule Podcast Session
-              </h2>
-              <p style={{ fontSize: 12, color: '#9ca3af', margin: '2px 0 0 0' }}>
-                Connect and schedule with {recipientUser?.name || 'Creator'}
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#FFFFFF' }}>
+                {isTargetHost ? 'Request Interview on Show' : 'Send Invite to Guest'}
+              </h3>
+              <p style={{ margin: '2px 0 0', fontSize: 13, color: '#A39EA9' }}>
+                Set session details and send your invitation
               </p>
             </div>
           </div>
           <button type="button" onClick={onClose} style={closeBtnStyle}>
-            <X size={18} color="#9ca3af" />
+            <X size={18} color="#A39EA9" />
           </button>
         </div>
 
-        {/* Content Body */}
-        <form onSubmit={handleSubmit} style={{ padding: '20px 24px', maxHeight: '82vh', overflowY: 'auto' }}>
+        {/* Content Form */}
+        <form onSubmit={handleSubmit} style={{ padding: '24px', maxHeight: 'calc(90vh - 80px)', overflowY: 'auto' }}>
           {errorMsg && (
             <div style={errorAlertStyle}>
-              <AlertCircle size={16} color="#ef4444" style={{ flexShrink: 0 }} />
-              <span style={{ fontSize: 13, color: '#f87171' }}>{errorMsg}</span>
-            </div>
-          )}
-
-          {successMsg && (
-            <div style={successAlertStyle}>
-              <CheckCircle size={16} color="#10b981" style={{ flexShrink: 0 }} />
-              <span style={{ fontSize: 13, color: '#34d399', fontWeight: 600 }}>{successMsg}</span>
-            </div>
-          )}
-
-          {/* Participant Details Summary Card */}
-          {recipientUser && (
-            <div style={{
-              background: '#15161c',
-              border: '1px solid #23252e',
-              borderRadius: 12,
-              padding: '12px 14px',
-              marginBottom: 18,
-              display: 'flex',
-              gap: 12,
-              alignItems: 'center',
-            }}>
-              <div style={{
-                width: 44,
-                height: 44,
-                borderRadius: '50%',
-                background: '#2563eb',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: 16,
-                flexShrink: 0,
-                overflow: 'hidden',
-              }}>
-                {recipientUser.avatar ? (
-                  <img src={recipientUser.avatar} alt={recipientUser.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  recipientUser.name?.charAt(0)?.toUpperCase() || 'U'
-                )}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: '#f3f4f6' }}>{recipientUser.name}</span>
-                  <span style={{
-                    fontSize: 10,
-                    textTransform: 'uppercase',
-                    fontWeight: 700,
-                    padding: '2px 6px',
-                    borderRadius: 4,
-                    background: isTargetHost ? 'rgba(37, 99, 235, 0.2)' : 'rgba(16, 185, 129, 0.2)',
-                    color: isTargetHost ? '#60a5fa' : '#34d399',
-                  }}>
-                    {recipientUser.role || 'Creator'}
-                  </span>
-                </div>
-                <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>
-                  {isTargetHost 
-                    ? (recipientUser.podcastName || 'Podcast Host') 
-                    : (recipientUser.expertise?.join(', ') || recipientUser.bio || 'Guest Contributor')}
-                </div>
-                {(recipientUser.studioLocation || recipientUser.location) && (
-                  <div style={{ fontSize: 11, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                    <MapPin size={11} /> {recipientUser.studioLocation || recipientUser.location}
+              <AlertCircle size={18} color="#EF4444" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div style={{ flex: 1 }}>
+                <span style={{ fontSize: 13, color: '#EF4444', fontWeight: 700 }}>{errorMsg}</span>
+                {errorMsg.toLowerCase().includes('already booked') && (
+                  <div style={{ marginTop: 8 }}>
+                    <p style={{ margin: '0 0 8px', fontSize: 12, color: '#A39EA9', lineHeight: 1.4 }}>
+                      This time slot is already reserved. Choose another hour or click below:
+                    </p>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {suggestedSlot && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDate(suggestedSlot.date);
+                            setStartTime(suggestedSlot.time);
+                            setErrorMsg('');
+                            setSuggestedSlot(null);
+                          }}
+                          style={autoFixBtnStyle}
+                        >
+                          ⚡ Switch to Next Open ({suggestedSlot.time})
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const [h, m] = startTime.split(':');
+                          const nextH = ((parseInt(h, 10) + 2) % 24).toString().padStart(2, '0');
+                          setStartTime(`${nextH}:${m || '00'}`);
+                          setErrorMsg('');
+                        }}
+                        style={autoFixBtnStyle}
+                      >
+                        +2 Hours
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(ev) => handleSubmit(ev, true)}
+                        style={devBypassBtnStyle}
+                        title="Allow overlapping session for rapid prototype testing"
+                      >
+                        ⚡ Allow Overlap (Test Mode)
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
           )}
 
-          {/* MEETING MODE SELECTION: Google Meet vs In-Person */}
+          {successMsg && (
+            <div style={successAlertStyle}>
+              <CheckCircle size={16} color="#22C55E" />
+              <span style={{ fontSize: 13, color: '#22C55E', fontWeight: 600 }}>{successMsg}</span>
+            </div>
+          )}
+
+          {/* Recipient Profile Card */}
+          {targetRecipient && (
+            <div style={{
+              background: '#0D0C12',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: 12,
+              padding: '12px 14px',
+              marginBottom: 20,
+              display: 'flex',
+              gap: 12,
+              alignItems: 'center',
+            }}>
+              <div style={{
+                width: 46,
+                height: 46,
+                borderRadius: 10,
+                background: '#171520',
+                border: '1px solid rgba(168, 85, 247, 0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#FFFFFF',
+                fontWeight: 700,
+                fontSize: 16,
+                flexShrink: 0,
+                overflow: 'hidden',
+              }}>
+                {targetRecipient.avatar || targetRecipient.profilePicture ? (
+                  <img src={targetRecipient.avatar || targetRecipient.profilePicture} alt={targetRecipient.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  targetRecipient.name?.charAt(0)?.toUpperCase() || 'G'
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontWeight: 700, fontSize: 15, color: '#FFFFFF' }}>{targetRecipient.name}</span>
+                  <span style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    background: 'rgba(34, 197, 94, 0.15)',
+                    border: '1px solid rgba(34, 197, 94, 0.35)',
+                    color: '#22C55E',
+                  }}>
+                    {targetRecipient.role === 'host' ? 'Host' : 'Guest Expert'}
+                  </span>
+                </div>
+                <div style={{ fontSize: 12.5, color: '#A39EA9', marginTop: 2 }}>
+                  {isTargetHost 
+                    ? (targetRecipient.podcastName || 'Podcast Host') 
+                    : (targetRecipient.expertise?.slice(0, 2).join(', ') || targetRecipient.title || 'Guest Contributor')}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MEETING MODE: Virtual vs In-Person */}
           <div style={{ marginBottom: 18 }}>
-            <label style={labelStyle}>Meeting Mode (Select how you will meet)</label>
+            <label style={labelStyle}>Interview Format</label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <button
                 type="button"
                 onClick={() => setMeetingType('gmeet')}
                 style={{
-                  padding: '12px 14px',
+                  padding: '11px 14px',
                   borderRadius: 10,
-                  border: meetingType === 'gmeet' ? '2px solid #2563eb' : '1px solid #23252e',
-                  background: meetingType === 'gmeet' ? 'rgba(37, 99, 235, 0.15)' : '#15161c',
-                  color: meetingType === 'gmeet' ? '#60a5fa' : '#9ca3af',
+                  border: meetingType === 'gmeet' ? '1.5px solid #22C55E' : '1px solid rgba(255, 255, 255, 0.12)',
+                  background: meetingType === 'gmeet' ? 'rgba(34, 197, 94, 0.15)' : '#0D0C12',
+                  color: meetingType === 'gmeet' ? '#22C55E' : '#A39EA9',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
                   cursor: 'pointer',
-                  fontWeight: 600,
+                  fontWeight: meetingType === 'gmeet' ? 700 : 500,
                   fontSize: 13,
-                  transition: 'all 0.2s',
+                  boxShadow: meetingType === 'gmeet' ? '0 0 14px rgba(34, 197, 94, 0.2)' : 'none',
                 }}
               >
-                <Video size={16} color={meetingType === 'gmeet' ? '#60a5fa' : '#9ca3af'} />
-                <span>Google Meet (Virtual)</span>
+                <Video size={16} color={meetingType === 'gmeet' ? '#22C55E' : '#A39EA9'} />
+                <span>Remote HD Studio</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setMeetingType('physical')}
                 style={{
-                  padding: '12px 14px',
+                  padding: '11px 14px',
                   borderRadius: 10,
-                  border: meetingType === 'physical' ? '2px solid #2563eb' : '1px solid #23252e',
-                  background: meetingType === 'physical' ? 'rgba(37, 99, 235, 0.15)' : '#15161c',
-                  color: meetingType === 'physical' ? '#60a5fa' : '#9ca3af',
+                  border: meetingType === 'physical' ? '1.5px solid #A855F7' : '1px solid rgba(255, 255, 255, 0.12)',
+                  background: meetingType === 'physical' ? 'rgba(168, 85, 247, 0.15)' : '#0D0C12',
+                  color: meetingType === 'physical' ? '#A855F7' : '#A39EA9',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
                   cursor: 'pointer',
-                  fontWeight: 600,
+                  fontWeight: meetingType === 'physical' ? 700 : 500,
                   fontSize: 13,
-                  transition: 'all 0.2s',
+                  boxShadow: meetingType === 'physical' ? '0 0 14px rgba(168, 85, 247, 0.2)' : 'none',
                 }}
               >
-                <MapPin size={16} color={meetingType === 'physical' ? '#60a5fa' : '#9ca3af'} />
-                <span>In-Person (Studio)</span>
+                <MapPin size={16} color={meetingType === 'physical' ? '#A855F7' : '#A39EA9'} />
+                <span>In-Person Studio</span>
               </button>
             </div>
           </div>
 
-          {/* Conditional: Google Meet Details */}
-          {meetingType === 'gmeet' && (
-            <div style={{ marginBottom: 18, background: '#15161c', padding: 14, borderRadius: 10, border: '1px solid #23252e' }}>
-              <label style={labelStyle}>Google Meet Link (Optional)</label>
-              <input
-                type="url"
-                value={gmeetUrl}
-                onChange={(e) => setGmeetUrl(e.target.value)}
-                placeholder="https://meet.google.com/xxx-yyyy-zzz (Auto-generated if blank)"
-                style={inputStyle}
-              />
-              <p style={{ fontSize: 11, color: '#6b7280', margin: '6px 0 0 0' }}>
-                Leave empty to have a direct Google Meet link created for both participants upon scheduling.
-              </p>
-            </div>
-          )}
-
-          {/* Conditional: In-Person Studio Details */}
+          {/* Conditional Physical Address */}
           {meetingType === 'physical' && (
-            <div style={{ marginBottom: 18, background: '#15161c', padding: 14, borderRadius: 10, border: '1px solid #23252e' }}>
+            <div style={{ marginBottom: 18, background: '#0D0C12', padding: 14, borderRadius: 10, border: '1px solid rgba(255, 255, 255, 0.08)' }}>
               <div style={{ marginBottom: 12 }}>
-                <label style={labelStyle}>Studio / Meeting Physical Address *</label>
+                <label style={labelStyle}>Studio Address *</label>
                 <input
                   type="text"
                   required
                   value={studioAddress}
                   onChange={(e) => setStudioAddress(e.target.value)}
-                  placeholder="e.g. 742 Evergreen Terrace, Studio B, New York, NY"
+                  placeholder="e.g. 100 Broadway, Studio 4A, New York, NY"
                   style={inputStyle}
                 />
               </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-                <div>
-                  <label style={labelStyle}>City / Location</label>
-                  <input
-                    type="text"
-                    value={studioCity}
-                    onChange={(e) => setStudioCity(e.target.value)}
-                    placeholder="e.g. New York, NY"
-                    style={inputStyle}
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle}>Studio Name</label>
-                  <input
-                    type="text"
-                    value={studioName}
-                    onChange={(e) => setStudioName(e.target.value)}
-                    placeholder="e.g. Midtown Audio Lab"
-                    style={inputStyle}
-                  />
-                </div>
-              </div>
-
               <div>
-                <label style={labelStyle}>Arrival / Entry Instructions</label>
+                <label style={labelStyle}>Arrival / Check-in Notes</label>
                 <input
                   type="text"
                   value={arrivalNotes}
                   onChange={(e) => setArrivalNotes(e.target.value)}
-                  placeholder="e.g. Check in with security on 4th floor, buzzer 402."
+                  placeholder="e.g. Front desk badge, soundcheck 15 mins prior."
                   style={inputStyle}
                 />
               </div>
@@ -344,13 +421,13 @@ export default function CreateBookingModal({ isOpen, onClose, recipientUser, onS
 
           {/* Session Topic */}
           <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>Podcast Episode Topic / Title</label>
+            <label style={labelStyle}>Episode Topic / Working Title</label>
             <input
               type="text"
               required
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g. Deep Tech & AI Infrastructure Episode"
+              placeholder="e.g. Neuroscience & Dopamine Baselines"
               style={inputStyle}
             />
           </div>
@@ -394,14 +471,13 @@ export default function CreateBookingModal({ isOpen, onClose, recipientUser, onS
                 <option value="45">45 Minutes</option>
                 <option value="60">60 Minutes</option>
                 <option value="90">90 Minutes</option>
-                <option value="120">120 Minutes</option>
               </select>
             </div>
 
             <div>
               <label style={labelStyle}>Session Fee ($ USD)</label>
               <div style={{ position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#6b7280', fontSize: 14, fontWeight: 600 }}>
+                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#6B6B66', fontSize: 14, fontWeight: 500 }}>
                   $
                 </span>
                 <input
@@ -417,19 +493,88 @@ export default function CreateBookingModal({ isOpen, onClose, recipientUser, onS
           </div>
 
           {/* Agenda & Talking Points */}
-          <div style={{ marginBottom: 20 }}>
-            <label style={labelStyle}>Discussion Agenda & Preparation Notes (Optional)</label>
+          <div style={{ marginBottom: 18 }}>
+            <label style={labelStyle}>Discussion Agenda & Angle (Optional)</label>
             <textarea
               rows="3"
               value={agenda}
               onChange={(e) => setAgenda(e.target.value)}
-              placeholder="Outline specific discussion topics, interview questions, or equipment notes..."
+              placeholder="Outline specific discussion themes, research angles, or interview objectives..."
               style={textareaStyle}
             />
           </div>
 
+          {/* 100% Escrow Protection Breakdown Box */}
+          {rawFee > 0 && (
+            <div style={{
+              background: '#0D0C12',
+              border: '1px solid rgba(34, 197, 94, 0.35)',
+              borderRadius: 12,
+              padding: '16px',
+              marginBottom: 20,
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <ShieldCheck size={16} color="#22C55E" />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF' }}>
+                    Session Summary
+                  </span>
+                </div>
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: '#22C55E',
+                  background: 'rgba(34, 197, 94, 0.15)',
+                  border: '1px solid rgba(34, 197, 94, 0.35)',
+                  padding: '2px 8px',
+                  borderRadius: 4,
+                }}>
+                  Secure
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, color: '#A39EA9' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Guest Session Fee:</span>
+                  <strong style={{ color: '#FFFFFF' }}>${rawFee.toFixed(2)}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Service Fee (10%):</span>
+                  <strong style={{ color: '#A855F7' }}>${platformFee.toFixed(2)}</strong>
+                </div>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                  paddingTop: 8,
+                  marginTop: 4,
+                  fontSize: 14.5,
+                  fontWeight: 700,
+                  color: '#FFFFFF',
+                }}>
+                  <span>Total Amount:</span>
+                  <span style={{ color: '#22C55E' }}>${totalEscrowHold.toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div style={{
+                fontSize: 12,
+                color: '#A39EA9',
+                marginTop: 10,
+                lineHeight: 1.45,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}>
+                <Lock size={12} color="#A855F7" style={{ flexShrink: 0 }} />
+                <span>Held safely in escrow and released to the guest after the recording wraps.</span>
+              </div>
+            </div>
+          )}
+
           {/* Footer Actions */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, borderTop: '1px solid #23252e', paddingTop: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: 16 }}>
             <button
               type="button"
               onClick={onClose}
@@ -443,7 +588,8 @@ export default function CreateBookingModal({ isOpen, onClose, recipientUser, onS
               disabled={submitting}
               style={submitBtnStyle}
             >
-              {submitting ? 'Creating Booking…' : 'Schedule Session'}
+              <Send size={15} />
+              <span>{submitting ? 'Sending Invite…' : 'Send Invite'}</span>
             </button>
           </div>
         </form>
@@ -453,7 +599,7 @@ export default function CreateBookingModal({ isOpen, onClose, recipientUser, onS
 }
 
 // --------------------------------------------------------------------------
-// INLINE STYLES
+// INLINE STYLES — DARK IMMERSION SYSTEM (GREEN, RED, PURPLE ACCENTS)
 // --------------------------------------------------------------------------
 
 const overlayStyle = {
@@ -463,7 +609,8 @@ const overlayStyle = {
   right: 0,
   bottom: 0,
   background: 'rgba(0, 0, 0, 0.75)',
-  backdropFilter: 'blur(5px)',
+  backdropFilter: 'blur(8px)',
+  WebkitBackdropFilter: 'blur(8px)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -472,86 +619,91 @@ const overlayStyle = {
 };
 
 const modalStyle = {
-  background: '#111216',
-  borderRadius: 18,
-  border: '1px solid #23252e',
-  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+  background: '#171520',
+  borderRadius: 16,
+  border: '1px solid rgba(255, 255, 255, 0.12)',
+  boxShadow: '0 24px 64px rgba(0, 0, 0, 0.7), 0 0 32px rgba(34, 197, 94, 0.1)',
   maxWidth: 540,
   width: '100%',
   overflow: 'hidden',
-  color: '#f3f4f6',
+  color: '#FFFFFF',
+  fontFamily: 'inherit',
 };
 
 const headerStyle = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  padding: '18px 24px',
-  borderBottom: '1px solid #23252e',
-  background: '#15161c',
+  padding: '16px 24px',
+  borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+  background: '#110F18',
 };
 
 const iconBadgeStyle = {
-  width: 38,
-  height: 38,
-  borderRadius: 10,
-  background: 'rgba(37, 99, 235, 0.15)',
+  width: 36,
+  height: 36,
+  borderRadius: 8,
+  background: 'rgba(34, 197, 94, 0.12)',
+  border: '1px solid rgba(34, 197, 94, 0.3)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
 };
 
 const closeBtnStyle = {
-  background: 'transparent',
+  background: 'rgba(255, 255, 255, 0.05)',
   border: 'none',
   padding: 6,
-  borderRadius: 8,
+  borderRadius: 6,
   cursor: 'pointer',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
+  transition: 'all 0.15s ease',
 };
 
 const labelStyle = {
   display: 'block',
-  fontSize: 12.5,
-  fontWeight: 600,
-  color: '#d1d5db',
+  fontSize: 13,
+  fontWeight: 650,
+  color: '#FFFFFF',
   marginBottom: 6,
 };
 
 const inputStyle = {
   width: '100%',
-  padding: '11px 13px',
-  borderRadius: 10,
-  border: '1px solid #282a36',
-  background: '#161820',
-  color: '#f3f4f6',
-  fontSize: 13.5,
+  padding: '10px 12px',
+  borderRadius: 8,
+  border: '1px solid rgba(255, 255, 255, 0.14)',
+  background: '#0D0C12',
+  color: '#FFFFFF',
+  fontSize: 14,
   outline: 'none',
   boxSizing: 'border-box',
+  fontFamily: 'inherit',
 };
 
 const selectStyle = {
   width: '100%',
-  padding: '11px 13px',
-  borderRadius: 10,
-  border: '1px solid #282a36',
-  background: '#161820',
-  color: '#f3f4f6',
-  fontSize: 13.5,
+  padding: '10px 12px',
+  borderRadius: 8,
+  border: '1px solid rgba(255, 255, 255, 0.14)',
+  background: '#0D0C12',
+  color: '#FFFFFF',
+  fontSize: 14,
   outline: 'none',
   boxSizing: 'border-box',
+  fontFamily: 'inherit',
 };
 
 const textareaStyle = {
   width: '100%',
-  padding: '11px 13px',
-  borderRadius: 10,
-  border: '1px solid #282a36',
-  background: '#161820',
-  color: '#f3f4f6',
-  fontSize: 13.5,
+  padding: '10px 12px',
+  borderRadius: 8,
+  border: '1px solid rgba(255, 255, 255, 0.14)',
+  background: '#0D0C12',
+  color: '#FFFFFF',
+  fontSize: 14,
   outline: 'none',
   resize: 'vertical',
   fontFamily: 'inherit',
@@ -560,46 +712,73 @@ const textareaStyle = {
 
 const errorAlertStyle = {
   display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  background: 'rgba(239, 68, 68, 0.15)',
-  border: '1px solid rgba(239, 68, 68, 0.3)',
+  alignItems: 'flex-start',
+  gap: 10,
+  background: 'rgba(239, 68, 68, 0.12)',
+  border: '1px solid rgba(239, 68, 68, 0.35)',
   borderRadius: 10,
-  padding: '10px 14px',
+  padding: '12px 14px',
   marginBottom: 16,
+};
+
+const autoFixBtnStyle = {
+  padding: '6px 12px',
+  borderRadius: 6,
+  backgroundColor: 'rgba(34, 197, 94, 0.2)',
+  border: '1px solid rgba(34, 197, 94, 0.4)',
+  color: '#22C55E',
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: 'pointer',
+  transition: 'all 0.15s ease',
+};
+
+const devBypassBtnStyle = {
+  padding: '6px 12px',
+  borderRadius: 6,
+  backgroundColor: 'rgba(168, 85, 247, 0.2)',
+  border: '1px solid rgba(168, 85, 247, 0.4)',
+  color: '#A855F7',
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: 'pointer',
+  transition: 'all 0.15s ease',
 };
 
 const successAlertStyle = {
   display: 'flex',
   alignItems: 'center',
   gap: 8,
-  background: 'rgba(16, 185, 129, 0.15)',
-  border: '1px solid rgba(16, 185, 129, 0.3)',
-  borderRadius: 10,
+  background: 'rgba(34, 197, 94, 0.15)',
+  border: '1px solid rgba(34, 197, 94, 0.35)',
+  borderRadius: 8,
   padding: '10px 14px',
   marginBottom: 16,
 };
 
 const cancelBtnStyle = {
-  padding: '10px 18px',
+  padding: '9px 18px',
   borderRadius: 8,
-  background: 'transparent',
-  border: '1px solid #282a36',
-  color: '#9ca3af',
+  background: 'rgba(255, 255, 255, 0.06)',
+  border: '1px solid rgba(255, 255, 255, 0.14)',
+  color: '#FFFFFF',
   fontWeight: 600,
-  fontSize: 13,
+  fontSize: 13.5,
   cursor: 'pointer',
 };
 
 const submitBtnStyle = {
-  padding: '10px 20px',
+  padding: '9px 20px',
   borderRadius: 8,
-  background: '#2563eb',
-  color: '#ffffff',
+  background: '#22C55E',
+  color: '#0D0C12',
   border: 'none',
   fontWeight: 700,
   fontSize: 13.5,
   cursor: 'pointer',
-  boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)',
-  transition: 'background 0.2s ease',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  boxShadow: '0 4px 18px rgba(34, 197, 94, 0.35)',
+  transition: 'all 0.15s ease',
 };

@@ -23,6 +23,11 @@ const bookingSchema = new mongoose.Schema(
       arrivalNotes: { type: String, default: '' },
     },
     agenda: { type: String, default: '' },
+    // Date & Availability Negotiation (Guest counter-proposal)
+    proposedSlotStart: { type: Date },
+    proposedSlotEnd:   { type: Date },
+    proposedBy:        { type: String, enum: ['host', 'guest'] },
+    rescheduleNote:    { type: String, default: '' },
     status: {
       type: String,
       enum: ['pending', 'confirmed', 'cancelled', 'completed', 'disputed'],

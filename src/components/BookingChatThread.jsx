@@ -299,8 +299,8 @@ export default function BookingChatThread({ bookingId, booking, onBookingCreated
               </div>
               <span style={{
                 fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 12, textTransform: 'capitalize',
-                background: liveStatus === 'confirmed' ? 'var(--color-success-bg, #ecfdf5)' : liveStatus === 'cancelled' ? 'var(--color-error-bg, #fef2f2)' : 'var(--color-warning-bg, #fffbeb)',
-                color: liveStatus === 'confirmed' ? 'var(--color-success, #10b981)' : liveStatus === 'cancelled' ? 'var(--color-error, #ef4444)' : 'var(--color-warning, #f59e0b)',
+                background: liveStatus === 'confirmed' ? 'rgba(72, 47, 76, 0.35)' : liveStatus === 'cancelled' ? 'var(--color-error-bg, #fef2f2)' : 'var(--color-warning-bg, #fffbeb)',
+                color: liveStatus === 'confirmed' ? '#DDAFE8' : liveStatus === 'cancelled' ? 'var(--color-error, #ef4444)' : 'var(--color-warning, #f59e0b)',
               }}>
                 {liveStatus === 'pending' ? (isInitiator ? 'Proposal Sent' : 'Action Required') : liveStatus === 'confirmed' ? 'Confirmed & Booked' : liveStatus}
               </span>
@@ -312,7 +312,7 @@ export default function BookingChatThread({ bookingId, booking, onBookingCreated
                   <Clock size={14} /> Scheduled: {slotDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })} at {slotDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
                 {activeBooking.amountCents && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--plum-deep, #1e1b4b)', fontWeight: 600 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#DDAFE8', fontWeight: 600 }}>
                     <DollarSign size={14} /> Rate: ${(activeBooking.amountCents / 100).toFixed(2)}
                   </span>
                 )}
@@ -331,16 +331,16 @@ export default function BookingChatThread({ bookingId, booking, onBookingCreated
                       style={{
                         padding: '8px 16px',
                         borderRadius: 8,
-                        background: 'var(--color-success, #10b981)',
+                        background: '#482F4C',
                         color: '#ffffff',
-                        border: 'none',
+                        border: '1px solid rgba(221, 175, 232, 0.3)',
                         fontSize: 12,
                         fontWeight: 700,
                         cursor: 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 6,
-                        boxShadow: '0 2px 6px rgba(16, 185, 129, 0.25)',
+                        boxShadow: '0 2px 10px rgba(72, 47, 76, 0.45)',
                       }}
                     >
                       <Check size={14} /> {actionLoading ? 'Confirming…' : 'Accept Booking'}
@@ -380,7 +380,7 @@ export default function BookingChatThread({ bookingId, booking, onBookingCreated
             )}
 
             {liveStatus === 'confirmed' && (
-              <div style={{ fontSize: 12, color: 'var(--color-success, #10b981)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border-subtle, #e2e8f0)' }}>
+              <div style={{ fontSize: 12, color: '#DDAFE8', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border-subtle, #e2e8f0)' }}>
                 <Check size={14} /> {isInitiator ? `${otherUser?.name || 'Participant'} accepted your booking request!` : 'You accepted this booking request.'} Stored in My Bookings.
               </div>
             )}

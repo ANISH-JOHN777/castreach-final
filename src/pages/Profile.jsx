@@ -1,606 +1,935 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Star, Radio, CheckCircle2, ExternalLink, MessageSquare, X, Calendar, MapPin, Video, Globe, Mic, Users } from 'lucide-react';
+import { 
+  User, 
+  Mail, 
+  MapPin, 
+  DollarSign, 
+  Radio, 
+  Mic, 
+  Headphones, 
+  Camera, 
+  Shuffle, 
+  Edit3, 
+  Check, 
+  X, 
+  Calendar, 
+  MessageSquare, 
+  Globe, 
+  Sparkles, 
+  ShieldCheck, 
+  Star,
+  CheckCircle2,
+  Plus
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import AvailabilityPicker from '../components/AvailabilityPicker';
-import BadgeDisplay from '../components/BadgeDisplay';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 import CreateBookingModal from '../components/CreateBookingModal';
 
 export default function Profile() {
-  const { id }           = useParams();
-  const { user, authFetch } = useAuth();
-  const navigate         = useNavigate();
-  const isOwnProfile     = id === user?._id;
+  const { id } = useParams();
+  const { user, authFetch, setUser } = useAuth();
+  const navigate = useNavigate();
+  const fileInputRef = useRef(null);
 
-  const [profile,  setProfile]  = useState(null);
-  const [slots,    setSlots]    = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState('');
-  const [showBook, setShowBook] = useState(false);
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [booking,  setBooking]  = useState({ slotId: '', topics: '', message: '' });
-  const [bookLoading, setBookLoading] = useState(false);
-  const [bookError,   setBookError]   = useState('');
-  const [bookSuccess, setBookSuccess] = useState(false);
-  const [msgLoading,        setMsgLoading]        = useState(false);
-  const [msgNotice,         setMsgNotice]         = useState('');
-  const [showDirectMsg,     setShowDirectMsg]     = useState(false);
-  const [directMsgText,     setDirectMsgText]     = useState('');
-  const [directMsgSending,  setDirectMsgSending]  = useState(false);
-  const [directMsgErr,      setDirectMsgErr]      = useState('');
+  const isOwnProfile = !id || id === 'me' || id === user?._id || id === user?.id;
+  const effectiveId = id && id !== 'me' ? id : (user?._id || user?.id);
 
-  const handleMessageUser = async () => {
-    setMsgLoading(true);
-    setMsgNotice('');
-    try {
-      const res = await authFetch('/bookings');
-      const data = await res.json();
-      const allBookings = data.bookings || [];
+  const [profile, setProfile] = useState(isOwnProfile ? user : null);
+  const [loading, setLoading] = useState(!isOwnProfile);
+  const [error, setError] = useState('');
+  const [successToast, setSuccessToast] = useState('');
 
-      const targetId = profile?._id || id;
-      const existingBooking = allBookings.find((b) => {
-        const hostId = b.host?._id || b.host;
-        const guestId = b.guest?._id || b.guest;
-        return (hostId === user?._id && guestId === targetId) || (guestId === user?._id && hostId === targetId);
-      });
+  // Editing state
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-      if (existingBooking) {
-        navigate(`/messages/${existingBooking._id}`);
-      } else {
-        setShowDirectMsg(true);
-      }
-    } catch (err) {
-      console.error('Error opening conversation:', err);
-      setMsgNotice('Unable to locate messaging thread. Please try again.');
-    } finally {
-      setMsgLoading(false);
-    }
-  };
+  // Form fields
+  const [editName, setEditName] = useState('');
+  const [editBio, setEditBio] = useState('');
+  const [editAvatar, setEditAvatar] = useState('');
+  const [editLocation, setEditLocation] = useState('');
+  const [editPodcastName, setEditPodcastName] = useState('');
+  const [editPodcastCategory, setEditPodcastCategory] = useState('');
+  const [editRateDollars, setEditRateDollars] = useState('1500');
+  const [editTopics, setEditTopics] = useState([]);
+  const [newTopicInput, setNewTopicInput] = useState('');
+  const [editPortfolioUrl, setEditPortfolioUrl] = useState('');
 
-  const handleSendDirectMsg = async (e) => {
-    e.preventDefault();
-    if (!directMsgText.trim()) return setDirectMsgErr('Please enter a message.');
-    setDirectMsgSending(true);
-    setDirectMsgErr('');
-    try {
-      const tomorrowStart = new Date(Date.now() + 86400000);
-      tomorrowStart.setHours(10, 0, 0, 0);
-      const tomorrowEnd = new Date(tomorrowStart.getTime() + 3600000);
+  // Booking modal for other profiles
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
 
-      const isCurrentUserHost = user?.role === 'host';
-      const targetHostId = isCurrentUserHost ? user?._id : (profile?.role === 'host' ? (profile?._id || id) : user?._id);
-      const targetGuestId = isCurrentUserHost ? (profile?._id || id) : user?._id;
-
-      const res = await authFetch('/bookings', {
-        method: 'POST',
-        body: JSON.stringify({
-          hostId: targetHostId,
-          guestId: targetGuestId,
-          slotStart: tomorrowStart.toISOString(),
-          slotEnd: tomorrowEnd.toISOString(),
-          topics: ['Direct Message'],
-          message: directMsgText.trim(),
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to start conversation.');
-
-      setShowDirectMsg(false);
-      navigate(`/messages/${data.booking._id}`);
-    } catch (err) {
-      setDirectMsgErr(err.message);
-    } finally {
-      setDirectMsgSending(false);
-    }
+  // Initialize form fields when profile data loads or changes
+  const initFormFields = (data) => {
+    if (!data) return;
+    setEditName(data.name || '');
+    setEditBio(data.bio || '');
+    setEditAvatar(data.avatar || data.profilePicture || '');
+    setEditLocation(data.location || data.studioLocation || '');
+    setEditPodcastName(data.podcastName || '');
+    setEditPodcastCategory(data.podcastCategory || '');
+    const rateDollars = data.sessionRateCents ? Math.round(data.sessionRateCents / 100) : (data.sessionRate || 1500);
+    setEditRateDollars(String(rateDollars));
+    setEditTopics(Array.isArray(data.expertise) ? data.expertise : (Array.isArray(data.speakingTopics) ? data.speakingTopics : []));
+    setEditPortfolioUrl(data.portfolioUrl || '');
   };
 
   useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      authFetch(`/users/${id}`).then((r) => r.json()),
-      authFetch(`/availability/${id}`).then((r) => r.json()),
-    ])
-      .then(([uData, aData]) => {
-        if (uData.error) throw new Error(uData.error);
-        setProfile(uData.user);
-        setSlots(aData.slots || []);
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [id]);
+    if (isOwnProfile && user) {
+      setProfile(user);
+      initFormFields(user);
+      setLoading(false);
+    } else if (effectiveId) {
+      setLoading(true);
+      authFetch(`/users/${effectiveId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.error) throw new Error(data.error);
+          setProfile(data.user);
+          initFormFields(data.user);
+        })
+        .catch((err) => setError(err.message))
+        .finally(() => setLoading(false));
+    }
+  }, [effectiveId, isOwnProfile, user]);
 
-  const submitBooking = async (e) => {
-    e.preventDefault();
-    const slot = slots.find((s) => s._id === booking.slotId);
-    if (!slot) return setBookError('Please select a time slot.');
-    setBookLoading(true);
-    setBookError('');
-    try {
-      const res  = await authFetch('/bookings', {
-        method: 'POST',
-        body: JSON.stringify({
-          hostId:    id,
-          slotStart: slot.start,
-          slotEnd:   slot.end,
-          topics:    booking.topics.split(',').map((t) => t.trim()).filter(Boolean),
-          message:   booking.message,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setBookSuccess(true);
-      setTimeout(() => navigate(`/bookings/${data.booking._id}`), 1500);
-    } catch (err) {
-      setBookError(err.message);
-    } finally {
-      setBookLoading(false);
+  const generateRandomIllustrativePic = () => {
+    const randomSeed = Math.random().toString(36).substring(2, 9);
+    const styles = ['micah', 'notionists', 'adventurer', 'lorelei', 'bottts-neutral'];
+    const randomStyle = styles[Math.floor(Math.random() * styles.length)];
+    const bgColors = ['181622', '1f1d36', '241d3b', '171520', '251c38'];
+    const randomBg = bgColors[Math.floor(Math.random() * bgColors.length)];
+    return `https://api.dicebear.com/7.x/${randomStyle}/svg?seed=${randomSeed}&backgroundColor=${randomBg}`;
+  };
+
+  const handleShuffleAvatar = () => {
+    const newPic = generateRandomIllustrativePic();
+    setEditAvatar(newPic);
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 3 * 1024 * 1024) {
+        alert('Image must be under 3MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        setEditAvatar(reader.result);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
-  if (loading) return <Spinner />;
-  if (error)   return <ErrBox msg={error} />;
-  if (!profile) return null;
+  const handleAddTopic = () => {
+    const trimmed = newTopicInput.trim();
+    if (trimmed && !editTopics.includes(trimmed)) {
+      setEditTopics([...editTopics, trimmed]);
+      setNewTopicInput('');
+    }
+  };
+
+  const handleRemoveTopic = (t) => {
+    setEditTopics(editTopics.filter((x) => x !== t));
+  };
+
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setError('');
+
+    try {
+      const parsedRateCents = Math.round((parseFloat(editRateDollars) || 0) * 100);
+      const updates = {
+        name: editName.trim() || profile?.name || 'CastReach Creator',
+        bio: editBio.trim(),
+        avatar: editAvatar || profile?.avatar || generateRandomIllustrativePic(),
+        profilePicture: editAvatar || profile?.avatar || generateRandomIllustrativePic(),
+        location: editLocation.trim(),
+        studioLocation: profile?.role === 'host' ? editLocation.trim() : undefined,
+        podcastName: profile?.role === 'host' ? editPodcastName.trim() : undefined,
+        podcastCategory: profile?.role === 'host' ? editPodcastCategory.trim() : undefined,
+        sessionRateCents: profile?.role === 'guest' ? parsedRateCents : undefined,
+        expertise: editTopics,
+        speakingTopics: editTopics,
+        portfolioUrl: editPortfolioUrl.trim(),
+      };
+
+      const res = await authFetch('/users/me', {
+        method: 'PATCH',
+        body: JSON.stringify(updates),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update profile');
+
+      setProfile(data.user);
+      if (setUser) setUser(data.user);
+      setIsEditing(false);
+      setSuccessToast('Profile updated successfully!');
+      setTimeout(() => setSuccessToast(''), 3000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const roleColor = profile?.role === 'host' ? '#22C55E' : (profile?.role === 'guest' ? '#A855F7' : '#38BDF8');
+  const roleLabel = profile?.role === 'host' ? 'Host' : (profile?.role === 'guest' ? 'Guest' : 'Listener');
+
+  const currentAvatar = (isEditing ? editAvatar : (profile?.avatar || profile?.profilePicture)) || 
+    `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(profile?.name || 'user')}&backgroundColor=181622`;
 
   return (
-    <div className="fade-in">
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20, alignItems: 'start' }}>
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#09080F',
+      color: '#FFFFFF',
+      display: 'flex',
+      flexDirection: 'column',
+      fontFamily: "'Geist Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    }}>
+      {/* ── Standard Homepage-Style Navbar ── */}
+      <Navbar />
 
-        {/* Left — profile details */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Header card */}
-          <div style={card}>
-            <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+      {/* Toast Notification */}
+      {successToast && (
+        <div style={{
+          position: 'fixed',
+          top: 24,
+          right: 24,
+          zIndex: 9999,
+          background: 'rgba(34, 197, 94, 0.95)',
+          color: '#000000',
+          fontWeight: 700,
+          fontSize: 13,
+          padding: '10px 20px',
+          borderRadius: 999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          boxShadow: '0 8px 24px rgba(34, 197, 94, 0.4)',
+        }}>
+          <CheckCircle2 size={16} /> {successToast}
+        </div>
+      )}
+
+      {/* Main Content Area */}
+      <main style={{
+        flex: 1,
+        maxWidth: 900,
+        width: '100%',
+        margin: '0 auto',
+        padding: '36px clamp(16px, 4vw, 32px) 64px',
+        boxSizing: 'border-box',
+      }}>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '80px 0', color: '#A1A1AA' }}>
+            <div style={{
+              width: 36,
+              height: 36,
+              border: '3px solid rgba(255, 255, 255, 0.1)',
+              borderTopColor: '#A855F7',
+              borderRadius: '50%',
+              animation: 'spin 0.7s linear infinite',
+              margin: '0 auto 16px',
+            }} />
+            Loading profile…
+          </div>
+        ) : error && !profile ? (
+          <div style={{
+            padding: 24,
+            borderRadius: 16,
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.25)',
+            color: '#F87171',
+            textAlign: 'center',
+          }}>
+            <p>{error || 'Profile not found'}</p>
+            <button
+              onClick={() => navigate(-1)}
+              style={{
+                marginTop: 12,
+                padding: '8px 16px',
+                borderRadius: 8,
+                background: '#EF4444',
+                color: '#FFFFFF',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              Go Back
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {/* Header Banner & Card */}
+            <div style={{
+              borderRadius: 20,
+              backgroundColor: '#12101B',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              overflow: 'hidden',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)',
+            }}>
+              {/* Cover Gradient */}
               <div style={{
-                width: 72, height: 72, borderRadius: 36,
-                background: 'var(--color-accent)', color: '#fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontWeight: 700, fontSize: 28, overflow: 'hidden', flexShrink: 0,
-              }}>
-                {profile.avatar
-                  ? <img src={profile.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : profile.name?.[0]?.toUpperCase()}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
-                  <h1 style={{ fontSize: 20, fontWeight: 700 }}>{profile.name}</h1>
-                  {profile.avgRating > 0 && (
-                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: 3 }}>
-                      <Star size={14} fill="currentColor" color="var(--color-warning)" />
-                      <strong style={{ color: 'var(--color-text-primary)' }}>{profile.avgRating.toFixed(1)}</strong>
-                      <span>({profile.totalReviews})</span>
+                height: 120,
+                background: profile?.role === 'host'
+                  ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.3) 0%, rgba(9, 8, 15, 0.8) 100%)'
+                  : profile?.role === 'guest'
+                    ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.3) 0%, rgba(9, 8, 15, 0.8) 100%)'
+                    : 'linear-gradient(135deg, rgba(56, 189, 248, 0.3) 0%, rgba(9, 8, 15, 0.8) 100%)',
+                position: 'relative',
+              }} />
+
+              {/* Profile Details Container */}
+              <div style={{ padding: '0 28px 28px', marginTop: -48 }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'flex-end',
+                  justifyContent: 'space-between',
+                  gap: 16,
+                  flexWrap: 'wrap',
+                }}>
+                  {/* Avatar Preview */}
+                  <div style={{ position: 'relative' }}>
+                    <div style={{
+                      width: 96,
+                      height: 96,
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      backgroundColor: '#1E1B2E',
+                      border: `3px solid ${roleColor}`,
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.7)',
+                    }}>
+                      <img 
+                        src={currentAvatar} 
+                        alt={profile?.name} 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                      />
+                    </div>
+                  </div>
+
+                  {/* Actions (Edit Profile or Book/Message) */}
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    {isOwnProfile ? (
+                      !isEditing ? (
+                        <button
+                          type="button"
+                          onClick={() => setIsEditing(true)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            padding: '9px 18px',
+                            borderRadius: 12,
+                            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                            border: '1px solid rgba(255, 255, 255, 0.16)',
+                            color: '#FFFFFF',
+                            fontSize: 13.5,
+                            fontWeight: 650,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.14)'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)'; }}
+                        >
+                          <Edit3 size={15} color="#A855F7" />
+                          <span>Edit Profile</span>
+                        </button>
+                      ) : (
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsEditing(false);
+                              initFormFields(profile);
+                            }}
+                            style={{
+                              padding: '9px 16px',
+                              borderRadius: 12,
+                              backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                              border: '1px solid rgba(255, 255, 255, 0.12)',
+                              color: '#CBD5E1',
+                              fontSize: 13,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleSaveProfile}
+                            disabled={isSaving}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              padding: '9px 20px',
+                              borderRadius: 12,
+                              backgroundColor: roleColor,
+                              border: 'none',
+                              color: '#09080F',
+                              fontSize: 13,
+                              fontWeight: 750,
+                              cursor: 'pointer',
+                              boxShadow: `0 4px 16px ${roleColor}40`,
+                            }}
+                          >
+                            <Check size={15} />
+                            <span>{isSaving ? 'Saving…' : 'Save Changes'}</span>
+                          </button>
+                        </div>
+                      )
+                    ) : (
+                      <div style={{ display: 'flex', gap: 10 }}>
+                        <button
+                          type="button"
+                          onClick={() => setIsBookingModalOpen(true)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            padding: '9px 20px',
+                            borderRadius: 12,
+                            backgroundColor: roleColor,
+                            color: '#09080F',
+                            border: 'none',
+                            fontWeight: 750,
+                            fontSize: 13.5,
+                            cursor: 'pointer',
+                            boxShadow: `0 4px 16px ${roleColor}40`,
+                          }}
+                        >
+                          <Calendar size={15} />
+                          <span>{profile?.role === 'guest' ? 'Book Guest' : 'Schedule Session'}</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Profile Identity info */}
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0, color: '#FFFFFF' }}>
+                      {profile?.name}
+                    </h1>
+                    <span style={{
+                      padding: '3px 10px',
+                      borderRadius: 999,
+                      backgroundColor: `${roleColor}18`,
+                      border: `1px solid ${roleColor}40`,
+                      color: roleColor,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                    }}>
+                      {roleLabel}
                     </span>
+                    {profile?.avgRating > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: '#FACC15', fontWeight: 650 }}>
+                        <Star size={14} fill="#FACC15" />
+                        <span>{profile.avgRating.toFixed(1)}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {profile?.podcastName && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#A1A1AA', fontSize: 14, marginTop: 4 }}>
+                      <Radio size={14} color="#22C55E" />
+                      <span>{profile.podcastName}</span>
+                    </div>
+                  )}
+
+                  {profile?.location && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#71717A', fontSize: 13, marginTop: 4 }}>
+                      <MapPin size={13} />
+                      <span>{profile.location}</span>
+                    </div>
+                  )}
+
+                  {profile?.bio && !isEditing && (
+                    <p style={{
+                      color: '#CBD5E1',
+                      fontSize: 14,
+                      lineHeight: 1.6,
+                      marginTop: 14,
+                      maxWidth: 680,
+                    }}>
+                      {profile.bio}
+                    </p>
                   )}
                 </div>
-                {profile.podcastName && (
-                  <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Radio size={14} color="var(--plum-primary)" /> {profile.podcastName}
-                  </div>
-                )}
-                <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', textTransform: 'capitalize', background: 'var(--color-background-secondary)', display: 'inline-block', padding: '2px 10px', borderRadius: 12 }}>
-                  {profile.role}
-                </div>
               </div>
-              {isOwnProfile ? (
-                <button onClick={() => navigate('/settings')} style={{ padding: '7px 14px', border: '1px solid var(--color-border-tertiary)', borderRadius: 8, background: 'transparent', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>
-                  Edit profile
-                </button>
-              ) : (
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button
-                    onClick={handleMessageUser}
-                    disabled={msgLoading}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      padding: '8px 16px',
-                      borderRadius: 8,
-                      background: 'var(--plum-primary, #6366f1)',
-                      color: '#fff',
-                      border: 'none',
-                      fontWeight: 600,
-                      fontSize: 13,
-                      cursor: 'pointer',
-                      opacity: msgLoading ? 0.7 : 1,
-                      boxShadow: 'var(--shadow-xs)',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    <MessageSquare size={15} />
-                    {msgLoading ? 'Opening...' : `Message ${profile.role === 'host' ? 'Host' : profile.role === 'guest' ? 'Guest' : 'User'}`}
-                  </button>
-                  <button
-                    onClick={() => setShowScheduleModal(true)}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      padding: '8px 16px',
-                      borderRadius: 8,
-                      background: 'var(--color-accent, #7c3aed)',
-                      color: '#fff',
-                      border: 'none',
-                      fontWeight: 600,
-                      fontSize: 13,
-                      cursor: 'pointer',
-                      boxShadow: '0 2px 6px rgba(124,58,237,0.25)',
-                    }}
-                  >
-                    <Calendar size={15} />
-                    Schedule Session
-                  </button>
-                </div>
-              )}
             </div>
 
-            {msgNotice && (
-              <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'var(--lavender-mist)', border: '1px solid var(--border-subtle)', color: 'var(--plum-deep)', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span>{msgNotice}</span>
-                <button onClick={() => setMsgNotice('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', padding: '0 4px' }}>
-                  <X size={14} />
-                </button>
-              </div>
-            )}
-
-            {profile.badges?.length > 0 && (
-              <div style={{ marginTop: 14 }}>
-                <BadgeDisplay badges={profile.badges} />
-              </div>
-            )}
-
-            {profile.bio && (
-              <p style={{ marginTop: 14, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>{profile.bio}</p>
-            )}
-
-            {/* Host Specific Transparency Information */}
-            {profile.role === 'host' && (
-              <div style={{ marginTop: 16, padding: '14px', background: 'var(--color-background-secondary)', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--color-accent)' }}>
-                  Podcast & Studio Details
+            {/* In-Place Edit Form */}
+            {isEditing ? (
+              <form onSubmit={handleSaveProfile} style={{
+                borderRadius: 20,
+                backgroundColor: '#12101B',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                padding: '28px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 20,
+              }}>
+                <div style={{ fontSize: 17, fontWeight: 750, color: '#FFFFFF', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: 12 }}>
+                  Edit Profile Information
                 </div>
-                {profile.podcastDescription && (
-                  <div style={{ fontSize: 13, color: 'var(--color-text-primary)', lineHeight: 1.5 }}>
-                    {profile.podcastDescription}
+
+                {/* Avatar Updater */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#CBD5E1', marginBottom: 8 }}>
+                    Profile Avatar
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                    <div style={{
+                      width: 60,
+                      height: 60,
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      backgroundColor: '#1E1B2E',
+                      border: '2px solid rgba(255, 255, 255, 0.15)',
+                    }}>
+                      <img src={editAvatar || currentAvatar} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={handleFileUpload} 
+                      accept="image/*" 
+                      style={{ display: 'none' }} 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '7px 14px',
+                        borderRadius: 10,
+                        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                        border: '1px solid rgba(255, 255, 255, 0.14)',
+                        color: '#FFFFFF',
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <Camera size={14} />
+                      <span>Upload Photo</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleShuffleAvatar}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '7px 14px',
+                        borderRadius: 10,
+                        backgroundColor: 'rgba(168, 85, 247, 0.15)',
+                        border: '1px solid rgba(168, 85, 247, 0.35)',
+                        color: '#C084FC',
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <Shuffle size={14} />
+                      <span>Shuffle Illustrative</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Name */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#CBD5E1', marginBottom: 6 }}>
+                    Full Name
+                  </label>
+                  <input
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="Your name"
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: 10,
+                      backgroundColor: '#181622',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      color: '#FFFFFF',
+                      fontSize: 14,
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+
+                {/* Bio */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#CBD5E1', marginBottom: 6 }}>
+                    Bio & Description
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={editBio}
+                    onChange={(e) => setEditBio(e.target.value)}
+                    placeholder="Write a brief overview of your background, perspective, or show…"
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: 10,
+                      backgroundColor: '#181622',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      color: '#FFFFFF',
+                      fontSize: 14,
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      resize: 'vertical',
+                    }}
+                  />
+                </div>
+
+                {/* Location */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#CBD5E1', marginBottom: 6 }}>
+                    Location (City / Studio)
+                  </label>
+                  <input
+                    value={editLocation}
+                    onChange={(e) => setEditLocation(e.target.value)}
+                    placeholder="e.g. San Francisco, CA / Remote"
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: 10,
+                      backgroundColor: '#181622',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      color: '#FFFFFF',
+                      fontSize: 14,
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+
+                {/* Host Specific Fields */}
+                {profile?.role === 'host' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#CBD5E1', marginBottom: 6 }}>
+                        Podcast Show Name
+                      </label>
+                      <input
+                        value={editPodcastName}
+                        onChange={(e) => setEditPodcastName(e.target.value)}
+                        placeholder="e.g. The Quantum Frontier"
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          borderRadius: 10,
+                          backgroundColor: '#181622',
+                          border: '1px solid rgba(255, 255, 255, 0.12)',
+                          color: '#FFFFFF',
+                          fontSize: 14,
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#CBD5E1', marginBottom: 6 }}>
+                        Podcast Category / Genre
+                      </label>
+                      <input
+                        value={editPodcastCategory}
+                        onChange={(e) => setEditPodcastCategory(e.target.value)}
+                        placeholder="e.g. Tech & AI Pioneers"
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          borderRadius: 10,
+                          backgroundColor: '#181622',
+                          border: '1px solid rgba(255, 255, 255, 0.12)',
+                          color: '#FFFFFF',
+                          fontSize: 14,
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
                   </div>
                 )}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, fontSize: 12 }}>
-                  {profile.listenerCount > 0 && (
-                    <div>
-                      <span style={{ color: 'var(--color-text-secondary)', display: 'block' }}>Audience Size:</span>
-                      <strong style={{ color: 'var(--color-text-primary)' }}>{profile.listenerCount.toLocaleString()} listeners</strong>
-                    </div>
-                  )}
-                  {profile.typicalFormat && (
-                    <div>
-                      <span style={{ color: 'var(--color-text-secondary)', display: 'block' }}>Typical Format:</span>
-                      <strong style={{ color: 'var(--color-text-primary)' }}>{profile.typicalFormat}</strong>
-                    </div>
-                  )}
-                  {profile.studioLocation && (
-                    <div>
-                      <span style={{ color: 'var(--color-text-secondary)', display: 'block' }}>Studio Location:</span>
-                      <strong style={{ color: 'var(--color-text-primary)' }}>{profile.studioLocation}</strong>
-                    </div>
-                  )}
-                  {profile.preferredMeetingMode && (
-                    <div>
-                      <span style={{ color: 'var(--color-text-secondary)', display: 'block' }}>Preferred Meeting Mode:</span>
-                      <strong style={{ color: 'var(--color-text-primary)', textTransform: 'capitalize' }}>
-                        {profile.preferredMeetingMode === 'both' ? 'Google Meet & In-Person' : profile.preferredMeetingMode === 'physical' ? 'In-Person Studio' : 'Google Meet (Virtual)'}
-                      </strong>
-                    </div>
-                  )}
-                </div>
-                {profile.equipment && (
-                  <div style={{ fontSize: 12, borderTop: '1px solid var(--border-subtle, rgba(231,221,232,0.15))', paddingTop: 8 }}>
-                    <span style={{ color: 'var(--color-text-secondary)' }}>Production Equipment: </span>
-                    <span style={{ color: 'var(--color-text-primary)' }}>{profile.equipment}</span>
-                  </div>
-                )}
-              </div>
-            )}
 
-            {/* Guest Specific Transparency Information */}
-            {profile.role === 'guest' && (
-              <div style={{ marginTop: 16, padding: '14px', background: 'var(--color-background-secondary)', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--color-accent)' }}>
-                  Guest Background & Speaking Profile
-                </div>
-                {profile.location && (
-                  <div style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <MapPin size={14} color="var(--color-text-secondary)" />
-                    <span style={{ color: 'var(--color-text-secondary)' }}>Based in:</span>
-                    <strong style={{ color: 'var(--color-text-primary)' }}>{profile.location}</strong>
-                  </div>
-                )}
-                {profile.speakingTopics?.length > 0 && (
+                {/* Guest Specific Fields */}
+                {profile?.role === 'guest' && (
                   <div>
-                    <span style={{ color: 'var(--color-text-secondary)', fontSize: 12, display: 'block', marginBottom: 6 }}>Prepared Speaking Topics:</span>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {profile.speakingTopics.map((topic, i) => (
-                        <span key={i} style={{ padding: '3px 8px', borderRadius: 10, background: 'rgba(59,130,246,0.15)', color: '#3b82f6', fontSize: 11, fontWeight: 500 }}>
-                          {topic}
+                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#CBD5E1', marginBottom: 6 }}>
+                      Predefined Session Fee ($ USD)
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <DollarSign size={16} color="#A855F7" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+                      <input
+                        type="number"
+                        min="0"
+                        step="50"
+                        value={editRateDollars}
+                        onChange={(e) => setEditRateDollars(e.target.value)}
+                        placeholder="1500"
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px 10px 34px',
+                          borderRadius: 10,
+                          backgroundColor: '#181622',
+                          border: '1px solid rgba(168, 85, 247, 0.35)',
+                          color: '#FFFFFF',
+                          fontSize: 14,
+                          fontWeight: 700,
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Topics / Expertise */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#CBD5E1', marginBottom: 6 }}>
+                    Topics & Areas of Expertise
+                  </label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                    {editTopics.map((topic, i) => (
+                      <span
+                        key={i}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '5px 12px',
+                          borderRadius: 999,
+                          backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                          border: '1px solid rgba(255, 255, 255, 0.14)',
+                          fontSize: 12.5,
+                          color: '#FFFFFF',
+                        }}
+                      >
+                        {topic}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTopic(topic)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#A1A1AA',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            padding: 0,
+                          }}
+                        >
+                          <X size={13} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      value={newTopicInput}
+                      onChange={(e) => setNewTopicInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTopic(); } }}
+                      placeholder="Add a topic (e.g. AI Engineering, Venture Capital)…"
+                      style={{
+                        flex: 1,
+                        padding: '9px 14px',
+                        borderRadius: 10,
+                        backgroundColor: '#181622',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        color: '#FFFFFF',
+                        fontSize: 13,
+                        outline: 'none',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddTopic}
+                      style={{
+                        padding: '9px 16px',
+                        borderRadius: 10,
+                        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                        border: '1px solid rgba(255, 255, 255, 0.14)',
+                        color: '#FFFFFF',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+
+                {/* Form Buttons */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditing(false);
+                      initFormFields(profile);
+                    }}
+                    style={{
+                      padding: '10px 20px',
+                      borderRadius: 12,
+                      backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      color: '#CBD5E1',
+                      fontSize: 13.5,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '10px 24px',
+                      borderRadius: 12,
+                      backgroundColor: roleColor,
+                      border: 'none',
+                      color: '#09080F',
+                      fontSize: 13.5,
+                      fontWeight: 750,
+                      cursor: 'pointer',
+                      boxShadow: `0 4px 16px ${roleColor}40`,
+                    }}
+                  >
+                    <Check size={16} />
+                    <span>{isSaving ? 'Saving…' : 'Save Changes'}</span>
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* View Mode Cards */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                {/* Role Specific Highlight Card */}
+                {profile?.role === 'guest' && (
+                  <div style={{
+                    borderRadius: 16,
+                    backgroundColor: '#12101B',
+                    border: '1px solid rgba(168, 85, 247, 0.25)',
+                    padding: '22px 24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 16,
+                    flexWrap: 'wrap',
+                  }}>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#C084FC', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Predefined Guest Session Rate
+                      </div>
+                      <div style={{ fontSize: 24, fontWeight: 900, color: '#FFFFFF', marginTop: 4 }}>
+                        ${((profile?.sessionRateCents ? Math.round(profile.sessionRateCents / 100) : (profile?.sessionRate || 1500))).toLocaleString()}
+                        <span style={{ fontSize: 14, fontWeight: 500, color: '#A1A1AA', marginLeft: 6 }}>/ 60-min session</span>
+                      </div>
+                      <div style={{ fontSize: 12.5, color: '#71717A', marginTop: 4 }}>
+                        Secured through CastReach Stripe Escrow prior to studio recording.
+                      </div>
+                    </div>
+                    {!isOwnProfile && (
+                      <button
+                        type="button"
+                        onClick={() => setIsBookingModalOpen(true)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          padding: '10px 22px',
+                          borderRadius: 12,
+                          backgroundColor: '#A855F7',
+                          border: 'none',
+                          color: '#09080F',
+                          fontWeight: 750,
+                          fontSize: 14,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <Calendar size={15} />
+                        <span>Book Session</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Topics / Expertise Card */}
+                {(profile?.expertise?.length > 0 || profile?.speakingTopics?.length > 0) && (
+                  <div style={{
+                    borderRadius: 16,
+                    backgroundColor: '#12101B',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    padding: '22px 24px',
+                  }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#CBD5E1', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 12 }}>
+                      {profile?.role === 'host' ? 'Show Focus & Topics' : (profile?.role === 'guest' ? 'Speaking Topics & Expertise' : 'Favorite Interests')}
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {(profile.expertise || profile.speakingTopics).map((t, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            padding: '6px 14px',
+                            borderRadius: 999,
+                            backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            fontSize: 13,
+                            color: '#FFFFFF',
+                            fontWeight: 500,
+                          }}
+                        >
+                          {t}
                         </span>
                       ))}
                     </div>
                   </div>
                 )}
-                {profile.portfolioUrl && (
-                  <div style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Globe size={14} color="var(--color-accent)" />
-                    <span style={{ color: 'var(--color-text-secondary)' }}>Portfolio / Works:</span>
-                    <a href={profile.portfolioUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)', textDecoration: 'none' }}>
-                      {profile.portfolioUrl}
-                    </a>
-                  </div>
-                )}
-                {profile.priorAppearances?.length > 0 && (
-                  <div style={{ fontSize: 12, borderTop: '1px solid var(--border-subtle, rgba(231,221,232,0.15))', paddingTop: 8 }}>
-                    <span style={{ color: 'var(--color-text-secondary)' }}>Prior Podcasts & Features: </span>
-                    <span style={{ color: 'var(--color-text-primary)' }}>{profile.priorAppearances.join(', ')}</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Expertise */}
-            {profile.expertise?.length > 0 && (
-              <div style={{ marginTop: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--color-text-secondary)', marginBottom: 8 }}>Expertise</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {profile.expertise.map((t) => (
-                    <span key={t} style={{ padding: '4px 10px', borderRadius: 12, fontSize: 12, background: 'var(--color-background-info)', color: 'var(--color-text-info)', fontWeight: 500 }}>
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Social links */}
-            {Object.entries(profile.socialLinks || {}).some(([, v]) => v) && (
-              <div style={{ marginTop: 14, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                {profile.socialLinks.twitter  && <SocialLink href={profile.socialLinks.twitter}  label="Twitter"  />}
-                {profile.socialLinks.linkedin && <SocialLink href={profile.socialLinks.linkedin} label="LinkedIn" />}
-                {profile.socialLinks.website  && <SocialLink href={profile.socialLinks.website}  label="Website"  />}
               </div>
             )}
           </div>
+        )}
+      </main>
 
-          {/* Stats */}
-          <div style={{ ...card, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, textAlign: 'center' }}>
-            {[
-              { value: profile.totalReviews,                            label: 'Reviews' },
-              { value: `${Math.round((profile.responseRate || 0) * 100)}%`, label: 'Response Rate' },
-              { value: profile.avgResponseTime > 0 ? `${profile.avgResponseTime}m` : '—', label: 'Avg Response' },
-            ].map(({ value, label }) => (
-              <div key={label}>
-                <div style={{ fontSize: 20, fontWeight: 700 }}>{value}</div>
-                <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>{label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Right — book / availability */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {!isOwnProfile && profile.role === 'host' && (
-            <div style={card}>
-              <h3 style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Available Sessions</h3>
-              <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginBottom: 14 }}>
-                Rate: <strong>{profile.sessionRateCents > 0 ? `$${(profile.sessionRateCents / 100).toFixed(2)}` : 'Free'}</strong> &nbsp;•&nbsp; Timezone: <strong>{Intl.DateTimeFormat().resolvedOptions().timeZone}</strong>
-              </div>
-              {slots.length === 0 ? (
-                <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', padding: '12px 0' }}>No available sessions yet.</p>
-              ) : (
-                <>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-                    {slots.map((s) => {
-                      const st = new Date(s.start);
-                      const et = new Date(s.end);
-                      const dur = Math.round((et - st) / (1000 * 60));
-                      const selected = booking.slotId === s._id;
-                      return (
-                        <button
-                          key={s._id}
-                          onClick={() => setBooking((b) => ({ ...b, slotId: s._id }))}
-                          style={{
-                            padding: '10px 12px', borderRadius: 8, cursor: 'pointer', textAlign: 'left', fontSize: 12,
-                            border: `1.5px solid ${selected ? 'var(--plum-primary)' : 'var(--color-border-tertiary)'}`,
-                            background: selected ? 'var(--lavender-mist)' : 'transparent',
-                            color: 'var(--color-text-primary)',
-                          }}
-                        >
-                          <div style={{ fontWeight: 600, color: 'var(--plum-deep)' }}>
-                            {st.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
-                          </div>
-                          <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>
-                            {st.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – {et.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({dur} mins)
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <button onClick={() => setShowBook(true)} disabled={!booking.slotId} style={{ ...bookBtn, opacity: booking.slotId ? 1 : 0.6 }}>
-                    Request Booking
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-
-          {isOwnProfile && (
-            <div style={card}>
-              <h3 style={{ fontWeight: 600, fontSize: 14, marginBottom: 14 }}>Manage Availability</h3>
-              <AvailabilityPicker editable />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Booking modal */}
-      {showBook && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: '1rem' }}>
-          <div style={{ width: '100%', maxWidth: 440, background: 'var(--color-background-primary)', borderRadius: 16, padding: '1.5rem', boxShadow: 'var(--shadow-lg)' }}>
-            <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 16 }}>Request Booking</h2>
-            {bookSuccess ? (
-              <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                <CheckCircle2 size={36} color="var(--color-success)" style={{ margin: '0 auto 8px' }} />
-                <div style={{ fontWeight: 600, fontSize: 15 }}>Booking sent! Redirecting…</div>
-              </div>
-            ) : (
-              <form onSubmit={submitBooking}>
-                <div style={{ marginBottom: 12 }}>
-                  <label style={lbl}>Selected Slot</label>
-                  <div style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border-tertiary)', fontSize: 13, background: 'var(--color-background-secondary)' }}>
-                    {booking.slotId
-                      ? new Date(slots.find((s) => s._id === booking.slotId)?.start).toLocaleString()
-                      : <span style={{ color: 'var(--color-text-secondary)' }}>No slot selected — go back and pick one</span>}
-                  </div>
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <label style={lbl}>Topics (comma separated)</label>
-                  <input
-                    value={booking.topics}
-                    onChange={(e) => setBooking((b) => ({ ...b, topics: e.target.value }))}
-                    placeholder="AI, Startups, Future of Work"
-                    style={inp}
-                  />
-                </div>
-                <div style={{ marginBottom: 16 }}>
-                  <label style={lbl}>Message to host</label>
-                  <textarea
-                    value={booking.message}
-                    onChange={(e) => setBooking((b) => ({ ...b, message: e.target.value }))}
-                    rows={3}
-                    placeholder="Briefly introduce yourself and your episode idea…"
-                    style={{ ...inp, resize: 'vertical' }}
-                  />
-                </div>
-                {bookError && (
-                  <div style={{ marginBottom: 12, padding: '10px', background: 'var(--color-background-danger)', borderRadius: 8, color: 'var(--color-text-danger)', fontSize: 13 }}>
-                    {bookError}
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button type="submit" disabled={bookLoading} style={{ flex: 1, padding: '10px', background: 'var(--color-accent)', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', opacity: bookLoading ? 0.7 : 1 }}>
-                    {bookLoading ? 'Sending…' : 'Send Request'}
-                  </button>
-                  <button type="button" onClick={() => setShowBook(false)} style={{ padding: '10px 16px', background: 'transparent', border: '1px solid var(--color-border-tertiary)', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
+      {/* Booking Modal when viewing other profiles */}
+      {profile && !isOwnProfile && (
+        <CreateBookingModal
+          isOpen={isBookingModalOpen}
+          onClose={() => setIsBookingModalOpen(false)}
+          recipientUser={profile}
+          recipient={profile}
+          initialRecipient={profile}
+          guest={profile}
+          onSuccess={() => {
+            setIsBookingModalOpen(false);
+            navigate('/bookings');
+          }}
+        />
       )}
 
-      {/* Direct Message Modal */}
-      {showDirectMsg && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: '1rem' }}>
-          <div style={{ width: '100%', maxWidth: 440, background: 'var(--color-background-primary)', borderRadius: 16, padding: '1.5rem', boxShadow: 'var(--shadow-lg)' }}>
-            <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 6, color: 'var(--plum-deep)' }}>
-              Start Conversation with {profile?.name}
-            </h2>
-            <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 16 }}>
-              Send a direct message to open a real-time chat thread and session request.
-            </p>
-            <form onSubmit={handleSendDirectMsg}>
-              <div style={{ marginBottom: 16 }}>
-                <label style={lbl}>Your Initial Message</label>
-                <textarea
-                  value={directMsgText}
-                  onChange={(e) => setDirectMsgText(e.target.value)}
-                  rows={4}
-                  placeholder={`Hi ${profile?.name || ''}, I'd love to connect and discuss a podcast session...`}
-                  style={{ ...inp, resize: 'vertical' }}
-                  required
-                />
-              </div>
-
-              {directMsgErr && (
-                <div style={{ marginBottom: 12, padding: '10px', background: 'var(--color-background-danger)', borderRadius: 8, color: 'var(--color-text-danger)', fontSize: 13 }}>
-                  {directMsgErr}
-                </div>
-              )}
-
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  type="submit"
-                  disabled={directMsgSending}
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    background: 'var(--plum-primary, #6366f1)',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 8,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    opacity: directMsgSending ? 0.7 : 1,
-                  }}
-                >
-                  {directMsgSending ? 'Sending…' : 'Send Message & Start Chat'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowDirectMsg(false)}
-                  style={{
-                    padding: '10px 16px',
-                    background: 'transparent',
-                    border: '1px solid var(--color-border-tertiary)',
-                    borderRadius: 8,
-                    cursor: 'pointer',
-                    fontSize: 13,
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Create / Schedule Session Modal with GMeet / In-person options */}
-      <CreateBookingModal
-        isOpen={showScheduleModal}
-        onClose={() => setShowScheduleModal(false)}
-        recipientUser={profile}
-        onSuccess={(newBooking) => {
-          setShowScheduleModal(false);
-          if (newBooking?._id) {
-            navigate(`/bookings/${newBooking._id}`);
-          }
-        }}
-      />
+      {/* ── Standard Footer ── */}
+      <Footer />
     </div>
   );
 }
-
-function SocialLink({ href, label }) {
-  return (
-    <a href={href} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, padding: '4px 10px', border: '1px solid var(--color-border-tertiary)', borderRadius: 8, color: 'var(--color-text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-      {label} <ExternalLink size={12} />
-    </a>
-  );
-}
-
-function Spinner() {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
-      <div style={{ width: 32, height: 32, border: '3px solid var(--color-border-tertiary)', borderTopColor: 'var(--color-accent)', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
-    </div>
-  );
-}
-
-function ErrBox({ msg }) {
-  return <div style={{ padding: '16px', background: 'var(--color-background-danger)', borderRadius: 8, color: 'var(--color-text-danger)', fontSize: 13 }}>{msg}</div>;
-}
-
-const card = { background: 'var(--color-background-primary)', border: '1px solid var(--color-border-tertiary)', borderRadius: 12, padding: '1.2rem' };
-const lbl  = { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '.4px', marginBottom: 6 };
-const inp  = { width: '100%', padding: '9px 12px', border: '1.5px solid var(--color-border-tertiary)', borderRadius: 8, fontSize: 13, background: 'var(--color-background-secondary)', color: 'var(--color-text-primary)' };
-const bookBtn = { width: '100%', padding: '10px', background: 'var(--color-accent)', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', fontSize: 13 };

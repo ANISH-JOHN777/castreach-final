@@ -5,6 +5,7 @@ const { validate, RegisterSchema, LoginSchema } = require('../middleware/validat
 const { authLimiter } = require('../middleware/rateLimit');
 const verifyToken = require('../middleware/verifyToken');
 const stitcher    = require('../stitcher');
+const { saveUserToFirestore } = require('../config/firebase');
 
 const signAccess = (id, role, tenantId = 'castreach') =>
   jwt.sign({ id, role, tenantId }, process.env.JWT_SECRET, {
@@ -26,7 +27,13 @@ router.post('/register', authLimiter, validate(RegisterSchema), async (req, res)
     if (await User.findOne({ email })) {
       return res.status(409).json({ error: 'Email already in use' });
     }
-    const user = await User.create({ email, password, name, role });
+    const user = await User.create({ 
+      email, 
+      password, 
+      name, 
+      role: role || 'listener',
+      isOnboarded: false 
+    });
     const access  = signAccess(user._id, user.role, user.tenantId);
     const refresh = signRefresh(user._id);
     user.refreshToken = refresh;
@@ -45,6 +52,9 @@ router.post('/register', authLimiter, validate(RegisterSchema), async (req, res)
       userId: user._id.toString(),
       role:   user.role,
     });
+
+    // Dual-persist credentials and profile to Firebase DB
+    saveUserToFirestore(user, { createdAt: new Date().toISOString() }).catch(() => {});
 
     res.cookie('refreshToken', refresh, COOKIE_OPTS);
     res.status(201).json({ token: access, user });
@@ -67,6 +77,10 @@ router.post('/login', authLimiter, validate(LoginSchema), async (req, res) => {
     const refresh = signRefresh(user._id);
     user.refreshToken = refresh;
     await user.save();
+
+    // Dual-persist credentials and profile to Firebase DB
+    saveUserToFirestore(user, { lastLoginAt: new Date().toISOString() }).catch(() => {});
+
     res.cookie('refreshToken', refresh, COOKIE_OPTS);
     res.json({ token: access, user });
   } catch (err) {
@@ -77,7 +91,7 @@ router.post('/login', authLimiter, validate(LoginSchema), async (req, res) => {
 // ── POST /api/auth/firebase-login ─────────────────────────────────────────────
 router.post('/firebase-login', authLimiter, async (req, res) => {
   try {
-    const { idToken, role, name, email: directEmail, avatar } = req.body;
+    const { idToken, role, name, email: directEmail, avatar, password } = req.body;
     if (!idToken) {
       return res.status(400).json({ error: 'idToken is required' });
     }
@@ -104,14 +118,15 @@ router.post('/firebase-login', authLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Email could not be verified from Firebase token' });
     }
 
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ email }).select('+password');
     if (!user) {
       user = await User.create({
         email,
+        password: password || undefined,
         name: name || decoded.name || email.split('@')[0],
         firebaseUid: decoded.uid,
-        authProvider: 'firebase',
-        role: role && ['host', 'guest'].includes(role) ? role : 'guest',
+        authProvider: password ? 'local' : 'firebase',
+        role: role && ['host', 'guest', 'listener'].includes(role) ? role : 'listener',
         avatar: avatar || decoded.picture || '',
         isOnboarded: false
       });
@@ -137,12 +152,18 @@ router.post('/firebase-login', authLimiter, async (req, res) => {
       if (decoded.picture && !user.avatar) {
         user.avatar = decoded.picture;
       }
+      if (password && !user.password) {
+        user.password = password;
+      }
     }
 
     const access = signAccess(user._id, user.role, user.tenantId);
     const refresh = signRefresh(user._id);
     user.refreshToken = refresh;
     await user.save();
+
+    // Dual-persist credentials and profile to Firebase DB
+    saveUserToFirestore(user, { lastLoginAt: new Date().toISOString() }).catch(() => {});
 
     res.cookie('refreshToken', refresh, COOKIE_OPTS);
     res.json({ token: access, user });

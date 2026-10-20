@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { X, Play, Pause, Volume2, VolumeX, Maximize, AlertTriangle, Loader } from 'lucide-react';
 
 function formatSeconds(sec) {
-  if (sec === undefined || sec === null || isNaN(sec)) return '00:00';
+  if (sec === undefined || sec === null || isNaN(sec) || !isFinite(sec) || sec < 0) return '00:00';
   const total = Math.floor(sec);
   const hrs = Math.floor(total / 3600);
   const mins = Math.floor((total % 3600) / 60);
@@ -47,14 +47,36 @@ export default function VideoPreviewModal({ title = 'Recording Preview', videoUr
 
   const handleLoadedMetadata = () => {
     setLoading(false);
-    if (videoRef.current) {
-      setDuration(videoRef.current.duration || 0);
+    if (!videoRef.current) return;
+    const v = videoRef.current;
+    const dur = v.duration;
+    if (dur === Infinity) {
+      const onTimeUpdate = () => {
+        v.removeEventListener('timeupdate', onTimeUpdate);
+        v.currentTime = 0;
+        if (v.duration && isFinite(v.duration)) {
+          setDuration(v.duration);
+        } else if (v.seekable && v.seekable.length > 0) {
+          const sEnd = v.seekable.end(v.seekable.length - 1);
+          if (isFinite(sEnd)) setDuration(sEnd);
+        }
+      };
+      v.addEventListener('timeupdate', onTimeUpdate);
+      try { v.currentTime = 1e101; } catch (e) {}
+    } else if (dur && isFinite(dur) && dur > 0) {
+      setDuration(dur);
     }
   };
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime || 0);
+      const curr = videoRef.current.currentTime || 0;
+      if (isFinite(curr)) {
+        setCurrentTime(curr);
+        if ((!isFinite(duration) || duration <= 0 || curr > duration) && curr > 0) {
+          setDuration(Math.ceil(curr));
+        }
+      }
     }
   };
 

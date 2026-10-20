@@ -1,120 +1,150 @@
 import { Link } from 'react-router-dom';
-import { Radio, ShieldCheck, Video, Headphones, MapPin } from 'lucide-react';
+import CastReachLogo from './CastReachLogo';
 
 export default function Footer() {
   return (
     <footer style={{
-      background: 'var(--bg-obsidian)',
-      color: 'var(--text-secondary)',
-      padding: '60px 24px 32px',
-      borderTop: '1px solid var(--border-subtle)',
+      background: '#0A090F', // Pure Dark Footer
+      color: '#A39EA9',
+      padding: '72px clamp(20px, 4vw, 36px) 48px',
+      borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+      fontFamily: 'inherit',
     }}>
-      <div style={{ maxWidth: 1360, margin: '0 auto' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
           gap: 40,
-          marginBottom: 48,
+          marginBottom: 56,
         }}>
           {/* Brand Column */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <div style={{
-                width: 32,
-                height: 32,
-                borderRadius: 8,
-                background: 'var(--accent-lime)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--text-dark)',
-              }}>
-                <Radio size={18} strokeWidth={2.5} />
-              </div>
-              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 850, fontSize: 20, color: '#fff' }}>
-                CASTREACH
-              </span>
-              <span style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: 'var(--accent-lime)',
-                background: 'rgba(203, 251, 69, 0.1)',
-                padding: '2px 6px',
-                borderRadius: 6,
-                letterSpacing: '0.04em',
-              }}>
-                PODCAST
-              </span>
+          <div style={{ maxWidth: 300 }}>
+            <div style={{ marginBottom: 18 }}>
+              <CastReachLogo size={28} textSize={19} color="#FFFFFF" />
             </div>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 13.5, lineHeight: 1.6, marginBottom: 18 }}>
-              Modern podcast host & guest matchmaking. Connect over Google Meet virtual video rooms or physical in-person recording studios with verified real data transparency.
+            <p style={{ color: '#A39EA9', fontSize: 14, lineHeight: 1.6, margin: '0 0 16px' }}>
+              The premium marketplace where podcast hosts discover vetted thinkers, agree on clear deliverables, and record memorable interviews with bonded escrow protection.
             </p>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--bg-surface)', padding: '5px 10px', borderRadius: 20, fontSize: 11.5, color: 'var(--text-primary)' }}>
-                <Video size={13} color="var(--accent-lime)" /> Google Meet
-              </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--bg-surface)', padding: '5px 10px', borderRadius: 20, fontSize: 11.5, color: 'var(--text-primary)' }}>
-                <MapPin size={13} color="var(--accent-purple)" /> In-Person Studio
-              </span>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#22C55E', // Green Accent
+              background: 'rgba(34, 197, 94, 0.1)',
+              padding: '4px 10px',
+              borderRadius: 6,
+              border: '1px solid rgba(34, 197, 94, 0.25)',
+            }}>
+              <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#22C55E' }} />
+              Bonded escrow custody on every session
             </div>
           </div>
 
-          {/* Platform Links */}
+          {/* Discover Column */}
           <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16 }}>
-              Platform
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16 }}>
+              Discover
             </div>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
-              <li><Link to="/discover" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Creator Directory</Link></li>
-              <li><Link to="/episodes" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Episodes & Broadcasts</Link></li>
-              <li><Link to="/pricing" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Pricing & Memberships</Link></li>
-              <li><Link to="/about" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Project Philosophy</Link></li>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12, fontSize: 14 }}>
+              <li>
+                <Link to="/find-guests" style={{ color: '#A39EA9', textDecoration: 'none' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#FFFFFF')} onMouseLeave={(e) => (e.currentTarget.style.color = '#A39EA9')}>
+                  Discover guests
+                </Link>
+              </li>
+              <li>
+                <Link to="/listen" style={{ color: '#A39EA9', textDecoration: 'none' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#A855F7')} onMouseLeave={(e) => (e.currentTarget.style.color = '#A39EA9')}>
+                  Listen to episodes
+                </Link>
+              </li>
+              <li>
+                <Link to="/find-guests?category=Neuroscience+%26+Health" style={{ color: '#A39EA9', textDecoration: 'none' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#FFFFFF')} onMouseLeave={(e) => (e.currentTarget.style.color = '#A39EA9')}>
+                  Science & health
+                </Link>
+              </li>
+              <li>
+                <Link to="/find-guests?category=Tech+%26+AI+Pioneers" style={{ color: '#A39EA9', textDecoration: 'none' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#FFFFFF')} onMouseLeave={(e) => (e.currentTarget.style.color = '#A39EA9')}>
+                  Tech & AI pioneers
+                </Link>
+              </li>
             </ul>
           </div>
 
-          {/* Creator Tools */}
+          {/* Participate Column */}
           <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16 }}>
-              Creator Hub
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16 }}>
+              Participate
             </div>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
-              <li><Link to="/login" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Host Dashboard</Link></li>
-              <li><Link to="/login" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Guest Dashboard</Link></li>
-              <li><Link to="/bookings" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Session Schedules</Link></li>
-              <li><Link to="/settings" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Studio Settings</Link></li>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12, fontSize: 14 }}>
+              <li>
+                <Link to="/for-hosts" style={{ color: '#A39EA9', textDecoration: 'none' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#22C55E')} onMouseLeave={(e) => (e.currentTarget.style.color = '#A39EA9')}>
+                  For podcast hosts
+                </Link>
+              </li>
+              <li>
+                <Link to="/for-guests" style={{ color: '#A39EA9', textDecoration: 'none' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#A855F7')} onMouseLeave={(e) => (e.currentTarget.style.color = '#A39EA9')}>
+                  For expert guests
+                </Link>
+              </li>
+              <li>
+                <Link to="/pricing" style={{ color: '#A39EA9', textDecoration: 'none' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#FFFFFF')} onMouseLeave={(e) => (e.currentTarget.style.color = '#A39EA9')}>
+                  Pricing & 10% fee
+                </Link>
+              </li>
+              <li>
+                <Link to="/register" style={{ color: '#A39EA9', textDecoration: 'none' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#A855F7')} onMouseLeave={(e) => (e.currentTarget.style.color = '#A39EA9')}>
+                  Create account
+                </Link>
+              </li>
             </ul>
           </div>
 
-          {/* Standards & Transparency */}
+          {/* Trust & Support Column */}
           <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16 }}>
-              Data & Ethics
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16 }}>
+              Trust & Protection
             </div>
-            <p style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-              CastReach operates on 100% real community accounts. Listener stats and guest credentials are verified directly on the platform without pre-seeded mock personas.
-            </p>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12, fontSize: 14 }}>
+              <li>
+                <Link to="/about" style={{ color: '#A39EA9', textDecoration: 'none' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#FFFFFF')} onMouseLeave={(e) => (e.currentTarget.style.color = '#A39EA9')}>
+                  How booking works
+                </Link>
+              </li>
+              <li>
+                <span style={{ color: '#A39EA9' }}>Escrow payment custody</span>
+              </li>
+              <li>
+                <span style={{ color: '#A39EA9' }}>Cancellation & refund policy</span>
+              </li>
+              <li>
+                <Link to="/login" style={{ color: '#22C55E', textDecoration: 'none', fontWeight: 650 }}>
+                  Sign in →
+                </Link>
+              </li>
+            </ul>
           </div>
         </div>
 
         {/* Bottom Bar */}
         <div style={{
+          paddingTop: 28,
+          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          paddingTop: 24,
-          borderTop: '1px solid var(--border-subtle)',
-          fontSize: 12,
-          color: 'var(--text-muted)',
           flexWrap: 'wrap',
-          gap: 12,
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+          fontSize: 13,
+          color: '#6F6A76'
         }}>
           <div>
-            &copy; {new Date().getFullYear()} CastReach Podcast Platform. All rights reserved.
+            © {new Date().getFullYear()} CASTREACH Inc. All rights reserved. Premium marketplace for podcasts.
           </div>
           <div style={{ display: 'flex', gap: 20 }}>
-            <span>Verified Real Data</span>
-            <span>·</span>
-            <span>Google Meet & Studio Scheduling</span>
+            <span>Privacy</span>
+            <span>Terms</span>
+            <span>Studio Quality Standard</span>
           </div>
         </div>
       </div>

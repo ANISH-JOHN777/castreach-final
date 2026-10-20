@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema(
     password:   { type: String, select: false, required: function() { return !this.firebaseUid; } },
     firebaseUid:{ type: String, sparse: true, index: true },
     authProvider:{ type: String, enum: ['local', 'firebase', 'google'], default: 'local' },
-    role:       { type: String, enum: ['host', 'guest', 'admin'], default: 'guest' },
+    role:       { type: String, enum: ['host', 'guest', 'listener', 'admin'], default: 'listener' },
     avatar:     { type: String, default: '' },
     bio:        { type: String, maxlength: 500, default: '' },
     expertise:  [{ type: String, trim: true }],           // e.g. ["AI", "Startups"]
@@ -41,6 +41,7 @@ const userSchema = new mongoose.Schema(
       linkedin:  { type: String, default: '' },
       website:   { type: String, default: '' },
       youtube:   { type: String, default: '' },
+      instagram: { type: String, default: '' },
     },
     avgRating:      { type: Number, default: 0 },
     totalReviews:   { type: Number, default: 0 },

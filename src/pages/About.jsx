@@ -11,8 +11,8 @@ export default function About() {
       <main style={{ maxWidth: 1360, margin: '0 auto', padding: '60px 24px 120px' }}>
         {/* Editorial Hero Statement */}
         <div style={{ textAlign: 'center', maxWidth: 840, margin: '0 auto 70px' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-lime)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>
-            ABOUT THE PROJECT
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#E2B6EE', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>
+            ABOUT CASTREACH
           </div>
           <h1 style={{ fontSize: 'clamp(2.5rem, 5vw, 4rem)', fontWeight: 850, letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 20 }}>
             The Open Platform for Real Conversations
@@ -25,8 +25,8 @@ export default function About() {
         {/* 3 Core Pillars Bento Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24, marginBottom: 80 }}>
           <div className="bento-card" style={{ padding: 32 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--accent-lime)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-              <Users size={22} color="var(--text-dark)" />
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: '#482F4C', border: '1px solid rgba(226, 182, 238, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+              <Users size={22} color="#FFFFFF" />
             </div>
             <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 10, color: '#fff' }}>
               Zero Fake Accounts & Real Data
@@ -37,8 +37,8 @@ export default function About() {
           </div>
 
           <div className="bento-card" style={{ padding: 32 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--accent-purple)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-              <Video size={22} color="#fff" />
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: '#482F4C', border: '1px solid rgba(226, 182, 238, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+              <Video size={22} color="#FFFFFF" />
             </div>
             <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 10, color: '#fff' }}>
               Dual-Mode Collaboration
@@ -49,8 +49,8 @@ export default function About() {
           </div>
 
           <div className="bento-card" style={{ padding: 32 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--accent-tangerine)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-              <Layers size={22} color="#fff" />
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: '#482F4C', border: '1px solid rgba(226, 182, 238, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+              <Layers size={22} color="#FFFFFF" />
             </div>
             <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 10, color: '#fff' }}>
               In-Browser Studio & Trimming

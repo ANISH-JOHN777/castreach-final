@@ -1,64 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { PODCAST_CATALOG } from '../podcast';
 
 const AudioPlayerContext = createContext(null);
 
-const DEFAULT_TRACKS = [
-  {
-    id: 'track-1',
-    title: 'Psychological approaches to stress reduction',
-    host: 'Liam Martinez',
-    category: 'Psychology',
-    duration: 2040,
-    currentTime: 1472,
-    cover: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=400&q=80',
-    color: '#3b82f6',
-    audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-    episodes: 12,
-  },
-  {
-    id: 'track-2',
-    title: 'How we can save this world',
-    host: 'Ethan Anderson',
-    category: 'Technology',
-    duration: 1800,
-    currentTime: 420,
-    cover: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=400&q=80',
-    color: '#2563eb',
-    audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-    episodes: 28,
-  },
-  {
-    id: 'track-3',
-    title: 'Healthy lifestyle: The search for harmony',
-    host: 'Liam Martinez',
-    category: 'Health',
-    duration: 1650,
-    currentTime: 310,
-    cover: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=400&q=80',
-    color: '#ec4899',
-    audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-    episodes: 12,
-  },
-  {
-    id: 'track-4',
-    title: 'Investing in yourself',
-    host: 'Noah Davis',
-    category: 'Business',
-    duration: 2280,
-    currentTime: 850,
-    cover: 'https://images.unsplash.com/photo-1553729459-efe14ef6055d?auto=format&fit=crop&w=400&q=80',
-    color: '#8b5cf6',
-    audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-    episodes: 16,
-  },
-];
+const DEFAULT_TRACKS = PODCAST_CATALOG;
 
 export function AudioPlayerProvider({ children }) {
   const [playlist, setPlaylist] = useState(DEFAULT_TRACKS);
-  const [currentTrack, setCurrentTrack] = useState(DEFAULT_TRACKS[0]);
+  const [currentTrack, setCurrentTrack] = useState(null);
+  const [hasStartedPlayback, setHasStartedPlayback] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(DEFAULT_TRACKS[0]?.duration || 1800);
+  const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.8);
   const [isMuted, setIsMuted] = useState(false);
   const [isShuffle, setIsShuffle] = useState(false);
@@ -199,32 +152,45 @@ export function AudioPlayerProvider({ children }) {
     audioRef.current.volume = isMuted ? 0 : volume;
   }, [volume, isMuted]);
 
-  // Time ticker
+  // Load audio duration and sync currentTime directly with the audio element
   useEffect(() => {
-    let interval = null;
-    if (isPlaying) {
-      interval = setInterval(() => {
-        setCurrentTime((prev) => {
-          if (prev >= duration) {
-            if (isRepeat) {
-              return 0;
-            } else {
-              nextTrack();
-              return 0;
-            }
-          }
-          return prev + 1;
-        });
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleLoadedMetadata = () => {
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        setDuration(Math.round(audio.duration));
+      }
     };
-  }, [isPlaying, duration, isRepeat]);
+
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+    };
+
+    const handleEnded = () => {
+      if (isRepeat) {
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+      } else {
+        nextTrack();
+      }
+    };
+
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('ended', handleEnded);
+
+    return () => {
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, [isRepeat, currentTrack]);
 
   const playTrack = (track) => {
     if (!track) return;
     setupAudioContext();
+    setHasStartedPlayback(true);
     if (currentTrack?.id === track.id) {
       togglePlay();
       return;
@@ -237,6 +203,10 @@ export function AudioPlayerProvider({ children }) {
 
   const togglePlay = () => {
     setupAudioContext();
+    if (!currentTrack && playlist[0]) {
+      setCurrentTrack(playlist[0]);
+    }
+    setHasStartedPlayback(true);
     setIsPlaying((prev) => !prev);
   };
 
@@ -247,9 +217,9 @@ export function AudioPlayerProvider({ children }) {
   const seek = (timeInSeconds) => {
     const clamped = Math.max(0, Math.min(timeInSeconds, duration));
     setCurrentTime(clamped);
-    if (audioRef.current && Number.isFinite(audioRef.current.duration)) {
+    if (audioRef.current) {
       try {
-        audioRef.current.currentTime = (clamped / duration) * audioRef.current.duration;
+        audioRef.current.currentTime = clamped;
       } catch {}
     }
   };
@@ -292,7 +262,7 @@ export function AudioPlayerProvider({ children }) {
   };
 
   const formatTime = (seconds) => {
-    if (isNaN(seconds) || seconds < 0) return '00:00';
+    if (isNaN(seconds) || !isFinite(seconds) || seconds < 0) return '00:00';
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
@@ -308,6 +278,7 @@ export function AudioPlayerProvider({ children }) {
         playlist,
         setPlaylist,
         currentTrack,
+        hasStartedPlayback,
         isPlaying,
         currentTime,
         duration,

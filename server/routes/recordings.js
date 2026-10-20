@@ -664,6 +664,9 @@ router.post('/:bookingId/upload', verifyToken, express.raw({ type: ['video/webm'
 
     booking.recordingReady = true;
     booking.recordingStatus = 'READY';
+    if (req.query.duration && !isNaN(Number(req.query.duration))) {
+      booking.recordingDuration = Math.max(1, Number(req.query.duration));
+    }
     booking.recordingStorage = {
       provider: 'local',
       objectKey: `recordings/${booking._id}/original/source.mp4`,
